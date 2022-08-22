@@ -46,7 +46,7 @@ main {
   display: flex;
   flex-direction: row;
 }
-@media (max-width: 900px) or (max-aspect-ratio: 1.5/1) {
+@media (max-width: 900px) or (max-aspect-ratio: 1/2) {
   .landing{
     flex-direction: column;
   }
