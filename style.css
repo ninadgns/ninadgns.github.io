@@ -9,7 +9,7 @@ p {
   margin-bottom: 0px;
 }
 
-nav {
+.nav {
   display: flex;
   flex-direction: row;
   column-gap: 10px;
