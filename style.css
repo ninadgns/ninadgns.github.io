@@ -46,7 +46,12 @@ main {
   display: flex;
   flex-direction: row;
 }
-
+@media (max-width: 900px) {
+  .landing{
+    flex-direction: column;
+  }
+  
+}
 .intro {
   flex: 40%;
   /* border: 1px solid black; */
