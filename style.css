@@ -46,7 +46,7 @@ main {
   display: flex;
   flex-direction: row;
 }
-@media  (orientation: portrait) {
+@media screen and (orientation: portrait) {
   .landing{
     flex-direction: column;
   }
