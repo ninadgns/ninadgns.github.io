@@ -1,4 +1,5 @@
 body {
+  margin-bottom: 1000px;
   font-family: Roboto, Arial;
 }
 
@@ -37,8 +38,13 @@ nav {
 
 main {
   display: flex;
+  flex-direction: column;
   margin-top: 10vh;
 
+}
+.landing{
+  display: flex;
+  flex-direction: row;
 }
 
 .intro {
@@ -102,4 +108,7 @@ main {
   line-height: 1.7;
   font-size: 18px;
   
+}
+#Education{
+  margin-top: 300px;
 }
