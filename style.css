@@ -46,12 +46,7 @@ main {
 .landing{
   display: flex;
   flex-direction: row;
-}
-@media screen and (orientation: portrait) {
-  .landing{
-    flex-direction: column;
-  }
-  
+  height: 550px;
 }
 .intro {
   flex: 40%;
@@ -59,7 +54,6 @@ main {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 070vh;
   flex-direction: column;
 }
 
@@ -69,14 +63,13 @@ main {
   display: flex;
   flex-direction: column;
   row-gap: 2vh;
-  height: 070vh;
   padding: 5px 10px;
 
 }
 
 
 .dp {
-  width: 60%;
+  width: 300px;
   border-radius: 100%;
 }
 
@@ -116,5 +109,5 @@ main {
   
 }
 #Education{
-  margin-top: 300px;
+  margin-top: 100vh;
 }
