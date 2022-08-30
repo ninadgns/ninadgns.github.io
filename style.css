@@ -1,5 +1,6 @@
 body {
   margin-bottom: 1000px;
+  padding-top: 50px;
   font-family: Roboto, Arial;
   font-size: 16px;
 }
@@ -10,10 +11,14 @@ p {
 }
 
 .nav {
+  position: fixed;
+  left: 9vw;
+  top: 0;
+  right: 0;
   display: flex;
   flex-direction: row;
   column-gap: 10px;
-  margin-left: 9vw;
+  /* margin-left: 9vw; */
   padding-left: 1vw;
   padding-top: 10px;
   border-bottom: 1px solid gray;
@@ -46,11 +51,12 @@ main {
 .landing{
   display: flex;
   flex-direction: row;
-  height: 550px;
+  /* height: 550px; */
+  align-items: top;
 }
 .intro {
   flex: 40%;
-  /* border: 1px solid black; */
+  border: 1px solid black;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -59,7 +65,7 @@ main {
 
 .aboutme {
   flex: 60%;
-  /* border: 1px solid blue; */
+  border: 1px solid blue;
   display: flex;
   flex-direction: column;
   row-gap: 2vh;
@@ -69,7 +75,7 @@ main {
 
 
 .dp {
-  width: 300px ;
+  width: 230px;
   border-radius: 100%;
 }
 
@@ -92,7 +98,8 @@ main {
 .links {
   display: flex;
   width: 40%;
-  justify-content: space-between;
+  justify-content: center;
+  column-gap: 30px;
 }
 
 .links svg {
