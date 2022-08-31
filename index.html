@@ -13,7 +13,6 @@
     integrity="sha384-ODmDIVzN+pFdexxHEHFBQH3/9/vQ9uori45z4JjnFsRydbmQbmL5t1tQ0culUzyK"
     crossorigin="anonymous"></script>
   <title>Chemical Thinking</title>
-
 </head>
 
 <body>
@@ -37,7 +36,8 @@
               <a class="nav-link my-1" href="#what">What You'll Learn</a>
             </li>
             <li class="nav-item  px-1">
-              <a class="nav-link my-1 px-2 btn btn-primary text-white" href="#enroll">Enroll Now</a>
+              <a class="nav-link my-1 px-2 btn btn-primary text-white" href="#enroll" data-bs-toggle="modal"
+                data-bs-target="#exampleModal">Enroll Now</a>
             </li>
           </ul>
         </div>
@@ -49,17 +49,17 @@
   <!-- Landing -->
   <section class="bg-dark text-white text-center text-sm-start">
     <div class="container-fluid">
-      <div class="d-sm-flex align-items-center justify-content-around py-5">
+      <div class="d-sm-flex align-items-center justify-content-around pt-5">
         <div class="col-md-6">
           <h1>Become a <span class="text-warning">Pro</span> in Chemistry</h1>
           <d class="float-end">with <h4 class="d-inline text-warning">Niloy Kumar Mondal</h4>
           </d>
           <p class="lead mt-5">Learn from one of the toppers in Bangladesh with multiple <i><b>international</b></i>
             recognitions in the field of chemistry.</p>
-          <div class="d-flex flex-column">
-            <a href="#enroll"><button class="btn btn-primary text-white">Enroll Now</button></a>
-            <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"><button class="btn btn-primary text-white my-3"><i
-                  class="bi bi-play"></i> Demo Class</button></a>
+          <div class="">
+            <button class="btn btn-primary text-white" data-bs-toggle="modal" data-bs-target="#exampleModal">Enroll
+              Now</button>
+            <!-- <button class="btn btn-primary text-white my-3"><i class="bi bi-play"></i> Demo Class</button> -->
           </div>
         </div>
         <div class="">
@@ -68,6 +68,32 @@
       </div>
     </div>
   </section>
+  <section>
+    <img src="images/stacked-waves-haikei.svg" alt="" width="100%" style="transform: rotate(180Deg)">
+  </section>
+
+
+
+  <!-- Modal -->
+  <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          Cost of this course is <b>BDT 2,000</b>. You would have to pay this after a few classes. You can also leave after a few classes if you want to.
+          <br><br>
+          This course will be run primarily through Telegram. Would you like to join the telegram group?
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <a href="https://t.me/niloy12101001"><button type="button" class="btn btn-primary">Join on Telegram</button></a>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Why -->
   <section id="why" class="p-3">
@@ -155,7 +181,9 @@
       </div>
     </div>
   </section>
-
+  <section>
+    <img src="images/stacked-waves-haikei.svg" alt="" width="100%">
+  </section>
   <!-- What -->
   <section id="what" class="p-3 pb-5 bg-dark text-white">
     <div class="container">
@@ -427,7 +455,7 @@
     </div>
   </section>
   <!-- Enroll Now -->
-  <section id="enroll" class="p-5">
+  <!-- <section id="enroll" class="p-5">
     <div class="container mb-5">
       <div class="h1 my-3 mb-5">Enroll Now</div>
       <form class="row gap-3">
@@ -458,7 +486,37 @@
           </div>
         </div>
       </form>
-      <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"><button class="btn btn-primary align-items-end my-4">Proceed to pay <i class="bi bi-arrow-right"></i></button></a>
+      <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"><button class="btn btn-primary align-items-end my-4">Proceed
+          to pay <i class="bi bi-arrow-right"></i></button></a>
+    </div>
+  </section> -->
+
+  <!-- Get in touch -->
+  <section class="p-5">
+    <div class="container">
+      <div class="d-md-flex align-items-center text-center">
+        <p class="h1 my-3">
+          Get in touch:
+        </p>
+        <div class="d-flex ms-auto justify-content-between align-items-center text-center">
+          <a href="https://www.facebook.com/niloy.01000" class="mx-4 text-decoration-none text-dark">
+            <h1 class="d-inline"><i class="bi bi-facebook"></i></h1>
+            <p class="lead mb-0">Facebook</p>
+          </a>
+          <a href="https://m.me/niloy.01000" class="mx-4 text-decoration-none text-dark">
+            <h1 class="d-inline"><i class="bi bi-messenger"></i></h1>
+            <p class="lead mb-0">Messenger</p>
+          </a>
+          <a href="https://t.me/niloy12101001" class="mx-4 text-decoration-none text-dark">
+            <h1 class="d-inline"><i class="bi bi-telegram"></i></h1>
+            <p class="lead mb-0">Telegram</p>
+          </a>
+          <a href="mailto:niloy12101001@gmail.com" class="mx-4 text-decoration-none text-dark">
+            <h1 class="d-inline"><i class="bi bi-envelope"></i></h1>
+            <p class="lead mb-0">Email</p>
+          </a>
+        </div>
+      </div>
     </div>
   </section>
   <!-- Footer -->
