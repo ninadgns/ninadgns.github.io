@@ -56,7 +56,7 @@ main {
 }
 .intro {
   flex: 40%;
-  border: 1px solid black;
+  /* border: 1px solid black; */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -65,7 +65,7 @@ main {
 
 .aboutme {
   flex: 60%;
-  border: 1px solid blue;
+  /* border: 1px solid blue; */
   display: flex;
   flex-direction: column;
   row-gap: 2vh;
@@ -113,7 +113,7 @@ main {
 .aboutme .main{
   line-height: 1.7;
   font-size: 18px;
-  
+
 }
 #Education{
   margin-top: 100vh;
