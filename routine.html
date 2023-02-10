@@ -8,7 +8,7 @@
       margin: 0;
       padding: 0;
       font-family: Arial, Helvetica Neue, Helvetica, sans-serif;
-      font-size: 14px;
+      font-size: 16px;
     }
 
     #calendar {
@@ -38,14 +38,14 @@
         eventColor: '#378006',
         initialView: 'timeGridWeek',
         headerToolbar: {
-          left: 'prev today next',
-          center: 'title',
-          right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
-        },
+        left: 'prev,today,next',
+        center: 'title',
+        right: 'dayGridMonth,dayGridWeek,dayGridDay'
+      },
 
       }); calendar.render();
 
-      var mevents = calendar.getEventSources(2);
+      var mevents = calendar.getCurrentData();
       console.log(mevents);
       // events.forEach((event) => {
       //   var resources = event.getResources();
