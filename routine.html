@@ -11,6 +11,19 @@
       font-size: 16px;
     }
 
+    #sub-header {
+      margin: -10px auto;
+      width: fit-content;
+      padding-top: 20px;
+    }
+
+    #header {
+      margin: auto;
+      width: fit-content;
+      padding-top: 20px;
+      font-weight: 700;
+    }
+
     #calendar {
       max-width: 90%;
       margin: 40px auto;
@@ -30,8 +43,8 @@
       // });
       let calendar = new FullCalendar.Calendar(calendarEl, {
         slotDuration: '00:30:00',
-        slotMinTime:'08:30',
-        slotMaxTime:'22:00',
+        slotMinTime: '08:30',
+        slotMaxTime: '22:00',
 
         themeSystem: 'bootstrap5',
         aspectRatio: 2,
@@ -42,10 +55,10 @@
         eventColor: '#378006',
         initialView: 'timeGridWeek',
         headerToolbar: {
-        left: 'prev,today,next',
-        center: 'title',
-        right: 'dayGridMonth,timeGridWeek',
-      },
+          left: 'prev,today,next',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek',
+        },
 
       }); calendar.render();
 
@@ -59,12 +72,14 @@
       // });
     });
     var slotDuration = calendarEl.getOption('slotDuration')
-console.log(slotDuration)
+    console.log(slotDuration)
 
   </script>
 </head>
 
 <body>
+  <h1 id="header">CSEDU28 Class Routine</h1>
+  <h4 id="sub-header">First Year First Semester</h4>
   <div id='calendar'></div>
 </body>
 
