@@ -29,6 +29,10 @@
       // var calendar = new FullCalendar.Calendar(calendarEl, {
       // });
       let calendar = new FullCalendar.Calendar(calendarEl, {
+        slotDuration: '00:30:00',
+        slotMinTime:'08:30',
+        slotMaxTime:'22:00',
+
         themeSystem: 'bootstrap5',
         aspectRatio: 2,
         googleCalendarApiKey: 'AIzaSyB3rC0B3fC2uqjGleniyRe31fJ8beBHFdc',
@@ -40,7 +44,7 @@
         headerToolbar: {
         left: 'prev,today,next',
         center: 'title',
-        right: 'dayGridMonth,dayGridWeek,dayGridDay'
+        right: 'dayGridMonth,timeGridWeek',
       },
 
       }); calendar.render();
@@ -54,6 +58,8 @@
       //   }
       // });
     });
+    var slotDuration = calendarEl.getOption('slotDuration')
+console.log(slotDuration)
 
   </script>
 </head>
