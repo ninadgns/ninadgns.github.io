@@ -40,40 +40,31 @@
 
     document.addEventListener('DOMContentLoaded', function () {
       var calendarEl = document.getElementById('calendar');
-      // var calendar = new FullCalendar.Calendar(calendarEl, {
-      // });
       let calendar = new FullCalendar.Calendar(calendarEl, {
         slotDuration: '00:30:00',
         slotMinTime: '08:30',
-        slotMaxTime: '22:00', firstDay: 5,
-
+        slotMaxTime: '22:00',
+        firstDay: 5,
         themeSystem: 'bootstrap5',
-        aspectRatio: 2,
+        height: 'auto',
+        initialView: 'timeGridWeek',
         googleCalendarApiKey: 'AIzaSyB3rC0B3fC2uqjGleniyRe31fJ8beBHFdc',
         events: {
           googleCalendarId: '0e68bbbe217e7042292f1cfc3d9f4e114f4134719299fb8bcf87ddacb69ae3e1@group.calendar.google.com',
         },
         eventColor: '#378006',
-        initialView: 'timeGridWeek',
         headerToolbar: {
           left: 'prev,today,next',
           center: 'title',
           right: 'dayGridMonth,timeGridWeek',
         },
 
-      }); calendar.render();
+      });
+      calendar.render();
 
-      var mevents = calendar.getCurrentData();
-      console.log(mevents);
-      // events.forEach((event) => {
-      //   var resources = event.getResources();
-      //   if (resources.title.includes("(cancelled)")) {
-      //     console.log("hehe")
-      //   }
-      // });
+      // var mevents = calendar.getEvents();
+      // console.log(mevents);
     });
-    var slotDuration = calendarEl.getOption('slotDuration')
-    console.log(slotDuration)
 
   </script>
 </head>
