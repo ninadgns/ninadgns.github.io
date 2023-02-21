@@ -27,7 +27,7 @@
 
     #calendar {
       max-width: 90%;
-      margin: 40px auto;
+      margin: -30px auto 10%;
     }
   </style>
   <meta charset='utf-8' /><!-- Latest compiled and minified CSS -->
@@ -53,17 +53,17 @@
           googleCalendarId: '0e68bbbe217e7042292f1cfc3d9f4e114f4134719299fb8bcf87ddacb69ae3e1@group.calendar.google.com',
         },
         eventColor: '#378006',
+        dayHeaderFormat: { weekday: 'short', day: 'numeric', month:'short' },
         headerToolbar: {
           left: 'prev,today,next',
-          center: 'title',
+          // center: 'title',
           right: 'dayGridMonth,timeGridWeek',
         },
 
       });
       calendar.render();
-
-      // var mevents = calendar.getEvents();
-      // console.log(mevents);
+      var a=calendar.getDate();
+      console.log(a)
     });
 
   </script>
