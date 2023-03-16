@@ -36,7 +36,7 @@ input {
 }
 
 .cgdiv {
-    width: fit-content;
+    width: 350px;
     border: solid;
     border-color: red;
 }
