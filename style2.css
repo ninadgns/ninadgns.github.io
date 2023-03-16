@@ -46,8 +46,12 @@ input {
     object-fit: contain;
 }
 
+.cg {
+    font-family: 'Ubuntu Mono', monospace;
+}
+
 .cgdiv {
-    width: 350px;
+    width: fit-content;
     border: solid;
     border-color: red;
 }
