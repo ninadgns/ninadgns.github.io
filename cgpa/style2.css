@@ -1,0 +1,75 @@
+.header {
+    position: fixed;
+    background-color: white;
+    z-index: 100;
+    width: 100%;
+    margin: auto;
+    left: 0;
+    right: 0;
+    top: 0;
+}
+
+/* .lab {
+    border-left: dotted;
+    border-color: lightgray;
+} */
+
+input {
+    width: 100%;
+}
+
+.final {
+    min-width: 25%;
+}
+
+.total-container {
+    margin-right: 30px;
+}
+
+.subject-container {
+    border: dashed;
+    border-color: lightblue;
+}
+
+#popup {
+    width: 100%;
+    height: 100%;
+    background-color: black;
+    z-index: 101;
+    display: none;
+    position: fixed;
+}
+
+#popup-image {
+    max-height: 100%;
+    max-width: 100%;
+    object-fit: contain;
+}
+
+.cg {
+    font-family: 'Ubuntu Mono', monospace;
+}
+
+.cgdiv {
+    width: fit-content;
+    border: solid;
+    border-color: red;
+}
+
+.total-container {
+    margin-bottom: 10px;
+}
+
+.lab-header {
+    margin-top: 10%;
+}
+
+@media (min-width: 768px) {
+    .total-container {
+        margin-bottom: none;
+    }
+
+    .lab-header {
+        display: none;
+    }
+}
