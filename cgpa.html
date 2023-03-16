@@ -14,10 +14,8 @@
 </head>
 
 <body>
-    <div id="popup"
-        style="width: 100%; height: 100%; background-color: black; z-index: 101; display: none; position: fixed;">
-        <img src="Poster.jpg"
-            style="max-height: 100%; max-width: 100%; object-fit: contain;" class="mx-auto">
+    <div id="popup">
+        <img id="popup-image" src="Poster.jpg" class="mx-auto">
         <button class="btn-lg mx-auto" style="width: 200px;" id="good">Okay I will</button>
     </div>
     <script>
@@ -25,7 +23,7 @@
         good.onclick = function () { myfunction(); }
         function myfunction() {
             $("#popup").css("display", "none");
-            $(".header").css('display','block');
+            $(".header").css('display', 'block');
 
         }
     </script>
@@ -195,7 +193,7 @@
         $(document).ready(function hehe() {
             setTimeout(() => {
                 $('#popup').css('display', 'block');
-                $(".header").css('display','none');
+                $(".header").css('display', 'none');
             }, 5000);
         })
         eeeDiv = document.getElementById("eee")

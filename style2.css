@@ -1,7 +1,3 @@
-* {
-    /* outline: 1px blue solid; */
-}
-
 .header {
     position: fixed;
     background-color: white;
@@ -35,6 +31,21 @@ input {
     border-color: lightblue;
 }
 
+#popup {
+    width: 100%;
+    height: 100%;
+    background-color: black;
+    z-index: 101;
+    display: none;
+    position: fixed;
+}
+
+#popup-image {
+    max-height: 100%;
+    max-width: 100%;
+    object-fit: contain;
+}
+
 .cgdiv {
     width: 350px;
     border: solid;
@@ -44,7 +55,10 @@ input {
 .total-container {
     margin-bottom: 10px;
 }
-.lab-header{margin-top: 10%;}
+
+.lab-header {
+    margin-top: 10%;
+}
 
 @media (min-width: 768px) {
     .total-container {
