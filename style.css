@@ -23,3 +23,6 @@ html,
       max-width: 90%;
       margin: -30px auto 10%;
     }
+    .fc-col-header-cell-cushion{
+      color: #267453;
+    }

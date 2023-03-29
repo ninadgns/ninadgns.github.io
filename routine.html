@@ -3,14 +3,13 @@
 
 <head>
   <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-8F1K03CZRX"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-8F1K03CZRX');
-</script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-8F1K03CZRX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-8F1K03CZRX');
+  </script>
   <title>Class Routine</title>
   <link rel="stylesheet" href="style.css">
   <meta charset='utf-8' /><!-- Latest compiled and minified CSS -->
@@ -20,7 +19,7 @@
   <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.4/index.global.min.js'></script>
   <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/google-calendar@6.1.4/index.global.min.js"></script>
   <script>
-
+    let hehe;
     document.addEventListener('DOMContentLoaded', function () {
       var calendarEl = document.getElementById('calendar');
       let calendar = new FullCalendar.Calendar(calendarEl, {
@@ -35,8 +34,8 @@
         events: {
           googleCalendarId: '0e68bbbe217e7042292f1cfc3d9f4e114f4134719299fb8bcf87ddacb69ae3e1@group.calendar.google.com',
         },
-        eventColor: '#378006',
-        dayHeaderFormat: { weekday: 'short', day: 'numeric', month:'short' },
+        eventColor: '#36AE7C',
+        dayHeaderFormat: { weekday: 'short', day: 'numeric', month: 'short' },
         headerToolbar: {
           left: 'prev,today,next',
           // center: 'title',
@@ -45,10 +44,23 @@
 
       });
       calendar.render();
-      var a=calendar.getDate();
-      console.log(a)
-    });
+      setTimeout(function () {
+        calendar.getEvents().forEach(ev => {
+          if (ev.title.toLowerCase().includes("lab")) {
+            ev.setProp('backgroundColor', '#EB5353');
+          };
+          if (ev.title.toLowerCase().includes('online')) {
+            ev.setProp('backgroundColor', '#F9D923');
+            ev.setProp('textColor', 'black');
 
+          }
+          if (ev.allDay) {
+            ev.setProp('backgroundColor', '#187498');
+          }
+        });
+      }, 1000);
+
+    });
   </script>
 </head>
 
