@@ -49,6 +49,11 @@
           if (event.title.toLowerCase().includes('cp')) {
             event.backgroundColor = '#187498'
           }
+          if (event.title.toLowerCase().includes('cancel') ||
+            event.title.toLowerCase().includes('postpone')) {
+            event.backgroundColor = '#808080'
+          }
+
         },
       });
       calendar.render();
