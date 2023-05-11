@@ -51,6 +51,9 @@ footer {
   padding: 20px;
   text-align: center;
 }
+footer a{
+  color: white;
+}
 
 footer p {
   margin: 0;
