@@ -8,15 +8,15 @@ export default function TheorySubject({ SubjectName, returnGradePoint }) {
 
     let Mark = Incourse + TermFinal;
     let grade, gradePoint;
-    if (Mark > 80) { grade = "A+"; gradePoint = "4.00"; }
-    else if (Mark > 75) { grade = "A"; gradePoint = "3.75"; }
-    else if (Mark > 70) { grade = "A-"; gradePoint = "3.50"; }
-    else if (Mark > 65) { grade = "B+"; gradePoint = "3.25"; }
-    else if (Mark > 60) { grade = "B"; gradePoint = "3.00"; }
-    else if (Mark > 55) { grade = "B-"; gradePoint = "2.75"; }
-    else if (Mark > 50) { grade = "C+"; gradePoint = "2.50"; }
-    else if (Mark > 45) { grade = "C"; gradePoint = "2.25"; }
-    else if (Mark > 40) { grade = "D"; gradePoint = "2.00"; }
+    if (Mark >= 80) { grade = "A+"; gradePoint = "4.00"; }
+    else if (Mark >= 75) { grade = "A"; gradePoint = "3.75"; }
+    else if (Mark >= 70) { grade = "A-"; gradePoint = "3.50"; }
+    else if (Mark >= 65) { grade = "B+"; gradePoint = "3.25"; }
+    else if (Mark >= 60) { grade = "B"; gradePoint = "3.00"; }
+    else if (Mark >= 55) { grade = "B-"; gradePoint = "2.75"; }
+    else if (Mark >= 50) { grade = "C+"; gradePoint = "2.50"; }
+    else if (Mark >= 45) { grade = "C"; gradePoint = "2.25"; }
+    else if (Mark >= 40) { grade = "D"; gradePoint = "2.00"; }
     else { grade = "F"; gradePoint = "0.00"; }
     returnGradePoint(gradePoint)
 

@@ -10,17 +10,18 @@ const Input = styled(MuiInput)`
   width: 42px;
 `;
 
-export default function InputSlider({ sliderWidth, defaultValue, maxValue, returnValue, examName, minValue, stepValue, textVisibility }) {
+export default function InputSlider({defaultValue, maxValue, returnValue, examName, minValue, stepValue, textVisibility }) {
   const [value, setValue] = React.useState(defaultValue);
 
   const handleSliderChange = (event, newValue) => {
     setValue(newValue);
     returnValue(newValue || defaultValue);
   };
-
-  const handleInputChange = (event) => {
+  
+  const handleInputChange = (event, newValue) => {
     setValue(event.target.value === '' ? '' : Number(event.target.value));
-    returnValue(newValue);
+    newValue=Number(event.target.value)
+    returnValue(newValue || defaultValue);
   };
 
 
@@ -51,8 +52,8 @@ export default function InputSlider({ sliderWidth, defaultValue, maxValue, retur
             inputProps={{
               step: 1,
 
-              min: { minValue },
-              max: { maxValue },
+              min: minValue,
+              max: maxValue,
               type: 'number',
               'aria-labelledby': 'input-slider',
             }}
