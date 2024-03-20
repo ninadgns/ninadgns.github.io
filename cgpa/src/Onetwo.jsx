@@ -3,16 +3,14 @@ import TheorySubject from './TheorySubject';
 import LabSubject from './LabSubject';
 import PrevCGPA from './PrevCGPA';
 import { Box } from '@mui/material';
-import { spacing } from '@mui/system';
 
 import { Grid } from '@mui/material';
 import { Typography } from '@mui/material';
-export default function App() {
+export default function Onetwo() {
   const [FOPGradePoint, setFOPGradePoint] = React.useState(4.00);
   const [DLDGradePoint, setDLDGradePoint] = React.useState(4.00);
   const [PhysicsGradePoint, setPhysicsGradePoint] = React.useState(4.00);
   const [MathGradePoint, setMathGradePoint] = React.useState(4.00);
-  // const [FCCGradePoint, setFCCGradePoint] = React.useState(4.00);
   const [FOPLabGradePoint, setFOPLabGradePoint] = React.useState(4.00);
   const [DLDLabGradePoint, setDLDLabGradePoint] = React.useState(4.00);
   const [PhysicsLabGradePoint, setPhysicsLabGradePoint] = React.useState(4.00);

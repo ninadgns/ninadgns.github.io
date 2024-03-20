@@ -1,13 +1,13 @@
 import * as React from 'react';
-import TheorySubject from './TheorySubject';
-import LabSubject from './LabSubject';
+import TheorySubject from './TheorySubject'
+import LabSubject from './LabSubject'
 import PrevCGPA from './PrevCGPA';
 import { Box } from '@mui/material';
 import { spacing } from '@mui/system';
 
 import { Grid } from '@mui/material';
 import { Typography } from '@mui/material';
-export default function App() {
+export default function Twoone() {
   const [DSAGradePoint, setDSAGradePoint] = React.useState(4.00);
   const [EEEGradePoint, setEEEGradePoint] = React.useState(4.00);
   const [GEDGradePoint, setGEDGradePoint] = React.useState(4.00);
@@ -33,7 +33,7 @@ export default function App() {
       <Grid zIndex={1} style={{ position: 'fixed', width: '100vw', left: '50%', transform: 'translate(-50%, 0%)', backgroundColor: 'white' }} >
         <Box sx={{ mx: 'auto', display: 'flex', flexDirection: 'column' }}  >
           <p className='m-auto  h2'>CGPA Calculator</p>
-          <p className='m-auto  h6'>CSEDU28 1-2</p>
+          <p className='m-auto  h6'>CSEDU28 2-1</p>
         </Box>
         <Box marginTop={2} display={'flex'} flexDirection={'row'} justifyContent={"space-evenly"}>
 

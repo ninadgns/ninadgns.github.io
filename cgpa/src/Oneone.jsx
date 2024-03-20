@@ -1,12 +1,12 @@
 import * as React from 'react';
-import TheorySubject from './TheorySubject';
-import LabSubject from './LabSubject';
+import TheorySubject from './TheorySubject'
+import LabSubject from './LabSubject'
 import { Box } from '@mui/material';
 import { spacing } from '@mui/system';
 
 import { Grid } from '@mui/material';
 import { Typography } from '@mui/material';
-export default function App() {
+export default function Oneone() {
   const [EEEGradePoint, setEEEGradePoint] = React.useState(4.00);
   const [ChemistryGradePoint, setChemistryGradePoint] = React.useState(4.00);
   const [CalculusGradePoint, setCalculusGradePoint] = React.useState(4.00);

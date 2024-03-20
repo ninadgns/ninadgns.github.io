@@ -1,0 +1,66 @@
+import Oneone from "./oneone";
+import Onetwo from "./onetwo";
+import Twoone from "./twoone";
+import React, { useState, useRef } from 'react';
+import { Select, MenuItem, FormControl, InputLabel, Typography } from '@mui/material';
+
+
+
+
+export default function App() {
+    const [selectedOption, setSelectedOption] = useState('');
+    const [showSelector, setShowSelector] = useState(true);
+    const targetRef = useRef(null);
+
+    const handleChange = (event) => {
+        setSelectedOption(event.target.value);
+        setShowSelector(false);
+        targetRef.current.scrollIntoView({ behavior: 'smooth' })
+
+    };
+    const renderComponent = () => {
+        switch (selectedOption) {
+            case 'option1':
+                return <Oneone ref={targetRef} />;
+            case 'option2':
+                return <Onetwo ref={targetRef} />;
+            case 'option3':
+                return <Twoone ref={targetRef} />;
+            default:
+                return null;
+        }
+
+    };
+
+    return (
+        <div>
+            {renderComponent()}
+            <div style={{  padding: 10 }}>
+                {showSelector && 
+                <Typography variant="h2" align="center">CSEDU CGPA Calculator</Typography>
+                // <h1 style={{ marginBottom: 50, textAlign: "center" , }}>CSEDU <br></br> CGPA Calculator</h1>
+                }
+                <div style={{ display: 'flex', alignItems: "center", margin: "auto", width: "fit-content", }}>
+                    {/* {showSelector && <Typography variant="h5">Select semester: </Typography>} */}
+                    {!showSelector && <h4>Change semester: </h4>}
+                    <FormControl sx={{ m: 1, minWidth: 200 }}>
+                        <InputLabel id="demo-simple-select-label">Select Semester</InputLabel>
+                        <Select
+                            labelId="demo-simple-select-label"
+                            id="demo-simple-select"
+                            value={selectedOption}
+                            label="Semester"
+                            autoWidth
+                            onChange={handleChange}
+                        >
+
+                            <MenuItem value="option1">1st Year 1st Semester</MenuItem>
+                            <MenuItem value="option2">1st Year 2nd Semester</MenuItem>
+                            <MenuItem value="option3">2nd Year 1st Semester</MenuItem>
+                        </Select>
+                    </FormControl>
+                </div>
+            </div>
+        </div>
+    )
+}
