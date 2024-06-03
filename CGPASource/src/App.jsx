@@ -16,7 +16,6 @@ export default function App() {
         setSelectedOption(event.target.value);
         setShowSelector(false);
         targetRef.current.scrollIntoView({ behavior: 'smooth' })
-
     };
     const renderComponent = () => {
         switch (selectedOption) {
