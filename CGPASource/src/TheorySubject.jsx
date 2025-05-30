@@ -23,7 +23,7 @@ export default function TheorySubject({ SubjectName, returnGradePoint }) {
     return (
         <Grid container sx={{borderStyle:'dashed', borderColor:'lightblue'}} marginBottom={1} padding={1}>
             <Grid xs={12} md={2}>
-                <Typography variant='h5'>{SubjectName}</Typography>
+                <Typography variant='h6'>{SubjectName}</Typography>
             </Grid>
             <Grid xs={12} md={2}>
                 <p>Total Mark: <b>{Mark}</b>   </p>

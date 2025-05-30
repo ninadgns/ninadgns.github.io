@@ -13,7 +13,6 @@ export default function Twotwo() {
   const [DataComGradePoint, setDataComGradePoint] = React.useState(4.00);
   const [CAOGradePoint, setCAOGradePoint] = React.useState(4.00);
   const [MechatronicsGradePoint, setMechatronicsGradePoint] = React.useState(4.00);
-  // const [FCCGradePoint, setFCCGradePoint] = React.useState(4.00);
   const [DBMALabGradePoint, setDBMALabGradePoint] = React.useState(4.00);
   const [DataComLabGradePoint, setDataComLabGradePoint] = React.useState(4.00);
   const [AlgorithmLabGradePoint, setAlgorithmLabGradePoint] = React.useState(4.00);

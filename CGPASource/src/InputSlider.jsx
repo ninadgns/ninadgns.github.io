@@ -44,11 +44,32 @@ export default function InputSlider({ defaultValue, maxValue, returnValue, examN
         </Grid>
         <Grid item visibility={textVisibility}>
           <Input
-
             value={value}
             size="medium"
-            disableUnderline={true}
+            disableUnderline={false}
             onChange={handleInputChange}
+            sx={{
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              padding: '0px 11px',
+              backgroundColor: '#fff',
+              '&:hover': {
+                borderColor: '#999',
+              },
+              '&:focus-within': {
+                borderColor: '#1976d2',
+                boxShadow: '0 0 0 2px rgba(25, 118, 210, 0.2)',
+              },
+              '& input[type=number]': {
+                '&::-webkit-outer-spin-button, &::-webkit-inner-spin-button': {
+                  '-webkit-appearance': 'none',
+                  margin: 0,
+                },
+                '&[type=number]': {
+                  '-moz-appearance': 'textfield',
+                },
+              }
+            }}
             inputProps={{
               step: 1,
               min: minValue,

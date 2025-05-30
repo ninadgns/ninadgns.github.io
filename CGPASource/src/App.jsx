@@ -4,6 +4,7 @@ import Twoone from "./twoone";
 import React, { useState, useRef } from 'react';
 import { Select, MenuItem, FormControl, InputLabel, Typography } from '@mui/material';
 import Twotwo from "./Twotwo";
+import ThreeOne from "./ThreeOne";
 
 
 
@@ -28,6 +29,8 @@ export default function App() {
                 return <Twoone ref={targetRef} />;
             case 'option4':
                 return <Twotwo ref={targetRef} />;
+            case 'option5':
+                return <ThreeOne ref={targetRef} />;
             default:
                 return null;
         }
@@ -60,6 +63,7 @@ export default function App() {
                             <MenuItem value="option2">1st Year 2nd Semester</MenuItem>
                             <MenuItem value="option3">2nd Year 1st Semester</MenuItem>
                             <MenuItem value="option4">2nd Year 2nd Semester</MenuItem>
+                            <MenuItem value="option5">3rd Year 1st Semester</MenuItem>
                         </Select>
                     </FormControl>
                 </div>
