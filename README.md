@@ -17,9 +17,11 @@ A comprehensive CGPA calculator built with React that helps students calculate t
 
 ### 📅 [CSEDU28 Class Routine](/routine)
 Dynamic class routine display using FullCalendar library, synchronized with a Google Calendar that I maintain for the CSEDU 28th batch class schedule.
+<span style="color: red;">**Note: This routine is not maintained properly**</span>
 
 ### 📄 [Lab Report Cover Generator](/cover)
 A tool for generating standardized lab report covers. Currently redirects to a Python web application hosted on PythonAnywhere.
+<span style="color: red;">**Note: This part of the project is also not maintained properly**</span>
 
 ## Project Structure
 
