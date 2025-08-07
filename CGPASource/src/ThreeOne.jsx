@@ -53,7 +53,7 @@ export default function ThreeOne() {
         </Box>
         <Box marginTop={2} display={'flex'} flexDirection={'row'} justifyContent={"space-evenly"}>
 
-          <Typography border={'solid red'} padding={1} width={'fit-content'} variant='h5' fontFamily={'monospace'}>2-2 GPA: {gpa}</Typography>
+          <Typography border={'solid red'} padding={1} width={'fit-content'} variant='h5' fontFamily={'monospace'}>3-1 GPA: {gpa}</Typography>
           <Typography border={'solid red'} padding={1} width={'fit-content'} variant='h5' fontFamily={'monospace'}>CGPA: {cgpa}</Typography>
         </Box>
       </Grid>
