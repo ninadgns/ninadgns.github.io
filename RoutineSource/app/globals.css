@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-table-bg: #ffffff;
+  --color-table-border: #d1d5db;
+  --color-table-header-bg: #f3f4f6;
+  --color-table-break-bg: #fef9c3;
+  --color-table-break-cell-bg: #fefce8;
+  --color-table-lab-bg: #e0e7ff;
+  --color-table-hover-bg: #f9fafb;
+  --color-table-empty: #d1d5db;
+
+  --color-title: #1e293b;
+  --color-section-title: #334155;
+  --color-course-code: #4338ca;
+  --color-course-card-bg: #ffffff;
+  --color-course-card-border: #e5e7eb;
+  --color-course-card-shadow: rgba(0,0,0,0.04);
+  --color-course-teacher: #64748b; /* Slate-500 for visibility */
+
+  --color-tooltip-bg: #171717;
+  --color-tooltip-code: #818cf8;
+  --color-tooltip-text: #ededed;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+
+    --color-table-bg: #171717;
+    --color-table-border: #334155;
+    --color-table-header-bg: #1e293b;
+    --color-table-break-bg: #facc15;
+    --color-table-break-cell-bg: #fef08a;
+    --color-table-lab-bg: #6366f1;
+    --color-table-hover-bg: #1e293b;
+    --color-table-empty: #334155;
+
+    --color-title: #f3f4f6;
+    --color-section-title: #e0e7ff;
+    --color-course-code: #818cf8;
+    --color-course-card-bg: #171717;
+    --color-course-card-border: #334155;
+    --color-course-card-shadow: rgba(0,0,0,0.24);
+    --color-course-teacher: #e0e7ff; /* Light blue for dark mode */
+
+    --color-tooltip-bg: #334155;
+    --color-tooltip-code: #818cf8;
+    --color-tooltip-text: #ededed;
+  }
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+}
