@@ -1,0 +1,61 @@
+name: Build and Deploy CGPA Calculator
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'CGPASource/**'
+      - '.github/workflows/deploy-cgpa.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+          cache-dependency-path: CGPASource/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: ./CGPASource
+        run: pnpm install --frozen-lockfile
+
+      - name: Build project
+        working-directory: ./CGPASource
+        run: pnpm build
+
+      - name: Copy dist to cgpa folder
+        run: |
+          rm -rf cgpa/*
+          cp -r CGPASource/dist/* cgpa/
+
+      - name: Fix asset paths in HTML
+        run: |
+          # Remove leading slash from asset paths in index.html
+          sed -i 's|src="/assets/|src="assets/|g' cgpa/index.html
+          sed -i 's|href="/assets/|href="assets/|g' cgpa/index.html
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add cgpa/
+          git diff --staged --quiet || git commit -m "Auto-deploy: Update CGPA calculator [skip ci]"
+          git push
+
