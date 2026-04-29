@@ -6,6 +6,7 @@ import Twoone from './Twoone';
 import Twotwo from './Twotwo';
 import ThreeOne from './ThreeOne';
 import ThreeTwo from './ThreeTwo';
+import FourOne from './FourOne';
 
 
 export default function App() {
@@ -67,6 +68,8 @@ export default function App() {
                 return <ThreeOne />;
             case 'option6':
                 return <ThreeTwo />;
+            case 'option7':
+                return <FourOne />;
             default:
                 return null;
         }
@@ -106,6 +109,7 @@ export default function App() {
                             <MenuItem value="option4">2nd Year 2nd Semester</MenuItem>
                             <MenuItem value="option5">3rd Year 1st Semester</MenuItem>
                             <MenuItem value="option6">3rd Year 2nd Semester</MenuItem>
+                            <MenuItem value="option7">4th Year 1st Semester</MenuItem>
                         </Select>
                     </FormControl>
                 </div>
