@@ -46,16 +46,16 @@ export default function Twoone() {
       </Grid>
       <Grid container justifyContent={'space-around'} marginBottom={5}  >
         <Grid width={{ xs: "100%", md: "69%" }}>
-          <TheorySubject SubjectName={"DSA"} returnGradePoint={setDSAGradePoint}></TheorySubject>
-          <TheorySubject SubjectName={"OOP"} returnGradePoint={setOOPGradePoint}></TheorySubject>
-          <TheorySubject SubjectName={"Math"} returnGradePoint={setMathGradePoint}></TheorySubject>
-          <TheorySubject SubjectName={"EEE"} returnGradePoint={setEEEGradePoint}></TheorySubject>
-          <TheorySubject SubjectName={"GED"} returnGradePoint={setGEDGradePoint}></TheorySubject>
+          <TheorySubject SubjectName={"CSE-2101: Data Structures and Algorithms"} returnGradePoint={setDSAGradePoint}></TheorySubject>
+          <TheorySubject SubjectName={"CSE-2102: Object Oriented Programming"} returnGradePoint={setOOPGradePoint}></TheorySubject>
+          <TheorySubject SubjectName={"MATH-2105: Linear Algebra"} returnGradePoint={setMathGradePoint}></TheorySubject>
+          <TheorySubject SubjectName={"EEE-2103: Electronic Devices and Circuits"} returnGradePoint={setEEEGradePoint}></TheorySubject>
+          <TheorySubject SubjectName={"GED-2104: Bangladesh Studies"} returnGradePoint={setGEDGradePoint}></TheorySubject>
         </Grid>
         <Grid width={{ xs: "100%", md: "28%" }} marginBottom={5}  >
-          <LabSubject SubjectName={"DSA Lab"} returnGradePoint={setDSALabGradePoint}></LabSubject>
-          <LabSubject SubjectName={"EEE Lab"} returnGradePoint={setEEELabGradePoint}></LabSubject>
-          <LabSubject SubjectName={"OOP Lab"} returnGradePoint={setOOPLabGradePoint}></LabSubject>
+          <LabSubject SubjectName={"CSE-2111: Data Structures and Algorithms Lab"} returnGradePoint={setDSALabGradePoint}></LabSubject>
+          <LabSubject SubjectName={"EEE-2113: Electronic Devices and Circuits Lab"} returnGradePoint={setEEELabGradePoint}></LabSubject>
+          <LabSubject SubjectName={"CSE-2112: Object Oriented Programming Lab"} returnGradePoint={setOOPLabGradePoint}></LabSubject>
         </Grid>
       </Grid>
     </Box>)

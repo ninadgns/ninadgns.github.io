@@ -63,17 +63,17 @@ export default function Twotwo() {
       </Grid>
       <Grid container justifyContent={'space-around'} marginBottom={5}  >
         <Grid width={{ xs: "100%", md: "69%" }}>
-          <TheorySubject SubjectName={"DBMS"} returnGradePoint={setDBMSGradePoint}></TheorySubject>
-          <TheorySubject SubjectName={"Mechatronics"} returnGradePoint={setMechatronicsGradePoint}></TheorySubject>
-          <TheorySubject SubjectName={"Computer Architecture"} returnGradePoint={setCAOGradePoint}></TheorySubject>
-          <TheorySubject SubjectName={"Algorithnm"} returnGradePoint={setAlgorithmGradePoint}></TheorySubject>
-          <TheorySubject SubjectName={"DataCom"} returnGradePoint={setDataComGradePoint}></TheorySubject>
+          <TheorySubject SubjectName={"CSE-2201: Database Management Systems - I"} returnGradePoint={setDBMSGradePoint}></TheorySubject>
+          <TheorySubject SubjectName={"CSE-2205: Introduction to Mechatronics"} returnGradePoint={setMechatronicsGradePoint}></TheorySubject>
+          <TheorySubject SubjectName={"CSE-2204: Computer Architecture and Organization"} returnGradePoint={setCAOGradePoint}></TheorySubject>
+          <TheorySubject SubjectName={"CSE-2202: Design and Analysis of Algorithms - I"} returnGradePoint={setAlgorithmGradePoint}></TheorySubject>
+          <TheorySubject SubjectName={"CSE-2203: Data and Telecommunication"} returnGradePoint={setDataComGradePoint}></TheorySubject>
         </Grid>
         <Grid width={{ xs: "100%", md: "28%" }} marginBottom={5}  >
-          <LabSubject SubjectName={"DBMS Lab"} returnGradePoint={setDBMALabGradePoint}></LabSubject>
-          <LabSubject SubjectName={"DataCom Lab ☠️"} returnGradePoint={setDataComLabGradePoint}></LabSubject>
-          <LabSubject SubjectName={"Algorithm Lab"} returnGradePoint={setAlgorithmLabGradePoint}></LabSubject>
-          <LabSubject SubjectName={"Android Lab"} returnGradePoint={setAndroidLabGradePoint}></LabSubject>
+          <LabSubject SubjectName={"CSE-2211: Database Management Systems - I Lab"} returnGradePoint={setDBMALabGradePoint}></LabSubject>
+          <LabSubject SubjectName={"CSE-2213: Data and Telecommunication Lab ☠️"} returnGradePoint={setDataComLabGradePoint}></LabSubject>
+          <LabSubject SubjectName={"CSE-2212: Design and Analysis of Algorithms - I Lab"} returnGradePoint={setAlgorithmLabGradePoint}></LabSubject>
+          <LabSubject SubjectName={"CSE-2216: Application Development Lab"} returnGradePoint={setAndroidLabGradePoint}></LabSubject>
         </Grid>
       </Grid>
     </Box>)

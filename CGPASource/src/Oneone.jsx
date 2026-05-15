@@ -32,16 +32,16 @@ export default function Oneone() {
     </Box>
     <Grid container justifyContent={'space-around'} >
       <Grid width={{ xs: "100%", md: "69%" }}>
-        <TheorySubject SubjectName={"EEE"} returnGradePoint={setEEEGradePoint}></TheorySubject>
-        <TheorySubject SubjectName={"Chemistry"} returnGradePoint={setChemistryGradePoint}></TheorySubject>
-        <TheorySubject SubjectName={"Calculus"} returnGradePoint={setCalculusGradePoint}></TheorySubject>
-        <TheorySubject SubjectName={"DM"} returnGradePoint={setDMGradePoint}></TheorySubject>
-        <TheorySubject SubjectName={"FCC"} returnGradePoint={setFCCGradePoint}></TheorySubject>
+        <TheorySubject SubjectName={"EEE-1103: Electrical Circuits"} returnGradePoint={setEEEGradePoint}></TheorySubject>
+        <TheorySubject SubjectName={"CHE-1104: Chemistry"} returnGradePoint={setChemistryGradePoint}></TheorySubject>
+        <TheorySubject SubjectName={"MATH-1105: Differential and Integral Calculus"} returnGradePoint={setCalculusGradePoint}></TheorySubject>
+        <TheorySubject SubjectName={"CSE-1102: Discrete Mathematics"} returnGradePoint={setDMGradePoint}></TheorySubject>
+        <TheorySubject SubjectName={"CSE-1101: Fundamentals of Computers and Computing"} returnGradePoint={setFCCGradePoint}></TheorySubject>
       </Grid>
       <Grid width={{ xs: "100%", md: "28%" }}>
-        <LabSubject SubjectName={"EEE Lab"} returnGradePoint={setEEELabGradePoint}></LabSubject>
-        <LabSubject SubjectName={"FCC Lab"} returnGradePoint={setFCCLabGradePoint}></LabSubject>
-        <LabSubject SubjectName={"Chemistry Lab"} returnGradePoint={setChemistryLabGradePoint}></LabSubject>
+        <LabSubject SubjectName={"EEE-1113: Electrical Circuits Lab"} returnGradePoint={setEEELabGradePoint}></LabSubject>
+        <LabSubject SubjectName={"CSE-1111: Fundamentals of Computers and Computing Lab"} returnGradePoint={setFCCLabGradePoint}></LabSubject>
+        <LabSubject SubjectName={"CHE-1114: Chemistry Lab"} returnGradePoint={setChemistryLabGradePoint}></LabSubject>
       </Grid>
     </Grid>
   </Box>)

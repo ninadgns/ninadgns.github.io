@@ -71,17 +71,17 @@ export default function ThreeTwo() {
       </Grid>
       <Grid container justifyContent={'space-around'} marginBottom={5}  >
         <Grid width={{ xs: "100%", md: "69%" }}>
-          <TheorySubject SubjectName={"Operating Systems"} returnGradePoint={setOS}></TheorySubject>
-          <TheorySubject SubjectName={"Numerical Methods"} returnGradePoint={setNumerical}></TheorySubject>
-          <TheorySubject SubjectName={"Design and Analysis of Algorithms - II"} returnGradePoint={setAlgo2}></TheorySubject>
-          <TheorySubject SubjectName={"Formal Language, Automata and Computability"} returnGradePoint={setFormalLang}></TheorySubject>
-          <TheorySubject SubjectName={"Introduction to Probability and Statistics"} returnGradePoint={setStats}></TheorySubject>
+          <TheorySubject SubjectName={"CSE-3201: Operating Systems"} returnGradePoint={setOS}></TheorySubject>
+          <TheorySubject SubjectName={"CSE-3202: Numerical Methods"} returnGradePoint={setNumerical}></TheorySubject>
+          <TheorySubject SubjectName={"CSE-3203: Design and Analysis of Algorithms - II"} returnGradePoint={setAlgo2}></TheorySubject>
+          <TheorySubject SubjectName={"CSE-3204: Formal Language, Automata and Computability"} returnGradePoint={setFormalLang}></TheorySubject>
+          <TheorySubject SubjectName={"STAT-3205: Introduction to Probability and Statistics"} returnGradePoint={setStats}></TheorySubject>
         </Grid>
         <Grid width={{ xs: "100%", md: "28%" }} marginBottom={5}  >
-          <LabSubject SubjectName={"Operating Systems Lab"} returnGradePoint={setOSLab}></LabSubject>
-          <LabSubject SubjectName={"Software Design Patterns Lab"} returnGradePoint={setSDPLab}></LabSubject>
-          <LabSubject SubjectName={"Numerical Methods Lab"} returnGradePoint={setNumericalLab}></LabSubject>
-          <LabSubject SubjectName={"Technical Writing and Presentation Lab"} returnGradePoint={setTechWriteLab}></LabSubject>
+          <LabSubject SubjectName={"CSE-3211: Operating Systems Lab"} returnGradePoint={setOSLab}></LabSubject>
+          <LabSubject SubjectName={"CSE-3216: Software Design Patterns Lab"} returnGradePoint={setSDPLab}></LabSubject>
+          <LabSubject SubjectName={"CSE-3212: Numerical Methods Lab"} returnGradePoint={setNumericalLab}></LabSubject>
+          <LabSubject SubjectName={"ENG-3217: Technical Writing and Presentation Lab"} returnGradePoint={setTechWriteLab}></LabSubject>
         </Grid>
       </Grid>
     </Box >)
