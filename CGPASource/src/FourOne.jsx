@@ -63,15 +63,15 @@ export default function FourOne() {
       </Grid>
       <Grid container justifyContent={'space-around'} marginBottom={5}  >
         <Grid width={{ xs: "100%", md: "69%" }}>
-          <TheorySubject SubjectName={"Artificial Intelligence"} returnGradePoint={setAI}></TheorySubject>
-          <TheorySubject SubjectName={"Mathematical and Statistical Analysis for Engineers"} returnGradePoint={setMathStats}></TheorySubject>
-          <TheorySubject SubjectName={"Introduction To Machine Learning"} returnGradePoint={setML}></TheorySubject>
-          <TheorySubject SubjectName={"Introduction to Data Science"} returnGradePoint={setDataScience}></TheorySubject>
+          <TheorySubject SubjectName={"CSE-4101: Artificial Intelligence"} returnGradePoint={setAI}></TheorySubject>
+          <TheorySubject SubjectName={"CSE-4102: Mathematical and Statistical Analysis for Engineers"} returnGradePoint={setMathStats}></TheorySubject>
+          <TheorySubject SubjectName={"CSE-4125: Introduction to Machine Learning (Option A)"} returnGradePoint={setML}></TheorySubject>
+          <TheorySubject SubjectName={"CSE-4126: Introduction to Data Science (Option B)"} returnGradePoint={setDataScience}></TheorySubject>
         </Grid>
         <Grid width={{ xs: "100%", md: "28%" }} marginBottom={5}  >
-          <LabSubject SubjectName={"Artificial Intelligence Lab"} returnGradePoint={setAILab}></LabSubject>
-          <LabSubject SubjectName={"Introduction to Machine Learning Lab"} returnGradePoint={setMLLab}></LabSubject>
-          <LabSubject SubjectName={"Internet Programming Lab"} returnGradePoint={setInternetProgLab}></LabSubject>
+          <LabSubject SubjectName={"CSE-4111: Artificial Intelligence Lab"} returnGradePoint={setAILab}></LabSubject>
+          <LabSubject SubjectName={"CSE-4155: Introduction to Machine Learning Lab (Option A)"} returnGradePoint={setMLLab}></LabSubject>
+          <LabSubject SubjectName={"CSE-4113: Internet Programming Lab"} returnGradePoint={setInternetProgLab}></LabSubject>
           <LabSubject SubjectName={"Project/Thesis"} returnGradePoint={setProjectThesis}></LabSubject>
         </Grid>
       </Grid>

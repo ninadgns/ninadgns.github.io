@@ -62,17 +62,17 @@ export default function ThreeOne() {
       </Grid>
       <Grid container justifyContent={'space-around'} marginBottom={5}  >
         <Grid width={{ xs: "100%", md: "69%" }}>
-          <TheorySubject SubjectName={"Networking"} returnGradePoint={setNetworking}></TheorySubject>
-          <TheorySubject SubjectName={"Multivariable Calculus"} returnGradePoint={setMVC}></TheorySubject>
-          <TheorySubject SubjectName={"DBMS II"} returnGradePoint={setDBMSTwo}></TheorySubject>
-          <TheorySubject SubjectName={"Software Engineering"} returnGradePoint={setSoftwareEng}></TheorySubject>
-          <TheorySubject SubjectName={"Microprocessor and Microcontroller"} returnGradePoint={setAssembly}></TheorySubject>
+          <TheorySubject SubjectName={"CSE-3101: Computer Networking"} returnGradePoint={setNetworking}></TheorySubject>
+          <TheorySubject SubjectName={"MATH-3105: Multivariable Calculus and Geometry"} returnGradePoint={setMVC}></TheorySubject>
+          <TheorySubject SubjectName={"CSE-3104: Database Management Systems - II"} returnGradePoint={setDBMSTwo}></TheorySubject>
+          <TheorySubject SubjectName={"CSE-3102: Software Engineering"} returnGradePoint={setSoftwareEng}></TheorySubject>
+          <TheorySubject SubjectName={"CSE-3103: Microprocessor and Microcontroller"} returnGradePoint={setAssembly}></TheorySubject>
         </Grid>
         <Grid width={{ xs: "100%", md: "28%" }} marginBottom={5}  >
-          <LabSubject SubjectName={"Networking Lab"} returnGradePoint={setNetworkingLab}></LabSubject>
-          <LabSubject SubjectName={"Software Engineering Lab"} returnGradePoint={setSELab}></LabSubject>
-          <LabSubject SubjectName={"Assembly Lab"} returnGradePoint={setAssemblyLab}></LabSubject>
-          <LabSubject SubjectName={"STM Lab"} returnGradePoint={setMicroControllerLab}></LabSubject>
+          <LabSubject SubjectName={"CSE-3111: Computer Networking Lab"} returnGradePoint={setNetworkingLab}></LabSubject>
+          <LabSubject SubjectName={"CSE-3112: Software Engineering Lab"} returnGradePoint={setSELab}></LabSubject>
+          <LabSubject SubjectName={"CSE-3113: Microprocessor and Assembly Language Lab"} returnGradePoint={setAssemblyLab}></LabSubject>
+          <LabSubject SubjectName={"CSE-3116: Microcontroller Lab"} returnGradePoint={setMicroControllerLab}></LabSubject>
         </Grid>
       </Grid>
     </Box >)

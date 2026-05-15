@@ -44,16 +44,16 @@ export default function Onetwo() {
       </Grid>
       <Grid container justifyContent={'space-around'} marginBottom={5}  >
         <Grid width={{ xs: "100%", md: "69%" }}>
-          <TheorySubject SubjectName={"FOP"} returnGradePoint={setFOPGradePoint}></TheorySubject>
-          <TheorySubject SubjectName={"DLD"} returnGradePoint={setDLDGradePoint}></TheorySubject>
-          <TheorySubject SubjectName={"Physics"} returnGradePoint={setPhysicsGradePoint}></TheorySubject>
-          <TheorySubject SubjectName={"Math"} returnGradePoint={setMathGradePoint}></TheorySubject>
+          <TheorySubject SubjectName={"CSE-1201: Fundamentals of Programming"} returnGradePoint={setFOPGradePoint}></TheorySubject>
+          <TheorySubject SubjectName={"EEE-1202: Digital Logic Design"} returnGradePoint={setDLDGradePoint}></TheorySubject>
+          <TheorySubject SubjectName={"PHY-1203: Physics"} returnGradePoint={setPhysicsGradePoint}></TheorySubject>
+          <TheorySubject SubjectName={"MATH-1204: Methods of Integration, Differential Equations, and Series"} returnGradePoint={setMathGradePoint}></TheorySubject>
         </Grid>
         <Grid width={{ xs: "100%", md: "28%" }} marginBottom={5}  >
-          <LabSubject SubjectName={"FOP Lab"} returnGradePoint={setFOPLabGradePoint}></LabSubject>
-          <LabSubject SubjectName={"DLD Lab"} returnGradePoint={setDLDLabGradePoint}></LabSubject>
-          <LabSubject SubjectName={"Physics Lab"} returnGradePoint={setPhysicsLabGradePoint}></LabSubject>
-          <LabSubject SubjectName={"English Lab"} returnGradePoint={setEnglishLabGradePoint}></LabSubject>
+          <LabSubject SubjectName={"CSE-1211: Fundamentals of Programming Lab"} returnGradePoint={setFOPLabGradePoint}></LabSubject>
+          <LabSubject SubjectName={"EEE-1212: Digital Logic Design Lab"} returnGradePoint={setDLDLabGradePoint}></LabSubject>
+          <LabSubject SubjectName={"PHY-1213: Physics Lab"} returnGradePoint={setPhysicsLabGradePoint}></LabSubject>
+          <LabSubject SubjectName={"ENG-1215: Developing English Language Skills Lab"} returnGradePoint={setEnglishLabGradePoint}></LabSubject>
         </Grid>
       </Grid>
     </Box>)
