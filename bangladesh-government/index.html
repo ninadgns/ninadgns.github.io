@@ -283,40 +283,18 @@
       stroke: var(--accent);
       stroke-width: 2px;
     }
-    .node-labels { pointer-events: auto; }
-    .node-label-content {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 0 8px;
-      color: var(--text);
-      text-align: center;
-      line-height: 1.15;
-      cursor: text;
-      user-select: text;
-      -webkit-user-select: text;
-    }
     .node-title {
-      max-width: 100%;
-      color: var(--text);
+      fill: var(--text);
       font-size: 14px;
       font-weight: 650;
+      pointer-events: none;
     }
-    .node-title-line { display: block; }
     .node-meta {
-      max-width: 100%;
-      overflow: hidden;
-      color: var(--muted);
+      fill: var(--muted);
       font-size: 11px;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      pointer-events: none;
     }
     #chart.zoom-simplified .node-card { filter: none; }
-    #chart.zoom-simplified .node-labels { pointer-events: none; }
     #chart.zoom-simplified .node-title,
     #chart.zoom-simplified .node-meta { opacity: 0; }
     #chart.zoom-simplified .link { stroke-width: 2px; opacity: .7; }
@@ -743,6 +721,8 @@
     const linkLayer = zoomLayer.append('g').attr('class', 'links');
     const nodeLayer = zoomLayer.append('g').attr('class', 'nodes');
     let currentZoomScale = 1;
+    let ignoreClickUntil = 0;
+    const nodeTouchStarts = new Map();
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const zoom = d3.zoom().scaleExtent([minZoom, 2.4]).on('zoom', (event) => {
       currentZoomScale = event.transform.k;
@@ -1182,8 +1162,30 @@
       tooltipVisible = false;
       tooltip.classed('visible', false);
     }
-    function stopLabelInteraction(event) {
+    function touchPoint(event) {
+      const touch = event.changedTouches?.[0] || event.touches?.[0];
+      return touch ? { x: touch.clientX, y: touch.clientY } : null;
+    }
+    function handleNodeTouchStart(event, d) {
+      const point = touchPoint(event);
+      if (!point) return;
       event.stopPropagation();
+      nodeTouchStarts.set(d.id, point);
+    }
+    function handleNodeTouchEnd(event, d) {
+      const start = nodeTouchStarts.get(d.id);
+      nodeTouchStarts.delete(d.id);
+      const end = touchPoint(event);
+      if (!start || !end) return;
+      event.stopPropagation();
+      const moved = Math.hypot(end.x - start.x, end.y - start.y);
+      if (moved > 12) return;
+      event.preventDefault();
+      ignoreClickUntil = Date.now() + 700;
+      toggleNode(d, event);
+    }
+    function handleNodeTouchCancel(event, d) {
+      nodeTouchStarts.delete(d.id);
     }
     function toggleNode(d, event) {
       const isExpanding = !d.children && !!d._children;
@@ -1221,8 +1223,12 @@
         .attr('transform', () => nodeTransform({ x: source.x0 ?? source.x, y: source.y0 ?? source.y }))
         .on('click', (event, d) => {
           event.stopPropagation();
+          if (Date.now() < ignoreClickUntil) return;
           toggleNode(d, event);
         })
+        .on('touchstart', handleNodeTouchStart)
+        .on('touchend', handleNodeTouchEnd)
+        .on('touchcancel', handleNodeTouchCancel)
         .on('keydown', (event, d) => {
           if (event.key !== 'Enter' && event.key !== ' ') return;
           event.preventDefault();
@@ -1233,20 +1239,8 @@
         .on('mouseleave', hideTooltip);
       enter.append('rect').attr('class', 'node-rect').attr('x', -cardW / 2).attr('y', -cardH / 2).attr('width', cardW).attr('height', cardH);
       enter.append('rect').attr('class', 'node-kind-stripe').attr('x', -cardW / 2 + 12).attr('y', -cardH / 2 + 14).attr('width', 5).attr('height', cardH - 28);
-      const label = enter.append('foreignObject')
-        .attr('class', 'node-labels')
-        .attr('x', -cardW / 2 + 24)
-        .attr('y', -cardH / 2 + 10)
-        .attr('width', cardW - 48)
-        .attr('height', cardH - 20)
-        .on('pointerdown', stopLabelInteraction)
-        .on('mousedown', stopLabelInteraction)
-        .on('touchstart', stopLabelInteraction)
-        .on('click', stopLabelInteraction)
-        .on('dblclick', stopLabelInteraction);
-      const labelContent = label.append('xhtml:div').attr('class', 'node-label-content');
-      labelContent.append('xhtml:div').attr('class', 'node-title');
-      labelContent.append('xhtml:div').attr('class', 'node-meta');
+      enter.append('text').attr('class', 'node-title').attr('text-anchor', 'middle').attr('dy', -13);
+      enter.append('text').attr('class', 'node-meta').attr('text-anchor', 'middle').attr('dy', 30);
 
       const merged = enter.merge(node);
       merged.attr('class', d => nodeClass(d));
@@ -1255,8 +1249,8 @@
       merged.select('.node-kind-stripe').attr('fill', d => kindColors[d.data.kind] || kindColors.default);
       merged.select('.node-title').each(function(d) {
         const lines = wrapText(displayName(d), language === 'bn' ? 28 : 36);
-        const title = d3.select(this); title.selectAll('span').remove();
-        lines.forEach(line => title.append('xhtml:span').attr('class', 'node-title-line').text(line));
+        const t = d3.select(this); t.selectAll('tspan').remove();
+        lines.forEach((line, i) => t.append('tspan').attr('x', 0).attr('dy', i === 0 ? 0 : 16).text(line));
       });
       merged.select('.node-meta').text(d => {
         const count = childCount(d);
