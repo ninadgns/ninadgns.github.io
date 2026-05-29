@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Government of Bangladesh Organizational Chart</title>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <style>
+    :root {
+      --bg: #071018;
+      --panel: #102033;
+      --panel-strong: #0e1b28;
+      --text: #edf7ff;
+      --muted: #9bb0c1;
+      --line: rgba(170, 202, 225, 0.32);
+      --executive: #38bdf8;
+      --legislative: #a78bfa;
+      --judicial: #f59e0b;
+      --ministry: #2dd4bf;
+      --division: #60a5fa;
+      --line-dept: #22c55e;
+      --statutory: #f97316;
+      --soe: #ec4899;
+      --match: #facc15;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top left, rgba(56,189,248,.18), transparent 38%), radial-gradient(circle at 75% 20%, rgba(167,139,250,.14), transparent 34%), var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow: hidden;
+    }
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: minmax(260px, 1fr) minmax(320px, 560px) minmax(260px, auto);
+      gap: 18px;
+      align-items: center;
+      padding: 14px 18px;
+      background: linear-gradient(180deg, rgba(7,16,24,.96), rgba(7,16,24,.78));
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(16px);
+    }
+    h1 { margin: 0; font-size: clamp(16px, 2vw, 22px); letter-spacing: -0.02em; }
+    .subtitle { margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .search-wrap { position: relative; }
+    #search {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 999px;
+      padding: 12px 44px 12px 16px;
+      color: var(--text);
+      background: rgba(255,255,255,.08);
+      outline: none;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    #search:focus { border-color: var(--match); box-shadow: 0 0 0 3px rgba(250,204,21,.14); }
+    #clearSearch {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 30px;
+      height: 30px;
+      border: 0;
+      border-radius: 50%;
+      color: var(--text);
+      background: rgba(255,255,255,.10);
+      cursor: pointer;
+    }
+    .controls { display: flex; gap: 10px; align-items: center; justify-content: flex-end; }
+    button.control {
+      border: 1px solid rgba(255,255,255,.12);
+      color: var(--text);
+      background: rgba(255,255,255,.08);
+      border-radius: 999px;
+      padding: 10px 13px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    button.control:hover { background: rgba(255,255,255,.14); }
+    .segmented {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 4px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+    }
+    .segmented .control {
+      border: 0;
+      padding: 8px 11px;
+      background: transparent;
+    }
+    .segmented .control.active { background: rgba(250,204,21,.16); }
+    .actions { position: relative; }
+    .actions-menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 10px);
+      min-width: 220px;
+      padding: 8px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 16px;
+      background: rgba(10,22,32,.98);
+      box-shadow: 0 18px 40px rgba(0,0,0,.35);
+      backdrop-filter: blur(14px);
+      display: none;
+    }
+    .actions.open .actions-menu { display: block; }
+    .menu-item {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 11px;
+      color: var(--text);
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+      font: inherit;
+    }
+    .menu-item:hover { background: rgba(255,255,255,.09); }
+    .menu-item small { color: var(--muted); font-size: 11px; }
+    #chart { position: fixed; inset: 78px 0 0 0; }
+    svg { width: 100%; height: 100%; display: block; cursor: grab; }
+    svg:active { cursor: grabbing; }
+    .link { fill: none; stroke: rgba(148, 180, 205, 0.24); stroke-width: 1.4px; }
+    .node-card {
+      filter: drop-shadow(0 14px 24px rgba(0,0,0,.38));
+      cursor: pointer;
+    }
+    .node-rect {
+      rx: 15px;
+      stroke: rgba(255,255,255,.22);
+      stroke-width: 1.4px;
+      fill: var(--panel);
+    }
+    .node-title {
+      fill: #f8fbff;
+      font-size: 14px;
+      font-weight: 780;
+      paint-order: stroke;
+      stroke: rgba(9, 16, 25, 0.95);
+      stroke-width: 3px;
+      stroke-linejoin: round;
+      pointer-events: none;
+    }
+    .node-meta {
+      fill: #c2d2df;
+      font-size: 11px;
+      paint-order: stroke;
+      stroke: rgba(9, 16, 25, 0.92);
+      stroke-width: 2.5px;
+      stroke-linejoin: round;
+      pointer-events: none;
+    }
+    .toggle-dot { stroke: rgba(255,255,255,.5); stroke-width: 1px; }
+    button.control.active { border-color: var(--match); color: #fff7cc; background: rgba(250,204,21,.14); }
+    .kind-pillar-executive .node-rect { stroke: var(--executive); fill: #10283c; }
+    .kind-pillar-legislative .node-rect { stroke: var(--legislative); fill: #201b3f; }
+    .kind-pillar-judicial .node-rect { stroke: var(--judicial); fill: #342315; }
+    .kind-ministry .node-rect { stroke: var(--ministry); fill: #0d2730; }
+    .kind-division .node-rect { stroke: var(--division); fill: #142b45; }
+    .kind-line .node-rect { stroke: var(--line-dept); fill: #123323; }
+    .kind-statutory .node-rect { stroke: var(--statutory); fill: #351f15; }
+    .kind-soe .node-rect { stroke: var(--soe); fill: #33182c; }
+    .matched .node-rect { stroke: var(--match); stroke-width: 3px; fill: #3a3415; }
+    .ancestor-match .node-rect { stroke: rgba(250,204,21,.75); stroke-width: 2px; }
+    .legend {
+      position: fixed;
+      left: 18px;
+      bottom: 16px;
+      z-index: 8;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-width: min(980px, calc(100vw - 36px));
+      padding: 10px;
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 18px;
+      background: rgba(7,16,24,.76);
+      backdrop-filter: blur(12px);
+    }
+    .chip { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .status {
+      position: fixed;
+      right: 18px;
+      bottom: 16px;
+      z-index: 8;
+      max-width: 360px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(7,16,24,.78);
+      border: 1px solid rgba(255,255,255,.10);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .mini { color: #dbeafe; }
+    @media (max-width: 860px) {
+      header { grid-template-columns: 1fr; gap: 10px; }
+      #chart { inset-top: 176px; inset: 176px 0 0 0; }
+      .controls { justify-content: space-between; }
+      .legend { display: none; }
+      .status { left: 18px; right: 18px; max-width: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Government of Bangladesh Apparatus</h1>
+      <div class="subtitle">Drill down from the three constitutional organs. Click any node to expand or collapse.</div>
+    </div>
+    <div class="search-wrap">
+      <input id="search" autocomplete="off" placeholder="Search agencies, acronyms, ministries: NBR, BTRC, DGHS..." />
+      <button id="clearSearch" title="Clear search">×</button>
+    </div>
+    <div class="controls">
+      <div class="segmented" aria-label="Layout orientation">
+        <button class="control active" id="sideways">Sideways</button>
+        <button class="control" id="topdown">Top-down</button>
+      </div>
+      <div class="actions" id="actions">
+        <button class="control" id="actionsToggle" aria-haspopup="true" aria-expanded="false">Actions ▾</button>
+        <div class="actions-menu" role="menu" aria-label="Chart actions">
+          <button class="menu-item" id="fit" role="menuitem">Fit to screen<small>Center the current view</small></button>
+          <button class="menu-item" id="collapse" role="menuitem">Collapse to organs<small>Return to the clean starting state</small></button>
+          <button class="menu-item" id="expand3" role="menuitem">Expand 3 levels<small>Open the high-level architecture</small></button>
+          <button class="menu-item" id="expandAll" role="menuitem">Expand everything<small>Show every node in the hierarchy</small></button>
+        </div>
+      </div>
+    </div>
+  </header>
+  <main id="chart" aria-label="Interactive organizational chart"></main>
+  <div class="legend" aria-label="Legend">
+    <span class="chip"><span class="swatch" style="background:var(--line-dept)"></span>Line Departments / Directorates</span>
+    <span class="chip"><span class="swatch" style="background:var(--statutory)"></span>Statutory / Autonomous</span>
+    <span class="chip"><span class="swatch" style="background:var(--soe)"></span>SOEs / Corporations</span>
+    <span class="chip"><span class="swatch" style="background:var(--division)"></span>Secretarial Division</span>
+    <span class="chip"><span class="swatch" style="background:var(--match)"></span>Search match</span>
+  </div>
+  <div class="status" id="status">Initial view: <span class="mini">Executive, Legislative, Judicial</span>. Use wheel to zoom and drag to pan.</div>
+
+  <script>
+    const rawData = {"name": "Government of Bangladesh", "kind": "default", "children": [{"name": "Legislative Apparatus", "kind": "pillar-legislative", "children": [{"name": "Parliament of Bangladesh: Jatiya Sangsad", "kind": "default", "children": [{"name": "Office of the Speaker", "kind": "default", "children": []}, {"name": "Office of the Deputy Speaker", "kind": "default", "children": []}, {"name": "Leader of the House", "kind": "default", "children": []}, {"name": "Leader of the Opposition", "kind": "default", "children": []}, {"name": "Parliament Secretariat", "kind": "default", "children": [{"name": "Secretary, Bangladesh Parliament Secretariat", "kind": "default", "children": []}, {"name": "Legislative support, committee support, reporting, library, research, protocol, finance, administration, and security support wings", "kind": "default", "children": []}]}, {"name": "Parliamentary Committees", "kind": "default", "children": [{"name": "Standing Committees on Ministries", "kind": "default", "children": [{"name": "Standing Committee on Ministry of Agriculture", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Civil Aviation and Tourism", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Commerce", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Cultural Affairs", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Defence", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Disaster Management and Relief", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Education", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Environment, Forest and Climate Change", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Expatriates' Welfare and Overseas Employment", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Finance", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Fisheries and Livestock", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Food", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Foreign Affairs", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Health and Family Welfare", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Home Affairs", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Housing and Public Works", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Industries", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Information and Broadcasting", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Textiles and Jute", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Labour and Employment", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Land", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Law, Justice and Parliamentary Affairs", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Liberation War Affairs", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Local Government, Rural Development and Cooperatives", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Planning", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Power, Energy and Mineral Resources", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Primary and Mass Education", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Public Administration", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Railways", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Religious Affairs", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Road Transport and Bridges", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Science and Technology", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Shipping", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Social Welfare", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Textiles and Jute", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Water Resources", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Women and Children Affairs", "kind": "ministry", "children": []}, {"name": "Standing Committee on Ministry of Youth and Sports", "kind": "ministry", "children": []}]}, {"name": "Financial and oversight committees", "kind": "default", "children": [{"name": "Public Accounts Committee", "kind": "default", "children": []}, {"name": "Estimates Committee", "kind": "default", "children": []}, {"name": "Committee on Public Undertakings", "kind": "default", "children": []}, {"name": "Committee on Government Assurances", "kind": "default", "children": []}, {"name": "Committee on Petitions", "kind": "default", "children": []}, {"name": "Committee on Private Members' Bills and Resolutions", "kind": "default", "children": []}, {"name": "Committee on Privileges", "kind": "default", "children": []}, {"name": "Business Advisory Committee", "kind": "default", "children": []}, {"name": "House Committee", "kind": "default", "children": []}, {"name": "Library Committee", "kind": "default", "children": []}, {"name": "Rules of Procedure Committee", "kind": "default", "children": []}, {"name": "Committee on Bills", "kind": "default", "children": []}, {"name": "Committee on Subordinate Legislation", "kind": "default", "children": []}]}]}]}]}, {"name": "Judicial Hierarchy", "kind": "pillar-judicial", "children": [{"name": "Supreme Court of Bangladesh", "kind": "default", "children": [{"name": "Appellate Division", "kind": "division", "children": [{"name": "Supreme Court Registry, Appellate Division", "kind": "division", "children": []}]}, {"name": "High Court Division", "kind": "division", "children": [{"name": "Supreme Court Registry, High Court Division", "kind": "division", "children": []}, {"name": "Original, appellate, writ, admiralty, company, criminal, civil, and constitutional jurisdictions as assigned by law", "kind": "default", "children": []}]}, {"name": "Judicial Administration Support", "kind": "default", "children": [{"name": "Supreme Court administration and court officer establishment", "kind": "default", "children": []}, {"name": "Judicial training and coordination through the Ministry of Law, Justice and Parliamentary Affairs where statute assigns executive support", "kind": "ministry", "children": []}]}]}, {"name": "Subordinate Judiciary", "kind": "default", "children": [{"name": "Civil Courts", "kind": "default", "children": [{"name": "District Judge Court", "kind": "default", "children": []}, {"name": "Additional District Judge Court", "kind": "default", "children": []}, {"name": "Joint District Judge Court", "kind": "default", "children": []}, {"name": "Senior Assistant Judge Court", "kind": "default", "children": []}, {"name": "Assistant Judge Court", "kind": "default", "children": []}]}, {"name": "Criminal Courts", "kind": "default", "children": [{"name": "Courts of Sessions Judge", "kind": "default", "children": []}, {"name": "Additional Sessions Judge Court", "kind": "default", "children": []}, {"name": "Joint Sessions Judge Court", "kind": "default", "children": []}, {"name": "Chief Judicial Magistrate Court", "kind": "default", "children": []}, {"name": "Senior Judicial Magistrate Court", "kind": "default", "children": []}, {"name": "Judicial Magistrate Court", "kind": "default", "children": []}, {"name": "Metropolitan Sessions Judge Court", "kind": "default", "children": []}, {"name": "Additional Metropolitan Sessions Judge Court", "kind": "default", "children": []}, {"name": "Metropolitan Magistrate Court", "kind": "default", "children": []}]}, {"name": "Specialized Courts and Tribunals", "kind": "default", "children": [{"name": "Administrative Appellate Tribunal", "kind": "default", "children": []}, {"name": "Administrative Tribunals", "kind": "default", "children": []}, {"name": "Labour Appellate Tribunal", "kind": "default", "children": []}, {"name": "Labour Courts", "kind": "default", "children": []}, {"name": "International Crimes Tribunal", "kind": "default", "children": []}, {"name": "Anti-Corruption Special Judge Courts", "kind": "default", "children": []}, {"name": "Money Loan Courts", "kind": "default", "children": []}, {"name": "Bankruptcy Courts", "kind": "default", "children": []}, {"name": "Women and Children Repression Prevention Tribunals", "kind": "default", "children": []}, {"name": "Children Courts", "kind": "default", "children": []}, {"name": "Special Tribunals under special statutes", "kind": "default", "children": []}, {"name": "Environment Courts and Environment Appellate Court", "kind": "default", "children": []}, {"name": "Cyber Tribunals and Cyber Appellate Tribunal where constituted", "kind": "default", "children": []}, {"name": "Speedy Trial Tribunals", "kind": "default", "children": []}, {"name": "Nari-O-Shishu Nirjatan Daman Tribunals", "kind": "default", "children": []}, {"name": "Land Survey Tribunals and Land Survey Appellate Tribunal", "kind": "default", "children": []}, {"name": "Taxes Appellate Tribunal", "kind": "default", "children": []}, {"name": "Customs, Excise and VAT Appellate Tribunal", "kind": "default", "children": []}]}]}]}, {"name": "Executive Machinery", "kind": "pillar-executive", "children": [{"name": "Constitutional Apex", "kind": "section", "children": [{"name": "President's Office", "kind": "ministry", "children": [{"name": "Public Division", "kind": "division", "children": [{"name": "Line departments and directorates: none as a general field directorate structure", "kind": "default", "children": []}, {"name": "Statutory/autonomous bodies and regulators: none routinely mapped as permanent child bodies", "kind": "default", "children": []}, {"name": "SOEs/commercial corporations: none", "kind": "default", "children": []}]}, {"name": "Personal Division", "kind": "division", "children": [{"name": "Line departments and directorates: none as a general field directorate structure", "kind": "default", "children": []}, {"name": "Statutory/autonomous bodies and regulators: none routinely mapped as permanent child bodies", "kind": "default", "children": []}, {"name": "SOEs/commercial corporations: none", "kind": "default", "children": []}]}]}, {"name": "Prime Minister's Office", "kind": "ministry", "children": [{"name": "Prime Minister's Office Secretariat", "kind": "ministry", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Special Security Force", "kind": "default", "children": []}, {"name": "NGO Affairs Bureau", "kind": "default", "children": []}, {"name": "Governance Innovation Unit", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous regulators", "kind": "statutory", "children": [{"name": "Bangladesh Investment Development Authority", "kind": "default", "children": []}, {"name": "Bangladesh Economic Zones Authority", "kind": "default", "children": []}, {"name": "Bangladesh Export Processing Zones Authority", "kind": "default", "children": []}, {"name": "Public Private Partnership Authority", "kind": "default", "children": []}, {"name": "National Skills Development Authority", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None as a general PMO commercial corporation portfolio", "kind": "default", "children": []}]}]}]}, {"name": "Armed Forces Division", "kind": "division", "children": [{"name": "Armed Forces Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Bangladesh Army", "kind": "default", "children": []}, {"name": "Bangladesh Navy", "kind": "default", "children": []}, {"name": "Bangladesh Air Force", "kind": "default", "children": []}, {"name": "Inter Services Public Relations Directorate", "kind": "default", "children": []}, {"name": "Directorate General of Forces Intelligence", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous regulators", "kind": "statutory", "children": [{"name": "Cantonment Boards under defence/cantonment law", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Dockyard and Engineering Works Ltd. where retained in defence portfolio", "kind": "default", "children": []}]}]}]}, {"name": "Cabinet Division", "kind": "division", "children": [{"name": "Cabinet Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Department of Government Transport", "kind": "default", "children": []}, {"name": "National Implementation Committee for Administrative Reforms and Reorganization where operational", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous regulators", "kind": "statutory", "children": [{"name": "Administrative coordination bodies constituted by Cabinet/Government order", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}]}, {"name": "Secretariat: Ministries and Divisions", "kind": "section", "children": [{"name": "Ministry of Chittagong Hill Tracts Affairs", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "None as a conventional all-Bangladesh directorate", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Chittagong Hill Tracts Regional Council", "kind": "default", "children": []}, {"name": "Chittagong Hill Tracts Development Board", "kind": "default", "children": []}, {"name": "Rangamati Hill District Council", "kind": "default", "children": []}, {"name": "Khagrachari Hill District Council", "kind": "default", "children": []}, {"name": "Bandarban Hill District Council", "kind": "default", "children": []}, {"name": "Tribal Refugee Affairs Task Force", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Primary and Mass Education", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Directorate of Primary Education", "kind": "default", "children": []}, {"name": "Bureau of Non-Formal Education", "kind": "default", "children": []}, {"name": "Compulsory Primary Education Implementation Monitoring Unit", "kind": "default", "children": []}, {"name": "National Academy for Primary Education", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Shishu Kallyan Trust", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Agriculture", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Department of Agricultural Extension", "kind": "default", "children": []}, {"name": "Department of Agricultural Marketing", "kind": "default", "children": []}, {"name": "Department of Agricultural Information Service", "kind": "default", "children": []}, {"name": "Seed Certification Agency", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Bangladesh Agricultural Research Council", "kind": "default", "children": []}, {"name": "Bangladesh Agricultural Research Institute", "kind": "default", "children": []}, {"name": "Bangladesh Rice Research Institute", "kind": "default", "children": []}, {"name": "Bangladesh Jute Research Institute where agriculture research lineage is assigned by law/rules", "kind": "default", "children": []}, {"name": "Bangladesh Institute of Nuclear Agriculture", "kind": "default", "children": []}, {"name": "Soil Resource Development Institute", "kind": "default", "children": []}, {"name": "Bangladesh Applied Nutrition Research and Training Institute", "kind": "default", "children": []}, {"name": "Barind Multipurpose Development Authority", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Bangladesh Agricultural Development Corporation", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Civil Aviation and Tourism", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "None as a conventional civil-service directorate for both sectors", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Civil Aviation Authority of Bangladesh", "kind": "default", "children": []}, {"name": "Bangladesh Tourism Board", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Biman Bangladesh Airlines PLC", "kind": "default", "children": []}, {"name": "Bangladesh Parjatan Corporation", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Commerce", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Office of the Chief Controller of Imports and Exports", "kind": "default", "children": []}, {"name": "Department of National Consumer Rights Protection", "kind": "default", "children": []}, {"name": "Export Promotion Bureau", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous regulators", "kind": "statutory", "children": [{"name": "Bangladesh Competition Commission", "kind": "default", "children": []}, {"name": "Bangladesh Tariff Commission", "kind": "default", "children": []}, {"name": "Office of the Registrar of Joint Stock Companies and Firms", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Trading Corporation of Bangladesh", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Road Transport and Bridges", "kind": "ministry", "children": [{"name": "Road Transport and Highways Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Roads and Highways Department", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous regulators", "kind": "statutory", "children": [{"name": "Bangladesh Road Transport Authority", "kind": "default", "children": [], "alias": "BRTA"}, {"name": "Dhaka Transport Coordination Authority", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Bangladesh Road Transport Corporation", "kind": "default", "children": []}]}]}, {"name": "Bridges Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "None as a conventional field directorate", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Bangladesh Bridge Authority", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Cultural Affairs", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Department of Archaeology", "kind": "default", "children": []}, {"name": "Department of Public Libraries", "kind": "default", "children": []}, {"name": "Department of Archives and Library", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Bangla Academy", "kind": "default", "children": []}, {"name": "Bangladesh National Museum", "kind": "default", "children": []}, {"name": "Bangladesh Shilpakala Academy", "kind": "default", "children": []}, {"name": "Nazrul Institute", "kind": "default", "children": []}, {"name": "National Book Centre", "kind": "default", "children": []}, {"name": "Copyright Office", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Defence", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Bangladesh Meteorological Department", "kind": "default", "children": []}, {"name": "Survey of Bangladesh", "kind": "default", "children": []}, {"name": "Department of Military Lands and Cantonments", "kind": "default", "children": []}, {"name": "Directorate General of Defence Purchase", "kind": "default", "children": []}, {"name": "Department of Cyphers", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Bangladesh Space Research and Remote Sensing Organization", "kind": "default", "children": []}, {"name": "Bangladesh National Cadet Corps", "kind": "default", "children": []}, {"name": "Defence Services Command and Staff College", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Defence-sector commercial units only where formally placed under defence administrative control", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Food", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Directorate General of Food", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous regulators", "kind": "statutory", "children": [{"name": "Bangladesh Food Safety Authority", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None as a ministry-level SOE portfolio", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Education", "kind": "ministry", "children": [{"name": "Secondary and Higher Education Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Directorate of Secondary and Higher Education", "kind": "default", "children": []}, {"name": "Directorate of Inspection and Audit", "kind": "default", "children": []}, {"name": "Education Engineering Department", "kind": "default", "children": []}, {"name": "Bangladesh Bureau of Educational Information and Statistics", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "University Grants Commission of Bangladesh", "kind": "default", "children": [], "alias": "UGC"}, {"name": "Bangladesh Accreditation Council", "kind": "default", "children": []}, {"name": "National Curriculum and Textbook Board", "kind": "default", "children": []}, {"name": "National Academy for Educational Management", "kind": "default", "children": []}, {"name": "Education Boards for secondary and higher secondary education", "kind": "default", "children": []}, {"name": "Public universities under the Division's administrative portfolio", "kind": "default", "children": []}, {"name": "Bangladesh UNESCO National Commission", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}, {"name": "Technical and Madrasah Education Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Directorate of Technical Education", "kind": "default", "children": []}, {"name": "Directorate of Madrasah Education", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Bangladesh Technical Education Board", "kind": "default", "children": []}, {"name": "Bangladesh Madrasah Education Board", "kind": "default", "children": []}, {"name": "National Academy for Computer Training and Research", "kind": "default", "children": []}, {"name": "Technical and madrasah education institutions under public law", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Power, Energy and Mineral Resources", "kind": "ministry", "children": [{"name": "Power Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Power Cell", "kind": "default", "children": []}, {"name": "Electrical Adviser and Chief Electric Inspector", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous regulators", "kind": "statutory", "children": [{"name": "Bangladesh Energy Regulatory Commission for electricity tariff/regulatory functions", "kind": "default", "children": [], "alias": "BERC"}, {"name": "Sustainable and Renewable Energy Development Authority", "kind": "default", "children": []}, {"name": "Bangladesh Power Development Board", "kind": "default", "children": [], "alias": "BPDB"}, {"name": "Rural Electrification Board", "kind": "default", "children": [], "alias": "REB"}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Power Grid Bangladesh PLC", "kind": "default", "children": []}, {"name": "Dhaka Power Distribution Company Ltd.", "kind": "default", "children": []}, {"name": "Dhaka Electric Supply Company Ltd.", "kind": "default", "children": []}, {"name": "West Zone Power Distribution Company Ltd.", "kind": "default", "children": []}, {"name": "Northern Electricity Supply Company PLC", "kind": "default", "children": []}, {"name": "Electricity Generation Company of Bangladesh Ltd.", "kind": "default", "children": []}, {"name": "Ashuganj Power Station Company Ltd.", "kind": "default", "children": []}, {"name": "North-West Power Generation Company Ltd.", "kind": "default", "children": []}, {"name": "Coal Power Generation Company Bangladesh Ltd.", "kind": "default", "children": []}]}]}, {"name": "Energy and Mineral Resources Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Department of Explosives", "kind": "default", "children": []}, {"name": "Geological Survey of Bangladesh", "kind": "default", "children": []}, {"name": "Hydrocarbon Unit", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous regulators", "kind": "statutory", "children": [{"name": "Bangladesh Energy Regulatory Commission for petroleum/gas tariff and regulatory functions", "kind": "default", "children": [], "alias": "BERC"}, {"name": "Bangladesh Petroleum Institute", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Bangladesh Oil, Gas and Mineral Corporation/Petrobangla", "kind": "default", "children": []}, {"name": "Bangladesh Petroleum Corporation", "kind": "default", "children": []}, {"name": "Bangladesh Petroleum Exploration and Production Company Ltd.", "kind": "default", "children": []}, {"name": "Bangladesh Gas Fields Company Ltd.", "kind": "default", "children": []}, {"name": "Sylhet Gas Fields Ltd.", "kind": "default", "children": []}, {"name": "Titas Gas Transmission and Distribution PLC", "kind": "default", "children": []}, {"name": "Bakhrabad Gas Distribution Company Ltd.", "kind": "default", "children": []}, {"name": "Jalalabad Gas Transmission and Distribution System Ltd.", "kind": "default", "children": []}, {"name": "Karnaphuli Gas Distribution Company Ltd.", "kind": "default", "children": []}, {"name": "Sundarban Gas Company Ltd.", "kind": "default", "children": []}, {"name": "Gas Transmission Company Ltd.", "kind": "default", "children": []}, {"name": "Eastern Refinery Ltd.", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Environment, Forest and Climate Change", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Department of Environment", "kind": "default", "children": []}, {"name": "Forest Department", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Bangladesh Climate Change Trust", "kind": "default", "children": []}, {"name": "National Herbarium", "kind": "default", "children": []}, {"name": "Bangladesh Forest Research Institute", "kind": "default", "children": []}, {"name": "Bangladesh Forest Industries Development Corporation", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Public Administration", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Bangladesh Civil Service Administration Academy", "kind": "default", "children": []}, {"name": "Department of Printing and Publications", "kind": "default", "children": []}, {"name": "Government Printing Press", "kind": "default", "children": []}, {"name": "Divisional Commissioner's Offices", "kind": "default", "children": []}, {"name": "Deputy Commissioner's Offices", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Bangladesh Public Administration Training Centre", "kind": "default", "children": []}, {"name": "Bangladesh Employees Welfare Board", "kind": "default", "children": []}, {"name": "Government Employees Hospital", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Fisheries and Livestock", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Department of Fisheries", "kind": "default", "children": []}, {"name": "Department of Livestock Services", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Bangladesh Fisheries Research Institute", "kind": "default", "children": []}, {"name": "Bangladesh Livestock Research Institute", "kind": "default", "children": []}, {"name": "Marine Fisheries Academy", "kind": "default", "children": []}, {"name": "Bangladesh Veterinary Council", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Bangladesh Fisheries Development Corporation", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Finance", "kind": "ministry", "children": [{"name": "Finance Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Controller General of Accounts", "kind": "default", "children": []}, {"name": "Controller General Defence Finance", "kind": "default", "children": []}, {"name": "Chief Accounts and Finance Offices", "kind": "default", "children": []}, {"name": "Institute of Public Finance", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "National Pension Authority", "kind": "default", "children": []}, {"name": "National Pay Commission when constituted as a temporary commission is excluded from permanent map", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None directly; fiscal oversight does not equal administrative parentage", "kind": "default", "children": []}]}]}, {"name": "Internal Resources Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "National Board of Revenue", "kind": "default", "children": [], "alias": "NBR"}, {"name": "Taxes, Customs, Excise and VAT field formations under NBR", "kind": "default", "children": []}, {"name": "Department of National Savings", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous regulators", "kind": "statutory", "children": [{"name": "Taxes Appellate Tribunal", "kind": "default", "children": []}, {"name": "Customs, Excise and VAT Appellate Tribunal", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}, {"name": "Financial Institutions Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "None as a conventional service delivery directorate", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous regulators", "kind": "statutory", "children": [{"name": "Bangladesh Bank", "kind": "default", "children": [], "alias": "BB"}, {"name": "Bangladesh Securities and Exchange Commission", "kind": "default", "children": [], "alias": "BSEC"}, {"name": "Insurance Development and Regulatory Authority", "kind": "default", "children": []}, {"name": "Microcredit Regulatory Authority", "kind": "default", "children": []}, {"name": "Bangladesh Insurance Academy", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Sonali Bank PLC", "kind": "default", "children": []}, {"name": "Janata Bank PLC", "kind": "default", "children": []}, {"name": "Agrani Bank PLC", "kind": "default", "children": []}, {"name": "Rupali Bank PLC", "kind": "default", "children": []}, {"name": "Bangladesh Development Bank PLC", "kind": "default", "children": []}, {"name": "BASIC Bank Ltd.", "kind": "default", "children": []}, {"name": "Bangladesh Krishi Bank", "kind": "default", "children": []}, {"name": "Rajshahi Krishi Unnayan Bank", "kind": "default", "children": []}, {"name": "Probashi Kallyan Bank", "kind": "default", "children": []}, {"name": "Investment Corporation of Bangladesh", "kind": "default", "children": []}, {"name": "Bangladesh House Building Finance Corporation", "kind": "default", "children": []}, {"name": "Sadharan Bima Corporation", "kind": "default", "children": []}, {"name": "Jiban Bima Corporation", "kind": "default", "children": []}]}]}, {"name": "Economic Relations Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "None as a conventional field directorate", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "External aid coordination desks and national authorizing functions under Rules of Business", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Foreign Affairs", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Bangladesh Missions abroad", "kind": "default", "children": []}, {"name": "Foreign Service Academy", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "None as a general domestic regulator", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Health and Family Welfare", "kind": "ministry", "children": [{"name": "Health Services Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Directorate General of Health Services", "kind": "default", "children": [], "alias": "DGHS"}, {"name": "Directorate General of Drug Administration", "kind": "default", "children": [], "alias": "DGDA"}, {"name": "Directorate General of Nursing and Midwifery", "kind": "default", "children": []}, {"name": "Health Engineering Department", "kind": "default", "children": []}, {"name": "Central Medical Stores Depot", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous regulators", "kind": "statutory", "children": [{"name": "Bangladesh Medical and Dental Council", "kind": "default", "children": []}, {"name": "Bangladesh Nursing and Midwifery Council", "kind": "default", "children": []}, {"name": "Bangladesh College of Physicians and Surgeons", "kind": "default", "children": []}, {"name": "Institute of Epidemiology, Disease Control and Research", "kind": "default", "children": []}, {"name": "National Institute of Preventive and Social Medicine", "kind": "default", "children": []}, {"name": "National Institute of Cardiovascular Diseases and other national health institutes/hospitals under HSD", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Essential Drugs Company Ltd.", "kind": "default", "children": []}]}]}, {"name": "Medical Education and Family Welfare Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Directorate General of Medical Education", "kind": "default", "children": []}, {"name": "Directorate General of Family Planning", "kind": "default", "children": []}, {"name": "National Institute of Population Research and Training", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Public medical universities, medical colleges, dental colleges, nursing colleges, and family welfare training institutions under the Division", "kind": "division", "children": []}, {"name": "Bangladesh Medical Research Council", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Home Affairs", "kind": "ministry", "children": [{"name": "Public Security Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Bangladesh Police", "kind": "default", "children": []}, {"name": "Border Guard Bangladesh", "kind": "default", "children": []}, {"name": "Bangladesh Ansar and Village Defence Party", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous regulators", "kind": "statutory", "children": [{"name": "Police Staff College Bangladesh", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}, {"name": "Security Services Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Department of Immigration and Passports", "kind": "default", "children": []}, {"name": "Department of Prisons", "kind": "default", "children": []}, {"name": "Department of Fire Service and Civil Defence", "kind": "default", "children": []}, {"name": "Department of Narcotics Control", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous regulators", "kind": "statutory", "children": [{"name": "None as a general independent regulator", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Housing and Public Works", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Public Works Department", "kind": "default", "children": []}, {"name": "Department of Architecture", "kind": "default", "children": []}, {"name": "Urban Development Directorate", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "National Housing Authority", "kind": "default", "children": []}, {"name": "Capital Development Authority/RAJUK", "kind": "default", "children": []}, {"name": "Chattogram Development Authority", "kind": "default", "children": []}, {"name": "Khulna Development Authority", "kind": "default", "children": []}, {"name": "Rajshahi Development Authority", "kind": "default", "children": []}, {"name": "Cox's Bazar Development Authority", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "House Building Research Institute is autonomous research, not commercial", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Industries", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Department of Patents, Industrial Designs and Trademarks", "kind": "default", "children": []}, {"name": "Office of the Chief Inspector of Boilers", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous regulators", "kind": "statutory", "children": [{"name": "Bangladesh Standards and Testing Institution", "kind": "default", "children": []}, {"name": "Bangladesh Accreditation Board", "kind": "default", "children": []}, {"name": "Bangladesh Industrial Technical Assistance Centre", "kind": "default", "children": []}, {"name": "National Productivity Organisation", "kind": "default", "children": []}, {"name": "Bangladesh Small and Cottage Industries Corporation", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Bangladesh Chemical Industries Corporation", "kind": "default", "children": []}, {"name": "Bangladesh Steel and Engineering Corporation", "kind": "default", "children": []}, {"name": "Bangladesh Sugar and Food Industries Corporation", "kind": "default", "children": []}, {"name": "SME Foundation", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Information and Broadcasting", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Department of Films and Publications", "kind": "default", "children": []}, {"name": "Department of Mass Communication", "kind": "default", "children": []}, {"name": "Press Information Department", "kind": "default", "children": []}, {"name": "Bangladesh Betar", "kind": "default", "children": []}, {"name": "Bangladesh Television", "kind": "default", "children": []}, {"name": "Directorate of Film Archives", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Bangladesh Press Council", "kind": "default", "children": []}, {"name": "Bangladesh Film Censor Board or successor certification authority where legally constituted", "kind": "default", "children": []}, {"name": "Bangladesh Film Development Corporation", "kind": "default", "children": []}, {"name": "Press Institute Bangladesh", "kind": "default", "children": []}, {"name": "National Institute of Mass Communication", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Bangladesh Film Development Corporation", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Textiles and Jute", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Department of Jute", "kind": "default", "children": []}, {"name": "Department of Textiles", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Bangladesh Handloom Board", "kind": "default", "children": []}, {"name": "Bangladesh Sericulture Development Board", "kind": "default", "children": []}, {"name": "Jute Diversification Promotion Centre", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Bangladesh Jute Mills Corporation", "kind": "default", "children": []}, {"name": "Bangladesh Textile Mills Corporation", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Labour and Employment", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Department of Labour", "kind": "default", "children": []}, {"name": "Department of Inspection for Factories and Establishments", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Minimum Wages Board", "kind": "default", "children": []}, {"name": "Labour Appellate Tribunal and Labour Courts for administrative support line", "kind": "default", "children": []}, {"name": "Bangladesh Labour Welfare Foundation", "kind": "default", "children": []}, {"name": "Central Fund for export-oriented workers where legally constituted", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Law, Justice and Parliamentary Affairs", "kind": "ministry", "children": [{"name": "Law and Justice Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Registration Directorate", "kind": "default", "children": []}, {"name": "Solicitor Wing", "kind": "default", "children": []}, {"name": "National Legal Aid Services Organization", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Law Commission", "kind": "default", "children": []}, {"name": "Judicial Administration Training Institute", "kind": "default", "children": []}, {"name": "Bangladesh Bar Council where statutory professional regulation is assigned", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}, {"name": "Legislative and Parliamentary Affairs Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Legislative drafting and vetting wings", "kind": "default", "children": []}, {"name": "Legislative Training and Research Institute", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Bangladesh Code and official law publication functions", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Land", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Department of Land Records and Surveys", "kind": "default", "children": []}, {"name": "Land Reform Board", "kind": "default", "children": []}, {"name": "Land Appeal Board", "kind": "default", "children": []}, {"name": "Office of the Controller of Accounts/land field revenue administration through district and upazila land offices", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Land Survey Tribunal support framework where applicable", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Local Government, Rural Development and Cooperatives", "kind": "ministry", "children": [{"name": "Local Government Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Local Government Engineering Department", "kind": "default", "children": []}, {"name": "Department of Public Health Engineering", "kind": "default", "children": []}, {"name": "Local government field institutions: City Corporations, Municipalities/Paurashavas, Zila Parishads, Upazila Parishads, Union Parishads", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Water Supply and Sewerage Authorities: Dhaka WASA, Chattogram WASA, Khulna WASA, Rajshahi WASA", "kind": "default", "children": []}, {"name": "National Institute of Local Government", "kind": "default", "children": []}, {"name": "Registrar General, Birth and Death Registration", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None as a general SOE portfolio", "kind": "default", "children": []}]}]}, {"name": "Rural Development and Cooperatives Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Department of Cooperatives", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Bangladesh Rural Development Board", "kind": "default", "children": []}, {"name": "Bangladesh Academy for Rural Development", "kind": "default", "children": []}, {"name": "Rural Development Academy, Bogura", "kind": "default", "children": []}, {"name": "Palli Daridro Bimochon Foundation", "kind": "default", "children": []}, {"name": "Small Farmers Development Foundation", "kind": "default", "children": []}, {"name": "Milk Vita/Bangladesh Milk Producers' Co-operative Union Ltd.", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Milk Vita/Bangladesh Milk Producers' Co-operative Union Ltd.", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Planning", "kind": "ministry", "children": [{"name": "Planning Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Planning Commission Secretariat support units", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Bangladesh Planning Commission", "kind": "default", "children": []}, {"name": "Bangladesh Institute of Development Studies", "kind": "default", "children": []}, {"name": "Social Science Research Council", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}, {"name": "Implementation Monitoring and Evaluation Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Central Procurement Technical Unit", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous regulators", "kind": "statutory", "children": [{"name": "Public procurement policy, monitoring, and e-GP authority functions under law/rules", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}, {"name": "Statistics and Informatics Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Bangladesh Bureau of Statistics", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "National Statistical System coordination bodies", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Posts, Telecommunications and Information Technology", "kind": "ministry", "children": [{"name": "Posts and Telecommunications Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Bangladesh Post Office", "kind": "default", "children": []}, {"name": "Department of Telecommunications", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous regulators", "kind": "statutory", "children": [{"name": "Bangladesh Telecommunication Regulatory Commission", "kind": "default", "children": [], "alias": "BTRC"}, {"name": "Telecommunications Staff College", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Bangladesh Telecommunications Company Ltd.", "kind": "default", "children": []}, {"name": "Teletalk Bangladesh Ltd.", "kind": "default", "children": []}, {"name": "Bangladesh Submarine Cable PLC", "kind": "default", "children": []}, {"name": "Telephone Shilpa Sangstha Ltd.", "kind": "default", "children": []}, {"name": "Bangladesh Cable Shilpa Ltd.", "kind": "default", "children": []}]}]}, {"name": "Information and Communication Technology Division", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Department of Information and Communication Technology", "kind": "default", "children": []}, {"name": "Controller of Certifying Authorities", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Bangladesh Computer Council", "kind": "default", "children": [], "alias": "BCC"}, {"name": "Bangladesh Hi-Tech Park Authority", "kind": "default", "children": []}, {"name": "National Cyber Security Agency", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Bangladesh Data Center Company Ltd.", "kind": "default", "children": []}, {"name": "Startup Bangladesh Ltd.", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Religious Affairs", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Islamic Foundation field and program offices", "kind": "default", "children": []}, {"name": "Hajj Office Bangladesh and Hajj Office Jeddah", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Islamic Foundation Bangladesh", "kind": "default", "children": []}, {"name": "Hindu Religious Welfare Trust", "kind": "default", "children": []}, {"name": "Buddhist Religious Welfare Trust", "kind": "default", "children": []}, {"name": "Christian Religious Welfare Trust", "kind": "default", "children": []}, {"name": "Waqf Administration/Office of the Administrator of Waqfs", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Disaster Management and Relief", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Department of Disaster Management", "kind": "default", "children": []}, {"name": "Directorate of Relief and Rehabilitation functions where separately maintained", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Cyclone Preparedness Programme governance bodies", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Shipping", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Department of Shipping", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Bangladesh Inland Water Transport Authority", "kind": "default", "children": [], "alias": "BIWTA"}, {"name": "Bangladesh Inland Water Transport Corporation", "kind": "default", "children": [], "alias": "BIWTC"}, {"name": "Chittagong Port Authority", "kind": "default", "children": []}, {"name": "Mongla Port Authority", "kind": "default", "children": []}, {"name": "Payra Port Authority", "kind": "default", "children": []}, {"name": "Bangladesh Land Port Authority", "kind": "default", "children": []}, {"name": "National Maritime Institute", "kind": "default", "children": []}, {"name": "Marine Academy", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Bangladesh Shipping Corporation", "kind": "default", "children": []}, {"name": "Bangladesh Inland Water Transport Corporation", "kind": "default", "children": [], "alias": "BIWTC"}]}]}]}, {"name": "Ministry of Social Welfare", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Department of Social Services", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "National Foundation for Development of the Disabled Persons", "kind": "default", "children": []}, {"name": "Neuro-Developmental Disability Protection Trust", "kind": "default", "children": []}, {"name": "Bangladesh National Social Welfare Council", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Women and Children Affairs", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Department of Women Affairs", "kind": "default", "children": []}, {"name": "Jatiyo Mohila Sangstha field network", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Jatiyo Mohila Sangstha", "kind": "default", "children": []}, {"name": "Bangladesh Shishu Academy", "kind": "default", "children": []}, {"name": "Joyeeta Foundation", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Water Resources", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Bangladesh Haor and Wetland Development Directorate", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Bangladesh Water Development Board", "kind": "default", "children": []}, {"name": "River Research Institute", "kind": "default", "children": []}, {"name": "Water Resources Planning Organization", "kind": "default", "children": []}, {"name": "Joint Rivers Commission, Bangladesh", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Youth and Sports", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Department of Youth Development", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "National Sports Council", "kind": "default", "children": []}, {"name": "Bangladesh Krira Shikkha Protishtan", "kind": "default", "children": []}, {"name": "National Youth Development Institute", "kind": "default", "children": []}, {"name": "Sports federations receiving statutory/government recognition through NSC", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "None", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Liberation War Affairs", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Directorate of Freedom Fighters' Welfare", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Bangladesh Freedom Fighter Welfare Trust", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Commercial assets of Bangladesh Freedom Fighter Welfare Trust where applicable", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Expatriates' Welfare and Overseas Employment", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Bureau of Manpower, Employment and Training", "kind": "default", "children": []}, {"name": "Wage Earners' Welfare Board field and welfare offices", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Wage Earners' Welfare Board", "kind": "default", "children": []}, {"name": "Technical Training Centres and Institutes of Marine Technology under BMET", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Bangladesh Overseas Employment and Services Ltd.", "kind": "default", "children": []}, {"name": "Probashi Kallyan Bank where administratively placed under this Ministry rather than Financial Institutions Division", "kind": "division", "children": []}]}]}]}, {"name": "Ministry of Railways", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "Bangladesh Railway", "kind": "default", "children": []}, {"name": "Railway Inspectorate", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Railway training and technical institutions under Bangladesh Railway", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Bangladesh Railway commercial operations remain departmental unless corporatized by law", "kind": "default", "children": []}]}]}]}, {"name": "Ministry of Science and Technology", "kind": "ministry", "children": [{"name": "Ministry/Division Secretariat", "kind": "division", "children": [{"name": "Line departments and directorates", "kind": "line", "children": [{"name": "None as a conventional field directorate", "kind": "default", "children": []}]}, {"name": "Statutory authorities and autonomous bodies", "kind": "statutory", "children": [{"name": "Bangladesh Atomic Energy Commission", "kind": "default", "children": []}, {"name": "Bangladesh Council of Scientific and Industrial Research", "kind": "default", "children": []}, {"name": "National Museum of Science and Technology", "kind": "default", "children": []}, {"name": "National Institute of Biotechnology", "kind": "default", "children": []}, {"name": "Bangladesh Oceanographic Research Institute", "kind": "default", "children": []}, {"name": "Bangabandhu Sheikh Mujibur Rahman Novo Theatre", "kind": "default", "children": []}, {"name": "Bangladesh Reference Institute for Chemical Measurements", "kind": "default", "children": []}, {"name": "Bangladesh Atomic Energy Regulatory Authority", "kind": "default", "children": []}]}, {"name": "SOEs and commercial corporations", "kind": "soe", "children": [{"name": "Nuclear Power Plant Company Bangladesh Ltd.", "kind": "default", "children": []}]}]}]}]}, {"name": "Field Administration: Geographic Chain", "kind": "section", "children": [{"name": "National Executive Field Chain", "kind": "default", "children": [{"name": "Ministry of Public Administration", "kind": "ministry", "children": [{"name": "Divisional Commissioner", "kind": "default", "children": [{"name": "Administrative Division: Dhaka", "kind": "default", "children": []}, {"name": "Administrative Division: Chattogram", "kind": "default", "children": []}, {"name": "Administrative Division: Rajshahi", "kind": "default", "children": []}, {"name": "Administrative Division: Khulna", "kind": "default", "children": []}, {"name": "Administrative Division: Barishal", "kind": "default", "children": []}, {"name": "Administrative Division: Sylhet", "kind": "default", "children": []}, {"name": "Administrative Division: Rangpur", "kind": "default", "children": []}, {"name": "Administrative Division: Mymensingh", "kind": "default", "children": []}]}, {"name": "Deputy Commissioner/District Magistrate", "kind": "default", "children": [{"name": "64 Districts/Zilas", "kind": "default", "children": []}, {"name": "District administration coordinates central government functions, revenue administration, law and order coordination, executive magistracy, disaster coordination, protocol, elections support, and local development coordination as assigned by law/rules", "kind": "default", "children": []}]}, {"name": "Upazila Nirbahi Officer", "kind": "default", "children": [{"name": "495 Upazilas", "kind": "default", "children": []}, {"name": "Upazila administration coordinates local executive functions and supports Upazila Parishad business", "kind": "default", "children": []}]}]}, {"name": "Local Government Division", "kind": "division", "children": [{"name": "Union Parishad", "kind": "default", "children": [{"name": "4,599 Unions per National Portal count at verification date", "kind": "default", "children": []}]}, {"name": "Upazila Parishad", "kind": "default", "children": [{"name": "Elected local government body at upazila tier; executive coordination intersects with UNO under law", "kind": "default", "children": []}]}, {"name": "Zila Parishad", "kind": "default", "children": [{"name": "District local government institution", "kind": "default", "children": []}]}, {"name": "Municipality/Paurashava", "kind": "default", "children": [{"name": "Urban local government outside city corporation areas", "kind": "default", "children": []}]}, {"name": "City Corporation", "kind": "default", "children": [{"name": "Metropolitan/large urban local government institution", "kind": "default", "children": []}]}]}]}]}, {"name": "Independent Constitutional and Oversight Offices With Executive Budget Links", "kind": "section", "children": [{"name": "Election Commission Secretariat", "kind": "default", "children": [{"name": "Election Commission", "kind": "default", "children": []}, {"name": "Field election offices", "kind": "default", "children": []}]}, {"name": "Bangladesh Public Service Commission Secretariat", "kind": "default", "children": [{"name": "Bangladesh Public Service Commission", "kind": "default", "children": []}]}, {"name": "Comptroller and Auditor General of Bangladesh", "kind": "default", "children": [{"name": "Office of the Comptroller and Auditor General", "kind": "default", "children": []}, {"name": "Audit Directorates", "kind": "default", "children": []}]}, {"name": "Anti-Corruption Commission", "kind": "default", "children": [{"name": "Commission Secretariat", "kind": "default", "children": []}, {"name": "Investigation and prosecution field structure", "kind": "default", "children": []}]}, {"name": "Information Commission", "kind": "default", "children": [{"name": "Commission Secretariat", "kind": "default", "children": []}]}, {"name": "Human Rights Commission", "kind": "default", "children": [{"name": "Commission Secretariat", "kind": "default", "children": []}]}]}]}]};
+
+    const kindLabels = {
+      'pillar-executive': 'Constitutional Organ',
+      'pillar-legislative': 'Constitutional Organ',
+      'pillar-judicial': 'Constitutional Organ',
+      ministry: 'Ministry / Office',
+      division: 'Division',
+      line: 'Line Departments / Directorates',
+      statutory: 'Statutory / Autonomous',
+      soe: 'SOEs / Corporations',
+      section: 'Section',
+      default: 'Entity'
+    };
+
+    const chart = document.getElementById('chart');
+    const status = document.getElementById('status');
+    const width = () => chart.clientWidth || window.innerWidth;
+    const height = () => chart.clientHeight || (window.innerHeight - 80);
+    const cardW = 300;
+    const cardH = 84;
+    let layoutMode = 'horizontal';
+    const margin = { top: 42, right: 60, bottom: 80, left: 60 };
+
+    const svg = d3.select('#chart').append('svg').attr('role', 'img');
+    const zoomLayer = svg.append('g');
+    const linkLayer = zoomLayer.append('g').attr('class', 'links');
+    const nodeLayer = zoomLayer.append('g').attr('class', 'nodes');
+    const zoom = d3.zoom().scaleExtent([0.12, 2.4]).on('zoom', (event) => zoomLayer.attr('transform', event.transform));
+    svg.call(zoom);
+
+    let root = d3.hierarchy(rawData);
+    root.x0 = height() / 2;
+    root.y0 = 0;
+    let nodeId = 0;
+    root.descendants().forEach(d => {
+      d.id = ++nodeId;
+      d.data._nameLower = (d.data.name + ' ' + (d.data.alias || '')).toLowerCase();
+      d.data._allChildrenCount = (d.children || []).length;
+    });
+
+    function collapseAfterDepth(d, depth = 1) {
+      if (d.children) {
+        if (d.depth >= depth) {
+          d._children = d.children;
+          d.children = null;
+        } else {
+          d.children.forEach(c => collapseAfterDepth(c, depth));
+        }
+      }
+    }
+    function collapseAll(d) {
+      const kids = [...(d.children || []), ...(d._children || [])];
+      kids.forEach(collapseAll);
+      if (d.children) { d._children = d.children; d.children = null; }
+    }
+    function collapseToTop() {
+      if (root._children) { root.children = root._children; root._children = null; }
+      root.children?.forEach(collapseAll);
+    }
+    function walkAll(d, visit) {
+      visit(d);
+      (d.children || []).forEach(c => walkAll(c, visit));
+      (d._children || []).forEach(c => walkAll(c, visit));
+    }
+    function allNodes() {
+      const nodes = [];
+      walkAll(root, d => nodes.push(d));
+      return nodes;
+    }
+    function expandAllToDepth(d, maxDepth) {
+      if (d._children && d.depth < maxDepth) { d.children = d._children; d._children = null; }
+      if (d.children) d.children.forEach(c => expandAllToDepth(c, maxDepth));
+    }
+    function expandAll(d) {
+      if (d._children) { d.children = d._children; d._children = null; }
+      (d.children || []).forEach(expandAll);
+    }
+    function expandPath(d) {
+      let p = d;
+      while (p) {
+        if (p._children) { p.children = p._children; p._children = null; }
+        p = p.parent;
+      }
+    }
+    function clearMatches() { allNodes().forEach(d => { d.data.matched = false; d.data.ancestorMatch = false; }); }
+
+    collapseAfterDepth(root, 0);
+    if (root._children) { root.children = root._children; root._children = null; }
+    collapseToTop();
+
+    function wrapText(text, maxChars = 30) {
+      const words = String(text).split(/\s+/);
+      const lines = [];
+      let line = '';
+      for (const word of words) {
+        if ((line + ' ' + word).trim().length > maxChars && line) { lines.push(line); line = word; }
+        else line = (line + ' ' + word).trim();
+      }
+      if (line) lines.push(line);
+      return lines.slice(0, 3);
+    }
+
+    function isVertical() { return layoutMode === 'vertical'; }
+    function levelGap() { return isVertical() ? 152 : 390; }
+    function screenX(d) { return isVertical() ? d.x : d.y; }
+    function screenY(d) { return isVertical() ? d.y : d.x; }
+    function screenX0(d) { return isVertical() ? (d.x0 || 0) : (d.y0 || 0); }
+    function screenY0(d) { return isVertical() ? (d.y0 || 0) : (d.x0 || 0); }
+
+    function update(source = root) {
+      const tree = d3.tree().nodeSize(isVertical() ? [350, 110] : [112, 120]);
+      tree(root);
+      const nodes = root.descendants().filter(d => d.depth > 0);
+      const links = root.links().filter(d => d.source.depth > 0);
+      root.descendants().forEach(d => d.y = (d.depth - 1) * levelGap());
+
+      const link = linkLayer.selectAll('path.link').data(links, d => d.target.id);
+      link.enter().append('path')
+        .attr('class', 'link')
+        .attr('d', () => diagonal({ source: source, target: source }))
+        .merge(link)
+        .transition().duration(360)
+        .attr('d', diagonal);
+      link.exit().transition().duration(260).attr('d', () => diagonal({ source, target: source })).remove();
+
+      const node = nodeLayer.selectAll('g.node-card').data(nodes, d => d.id);
+      const enter = node.enter().append('g')
+        .attr('class', d => nodeClass(d))
+        .attr('transform', () => `translate(${screenX0(source)},${screenY0(source)})`)
+        .on('click', (event, d) => {
+          event.stopPropagation();
+          if (d.children) { d._children = d.children; d.children = null; }
+          else if (d._children) { d.children = d._children; d._children = null; }
+          update(d);
+        });
+      enter.append('rect').attr('class', 'node-rect').attr('x', -cardW / 2).attr('y', -cardH / 2).attr('width', cardW).attr('height', cardH);
+      enter.append('circle').attr('class', 'toggle-dot').attr('r', 8).attr('cx', cardW / 2 - 19).attr('cy', -cardH / 2 + 18).attr('fill', d => d._children || d.children ? '#facc15' : 'rgba(255,255,255,.18)');
+      enter.append('text').attr('class', 'node-title').attr('text-anchor', 'middle').attr('dy', -20);
+      enter.append('text').attr('class', 'node-meta').attr('text-anchor', 'middle').attr('dy', 34);
+
+      const merged = enter.merge(node);
+      merged.attr('class', d => nodeClass(d));
+      merged.transition().duration(360).attr('transform', d => `translate(${screenX(d)},${screenY(d)})`);
+      merged.select('.toggle-dot').attr('fill', d => d._children || d.children ? '#facc15' : 'rgba(255,255,255,.18)');
+      merged.select('.node-title').each(function(d) {
+        const lines = wrapText(d.data.name, 36);
+        const t = d3.select(this); t.selectAll('tspan').remove();
+        lines.forEach((line, i) => t.append('tspan').attr('x', 0).attr('dy', i === 0 ? 0 : 16).text(line));
+      });
+      merged.select('.node-meta').text(d => {
+        const count = (d.children || d._children || []).length;
+        const label = kindLabels[d.data.kind] || kindLabels.default;
+        return count ? `${label} • ${count} children` : label;
+      });
+      node.exit().transition().duration(260).attr('transform', () => `translate(${screenX(source)},${screenY(source)})`).remove();
+      nodes.forEach(d => { d.x0 = d.x; d.y0 = d.y; });
+      status.innerHTML = `Visible nodes: <span class="mini">${nodes.length}</span>. Total hierarchy nodes: <span class="mini">${allNodes().length - 1}</span>.`;
+    }
+
+    function nodeClass(d) {
+      return ['node-card', 'kind-' + (d.data.kind || 'default'), d.data.matched ? 'matched' : '', d.data.ancestorMatch ? 'ancestor-match' : ''].filter(Boolean).join(' ');
+    }
+    function diagonal(d) {
+      const sx = screenX(d.source), sy = screenY(d.source), tx = screenX(d.target), ty = screenY(d.target);
+      if (isVertical()) return `M ${sx} ${sy} C ${sx} ${(sy + ty) / 2}, ${tx} ${(sy + ty) / 2}, ${tx} ${ty}`;
+      return `M ${sx} ${sy} C ${(sx + tx) / 2} ${sy}, ${(sx + tx) / 2} ${ty}, ${tx} ${ty}`;
+    }
+    function fitToView() {
+      const nodes = root.descendants().filter(d => d.depth > 0);
+      if (!nodes.length) return;
+      const minX = d3.min(nodes, d => screenX(d)) - cardW;
+      const maxX = d3.max(nodes, d => screenX(d)) + cardW;
+      const minY = d3.min(nodes, d => screenY(d)) - cardH;
+      const maxY = d3.max(nodes, d => screenY(d)) + cardH;
+      const scale = Math.min(1.15, Math.max(0.12, Math.min((width() - margin.left - margin.right) / (maxX - minX || 1), (height() - margin.top - margin.bottom) / (maxY - minY || 1))));
+      const tx = (width() - scale * (minX + maxX)) / 2;
+      const ty = isVertical() ? margin.top + 10 - scale * minY : (height() - scale * (minY + maxY)) / 2;
+      svg.transition().duration(520).call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+    }
+
+    function search(q) {
+      const query = q.trim().toLowerCase();
+      clearMatches();
+      collapseToTop();
+      if (!query) { update(root); setTimeout(fitToView, 120); return; }
+      const matches = allNodes().filter(d => d.depth > 0 && d.data._nameLower.includes(query));
+      matches.forEach(d => {
+        d.data.matched = true;
+        let p = d.parent;
+        while (p) { p.data.ancestorMatch = true; p = p.parent; }
+        expandPath(d);
+      });
+      update(root);
+      if (matches[0]) {
+        const d = matches[0];
+        const t = d3.zoomTransform(svg.node());
+        svg.transition().duration(620).call(zoom.transform, d3.zoomIdentity.translate(width() * (isVertical() ? 0.50 : 0.34) - screenX(d) * Math.max(t.k, .65), height() * (isVertical() ? 0.28 : 0.50) - screenY(d) * Math.max(t.k, .65)).scale(Math.max(t.k, .65)));
+        status.innerHTML = `Search found <span class="mini">${matches.length}</span> matching node(s). Parent lineage expanded.`;
+      } else {
+        status.innerHTML = `No match for <span class="mini">${q}</span>. Try acronyms like NBR, BTRC, DGHS or full names.`;
+      }
+    }
+
+    function closeActions() {
+      document.getElementById('actions').classList.remove('open');
+      document.getElementById('actionsToggle').setAttribute('aria-expanded', 'false');
+    }
+
+    document.getElementById('search').addEventListener('input', e => search(e.target.value));
+    document.getElementById('clearSearch').addEventListener('click', () => { document.getElementById('search').value = ''; search(''); });
+    document.getElementById('actionsToggle').addEventListener('click', (event) => {
+      event.stopPropagation();
+      const actions = document.getElementById('actions');
+      const open = actions.classList.toggle('open');
+      document.getElementById('actionsToggle').setAttribute('aria-expanded', String(open));
+    });
+    document.addEventListener('click', closeActions);
+    document.getElementById('actions').addEventListener('click', event => event.stopPropagation());
+    document.getElementById('fit').addEventListener('click', () => { closeActions(); fitToView(); });
+    document.getElementById('collapse').addEventListener('click', () => { closeActions(); collapseToTop(); clearMatches(); update(root); setTimeout(fitToView, 380); });
+    document.getElementById('expand3').addEventListener('click', () => { closeActions(); clearMatches(); expandAllToDepth(root, 3); update(root); setTimeout(fitToView, 420); });
+    document.getElementById('expandAll').addEventListener('click', () => { closeActions(); clearMatches(); expandAll(root); update(root); setTimeout(fitToView, 520); });
+    document.getElementById('sideways').addEventListener('click', () => { layoutMode = 'horizontal'; document.getElementById('sideways').classList.add('active'); document.getElementById('topdown').classList.remove('active'); update(root); setTimeout(fitToView, 380); });
+    document.getElementById('topdown').addEventListener('click', () => { layoutMode = 'vertical'; document.getElementById('topdown').classList.add('active'); document.getElementById('sideways').classList.remove('active'); update(root); setTimeout(fitToView, 380); });
+    window.addEventListener('resize', () => { update(root); fitToView(); });
+    update(root);
+    setTimeout(fitToView, 80);
+  </script>
+</body>
+</html>
