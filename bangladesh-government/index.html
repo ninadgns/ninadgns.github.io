@@ -36,6 +36,8 @@
       --menu-shadow: 0 18px 44px rgba(30,58,138,.14);
       --node-shadow: 0 16px 34px rgba(30,58,138,.10);
       --grid: rgba(37,99,235,.10);
+      --mobile-chart-top: 174px;
+      --mobile-chart-bottom: calc(72px + env(safe-area-inset-bottom));
     }
     :root[data-theme="dark"] {
       --bg: #07111f;
@@ -133,6 +135,7 @@
       color: var(--text);
       background: var(--surface-raised);
       outline: none;
+      min-height: 44px;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.45);
       transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
     }
@@ -150,6 +153,7 @@
       background: transparent;
       cursor: pointer;
       font-size: 18px;
+      touch-action: manipulation;
     }
     #clearSearch:hover { color: var(--text); background: var(--surface-soft); }
     .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end; }
@@ -165,6 +169,7 @@
       min-height: 40px;
       padding: 9px 13px;
       cursor: pointer;
+      touch-action: manipulation;
       font-weight: 600;
       transition: transform 140ms ease, border-color 160ms ease, color 160ms ease, background 160ms ease, box-shadow 160ms ease;
     }
@@ -225,7 +230,20 @@
       box-shadow: var(--menu-shadow);
       backdrop-filter: blur(16px);
     }
-    #chart { position: fixed; inset: 104px 12px 12px 12px; overflow: hidden; border-radius: 22px; }
+    #chart {
+      position: fixed;
+      inset: 104px 12px 12px 12px;
+      overflow: hidden;
+      border-radius: 22px;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+      will-change: transform;
+      contain: layout paint size;
+      overscroll-behavior: contain;
+      touch-action: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
     #chart::before {
       content: '';
       position: absolute;
@@ -237,7 +255,7 @@
       mask-image: radial-gradient(circle at center, #000 42%, transparent 82%);
       pointer-events: none;
     }
-    svg { position: relative; z-index: 1; width: 100%; height: 100%; display: block; cursor: grab; }
+    svg { position: relative; z-index: 1; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
     svg:active { cursor: grabbing; }
     .link { fill: none; stroke: var(--line); stroke-width: 1.2px; }
     .node-card {
@@ -252,6 +270,10 @@
       fill: var(--surface);
       transition: stroke 180ms ease, fill 180ms ease;
     }
+    .node-kind-stripe {
+      rx: 3px;
+      pointer-events: none;
+    }
     .node-card:hover .node-rect {
       stroke: var(--accent-2);
       stroke-width: 1.8px;
@@ -261,17 +283,43 @@
       stroke: var(--accent);
       stroke-width: 2px;
     }
+    .node-labels { pointer-events: auto; }
+    .node-label-content {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 8px;
+      color: var(--text);
+      text-align: center;
+      line-height: 1.15;
+      cursor: text;
+      user-select: text;
+      -webkit-user-select: text;
+    }
     .node-title {
-      fill: var(--text);
+      max-width: 100%;
+      color: var(--text);
       font-size: 14px;
       font-weight: 650;
-      pointer-events: none;
     }
+    .node-title-line { display: block; }
     .node-meta {
-      fill: var(--muted);
+      max-width: 100%;
+      overflow: hidden;
+      color: var(--muted);
       font-size: 11px;
-      pointer-events: none;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
+    #chart.zoom-simplified .node-card { filter: none; }
+    #chart.zoom-simplified .node-labels { pointer-events: none; }
+    #chart.zoom-simplified .node-title,
+    #chart.zoom-simplified .node-meta { opacity: 0; }
+    #chart.zoom-simplified .link { stroke-width: 2px; opacity: .7; }
     button.control.active { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--surface) 88%, var(--accent) 12%); }
     .kind-pillar-executive .node-rect,
     .kind-pillar-legislative .node-rect,
@@ -317,12 +365,84 @@
     .tooltip-kind-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
     .tooltip-detail { margin-top: 6px; color: var(--muted); }
     @media (max-width: 860px) {
-      header { grid-template-columns: 1fr; gap: 10px; margin: 8px; padding: 12px; border-radius: 18px; }
-      #chart { inset: 216px 8px 8px 8px; border-radius: 18px; }
-      .controls { justify-content: flex-start; }
-      .segmented .control { padding: 8px 9px; }
-      .status { left: 18px; right: 74px; max-width: none; }
-      .floating-actions { right: 18px; bottom: 16px; }
+      body { min-height: 100dvh; }
+      header {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 8px;
+        margin: 8px;
+        margin-top: calc(8px + env(safe-area-inset-top));
+        padding: 10px;
+        border-radius: 18px;
+      }
+      h1 {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 16px;
+      }
+      .eyebrow { margin-bottom: 2px; font-size: 10px; }
+      .subtitle { display: none; }
+      #search {
+        min-height: 44px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        font-size: 16px;
+      }
+      #clearSearch { width: 36px; height: 36px; }
+      .controls {
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 2px;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+      }
+      .controls::-webkit-scrollbar { display: none; }
+      .segmented { flex: 0 0 auto; }
+      button.control {
+        min-width: 44px;
+        min-height: 44px;
+        border-radius: 13px;
+      }
+      button.control.icon-only { width: 44px; }
+      .segmented .control { padding: 8px 10px; }
+      #chart {
+        inset: var(--mobile-chart-top) 8px var(--mobile-chart-bottom) 8px;
+        border-radius: 18px;
+      }
+      .floating-actions {
+        left: 8px;
+        right: 8px;
+        bottom: calc(8px + env(safe-area-inset-bottom));
+        flex-direction: row;
+        justify-content: space-between;
+        gap: 6px;
+        padding: 6px;
+        border-radius: 18px;
+      }
+      .floating-actions .control { flex: 1 1 0; }
+      .status {
+        left: 12px;
+        right: 12px;
+        bottom: calc(var(--mobile-chart-bottom) + 4px);
+        max-width: none;
+        padding: 8px 10px;
+        font-size: 11px;
+        pointer-events: none;
+      }
+      .tooltip { display: none; }
+    }
+    @media (max-width: 420px) {
+      header { gap: 7px; padding: 9px; }
+      .eyebrow { display: none; }
+      .status { display: none; }
+    }
+    @media (max-height: 620px) and (max-width: 860px) {
+      .eyebrow,
+      .subtitle,
+      .status { display: none; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; scroll-behavior: auto !important; }
@@ -599,6 +719,8 @@
     };
 
     const chart = document.getElementById('chart');
+    const header = document.querySelector('header');
+    const actions = document.querySelector('.floating-actions');
     const status = document.getElementById('status');
     const tooltip = d3.select('body').append('div').attr('class', 'tooltip').attr('role', 'tooltip');
     let tooltipTimer = null;
@@ -607,16 +729,47 @@
     const height = () => chart.clientHeight || (window.innerHeight - 80);
     const cardW = 300;
     const cardH = 84;
+    const horizontalLevelGap = 390;
+    const verticalNodeGap = 152;
+    const horizontalSiblingSpacing = cardH + verticalNodeGap;
+    const verticalSiblingSpacing = 350;
     let layoutMode = 'horizontal';
     let language = 'en';
+    const minZoom = 0.001;
     const margin = { top: 42, right: 60, bottom: 80, left: 60 };
 
     const svg = d3.select('#chart').append('svg').attr('role', 'img');
     const zoomLayer = svg.append('g');
     const linkLayer = zoomLayer.append('g').attr('class', 'links');
     const nodeLayer = zoomLayer.append('g').attr('class', 'nodes');
-    const zoom = d3.zoom().scaleExtent([0.12, 2.4]).on('zoom', (event) => zoomLayer.attr('transform', event.transform));
+    let currentZoomScale = 1;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const zoom = d3.zoom().scaleExtent([minZoom, 2.4]).on('zoom', (event) => {
+      currentZoomScale = event.transform.k;
+      zoomLayer.attr('transform', event.transform);
+      chart.classList.toggle('zoom-simplified', currentZoomScale < 0.3);
+    });
     svg.call(zoom);
+
+    function updateMobileChromeMetrics() {
+      if (!window.matchMedia('(max-width: 860px)').matches) return;
+      const headerBottom = Math.ceil(header.getBoundingClientRect().bottom + 8);
+      const actionsTop = Math.floor(actions.getBoundingClientRect().top);
+      const actionOffset = Math.max(72, Math.ceil(window.innerHeight - actionsTop + 8));
+      document.documentElement.style.setProperty('--mobile-chart-top', `${headerBottom}px`);
+      document.documentElement.style.setProperty('--mobile-chart-bottom', `${actionOffset}px`);
+    }
+    function scheduleMobileChromeMetrics() {
+      requestAnimationFrame(() => {
+        updateMobileChromeMetrics();
+        fitToView();
+      });
+    }
+    if ('ResizeObserver' in window) {
+      const chromeObserver = new ResizeObserver(scheduleMobileChromeMetrics);
+      chromeObserver.observe(header);
+      chromeObserver.observe(actions);
+    }
 
     function t(key) { return ui[language][key]; }
     function numberText(value) {
@@ -928,7 +1081,7 @@
     if (root._children) { root.children = root._children; root._children = null; }
     collapseToTop();
 
-    function wrapText(text, maxChars = 30) {
+    function wrapText(text, maxChars = 30, maxLines = 2) {
       const words = String(text).split(/\s+/);
       const lines = [];
       let line = '';
@@ -937,15 +1090,27 @@
         else line = (line + ' ' + word).trim();
       }
       if (line) lines.push(line);
-      return lines.slice(0, 3);
+      if (lines.length <= maxLines) return lines;
+      const clipped = lines.slice(0, maxLines);
+      const last = clipped[maxLines - 1];
+      clipped[maxLines - 1] = last.length > 3 ? `${last.slice(0, Math.max(0, maxChars - 3))}...` : last;
+      return clipped;
     }
 
     function isVertical() { return layoutMode === 'vertical'; }
-    function levelGap() { return isVertical() ? 152 : 390; }
+    function levelGap() { return isVertical() ? verticalNodeGap : horizontalLevelGap; }
+    function transitionDuration(base) {
+      if (prefersReducedMotion.matches) return 0;
+      const visibleNodes = root.descendants().filter(d => d.depth > 0).length;
+      return visibleNodes > 240 ? 0 : base;
+    }
     function screenX(d) { return isVertical() ? d.x : d.y; }
     function screenY(d) { return isVertical() ? d.y : d.x; }
     function screenX0(d) { return isVertical() ? (d.x0 || 0) : (d.y0 || 0); }
     function screenY0(d) { return isVertical() ? (d.y0 || 0) : (d.x0 || 0); }
+    function nodeTransform(d) {
+      return `translate(${screenX(d)},${screenY(d)})`;
+    }
     function childCount(d) { return (d.children || d._children || []).length; }
     function visibleChildCount(d) { return (d.children || []).length; }
     function hiddenChildCount(d) { return (d._children || []).length; }
@@ -1017,6 +1182,9 @@
       tooltipVisible = false;
       tooltip.classed('visible', false);
     }
+    function stopLabelInteraction(event) {
+      event.stopPropagation();
+    }
     function toggleNode(d, event) {
       const isExpanding = !d.children && !!d._children;
       if (d.children) { d._children = d.children; d.children = null; }
@@ -1027,28 +1195,30 @@
     }
 
     function update(source = root) {
-      const tree = d3.tree().nodeSize(isVertical() ? [350, 110] : [112, 120]);
+      const tree = d3.tree().nodeSize(isVertical() ? [verticalSiblingSpacing, cardH + verticalNodeGap] : [horizontalSiblingSpacing, 120]);
       tree(root);
       const nodes = root.descendants().filter(d => d.depth > 0);
       const links = root.links().filter(d => d.source.depth > 0);
       root.descendants().forEach(d => d.y = (d.depth - 1) * levelGap());
       const sourceOrigin = { x: source.x0 ?? source.x, y: source.y0 ?? source.y };
+      const duration = transitionDuration(360);
+      const exitDuration = transitionDuration(260);
 
       const link = linkLayer.selectAll('path.link').data(links, d => d.target.id);
       link.enter().append('path')
         .attr('class', 'link')
         .attr('d', () => diagonal({ source: sourceOrigin, target: sourceOrigin }))
         .merge(link)
-        .transition().duration(360)
+        .transition().duration(duration)
         .attr('d', diagonal);
-      link.exit().transition().duration(260).attr('d', () => diagonal({ source: sourceOrigin, target: sourceOrigin })).remove();
+      link.exit().transition().duration(exitDuration).attr('d', () => diagonal({ source: sourceOrigin, target: sourceOrigin })).remove();
 
       const node = nodeLayer.selectAll('g.node-card').data(nodes, d => d.id);
       const enter = node.enter().append('g')
         .attr('class', d => nodeClass(d))
         .attr('role', 'button')
         .attr('tabindex', 0)
-        .attr('transform', () => `translate(${screenX0(source)},${screenY0(source)})`)
+        .attr('transform', () => nodeTransform({ x: source.x0 ?? source.x, y: source.y0 ?? source.y }))
         .on('click', (event, d) => {
           event.stopPropagation();
           toggleNode(d, event);
@@ -1062,24 +1232,38 @@
         .on('mousemove', handleTooltipMove)
         .on('mouseleave', hideTooltip);
       enter.append('rect').attr('class', 'node-rect').attr('x', -cardW / 2).attr('y', -cardH / 2).attr('width', cardW).attr('height', cardH);
-      enter.append('text').attr('class', 'node-title').attr('text-anchor', 'middle').attr('dy', -20);
-      enter.append('text').attr('class', 'node-meta').attr('text-anchor', 'middle').attr('dy', 34);
+      enter.append('rect').attr('class', 'node-kind-stripe').attr('x', -cardW / 2 + 12).attr('y', -cardH / 2 + 14).attr('width', 5).attr('height', cardH - 28);
+      const label = enter.append('foreignObject')
+        .attr('class', 'node-labels')
+        .attr('x', -cardW / 2 + 24)
+        .attr('y', -cardH / 2 + 10)
+        .attr('width', cardW - 48)
+        .attr('height', cardH - 20)
+        .on('pointerdown', stopLabelInteraction)
+        .on('mousedown', stopLabelInteraction)
+        .on('touchstart', stopLabelInteraction)
+        .on('click', stopLabelInteraction)
+        .on('dblclick', stopLabelInteraction);
+      const labelContent = label.append('xhtml:div').attr('class', 'node-label-content');
+      labelContent.append('xhtml:div').attr('class', 'node-title');
+      labelContent.append('xhtml:div').attr('class', 'node-meta');
 
       const merged = enter.merge(node);
       merged.attr('class', d => nodeClass(d));
       merged.attr('aria-label', d => `${displayName(d)}. ${kindLabel(d)}. ${childCount(d) ? `${numberText(childCount(d))} ${childCount(d) === 1 ? t('child') : t('children')}` : t('leaf')}.`);
-      merged.transition().duration(360).attr('transform', d => `translate(${screenX(d)},${screenY(d)})`);
+      merged.transition().duration(duration).attr('transform', d => nodeTransform(d));
+      merged.select('.node-kind-stripe').attr('fill', d => kindColors[d.data.kind] || kindColors.default);
       merged.select('.node-title').each(function(d) {
         const lines = wrapText(displayName(d), language === 'bn' ? 28 : 36);
-        const t = d3.select(this); t.selectAll('tspan').remove();
-        lines.forEach((line, i) => t.append('tspan').attr('x', 0).attr('dy', i === 0 ? 0 : 16).text(line));
+        const title = d3.select(this); title.selectAll('span').remove();
+        lines.forEach(line => title.append('xhtml:span').attr('class', 'node-title-line').text(line));
       });
       merged.select('.node-meta').text(d => {
         const count = childCount(d);
         const label = kindLabel(d);
         return count ? `${label} • ${numberText(count)} ${count === 1 ? t('child') : t('children')}` : label;
       });
-      node.exit().transition().duration(260).attr('transform', () => `translate(${screenX(sourceOrigin)},${screenY(sourceOrigin)})`).remove();
+      node.exit().transition().duration(exitDuration).attr('transform', () => nodeTransform(sourceOrigin)).remove();
       nodes.forEach(d => { d.x0 = d.x; d.y0 = d.y; });
       status.innerHTML = `${t('visible')}: <span class="mini">${numberText(nodes.length)}</span>. ${t('total')}: <span class="mini">${numberText(allNodes().length - 1)}</span>.`;
     }
@@ -1099,7 +1283,7 @@
       const maxX = d3.max(nodes, d => screenX(d)) + cardW;
       const minY = d3.min(nodes, d => screenY(d)) - cardH;
       const maxY = d3.max(nodes, d => screenY(d)) + cardH;
-      const scale = Math.min(1.15, Math.max(0.12, Math.min((width() - margin.left - margin.right) / (maxX - minX || 1), (height() - margin.top - margin.bottom) / (maxY - minY || 1))));
+      const scale = Math.min(1.15, Math.max(minZoom, Math.min((width() - margin.left - margin.right) / (maxX - minX || 1), (height() - margin.top - margin.bottom) / (maxY - minY || 1))));
       const tx = (width() - scale * (minX + maxX)) / 2;
       const ty = isVertical() ? margin.top + 10 - scale * minY : (height() - scale * (minY + maxY)) / 2;
       svg.transition().duration(520).call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
@@ -1131,13 +1315,54 @@
       update(root);
       if (matches[0]) {
         const d = matches[0];
-        const t = d3.zoomTransform(svg.node());
-        svg.transition().duration(620).call(zoom.transform, d3.zoomIdentity.translate(width() * (isVertical() ? 0.50 : 0.34) - screenX(d) * Math.max(t.k, .65), height() * (isVertical() ? 0.28 : 0.50) - screenY(d) * Math.max(t.k, .65)).scale(Math.max(t.k, .65)));
+        const currentZoom = d3.zoomTransform(svg.node());
+        svg.transition().duration(620).call(zoom.transform, d3.zoomIdentity.translate(width() * (isVertical() ? 0.50 : 0.34) - screenX(d) * Math.max(currentZoom.k, .65), height() * (isVertical() ? 0.28 : 0.50) - screenY(d) * Math.max(currentZoom.k, .65)).scale(Math.max(currentZoom.k, .65)));
         status.innerHTML = `${t('searchFound')} <span class="mini">${numberText(matches.length)}</span> ${t('matching')}`;
       } else {
         status.innerHTML = `${t('noMatch')} <span class="mini">${escapeHtml(q)}</span>. ${t('trySearch')}`;
       }
     }
+
+    function findNodeByIdentifier(identifier) {
+      const value = String(identifier ?? '').trim();
+      if (!value) return null;
+      const normalized = normalizeSearch(value);
+      return allNodes().find(d =>
+        String(d.id) === value ||
+        String(d.data.id ?? '') === value ||
+        normalizeSearch(d.data.name) === normalized ||
+        normalizeSearch(displayName(d)) === normalized
+      ) || null;
+    }
+    function highlightNode(identifier) {
+      const target = findNodeByIdentifier(identifier);
+      if (!target || target.depth === 0) return false;
+      clearMatches();
+      target.data.matched = true;
+      let parent = target.parent;
+      while (parent) { parent.data.ancestorMatch = true; parent = parent.parent; }
+      expandPath(target);
+      update(target);
+      centerOnNode(target);
+      return true;
+    }
+    function handleNativeMessage(event) {
+      const message = typeof event.data === 'string' ? (() => { try { return JSON.parse(event.data); } catch { return { action: 'search', query: event.data }; } })() : event.data;
+      if (!message || typeof message !== 'object') return;
+      if (message.action === 'search') search(message.query || '');
+      if (message.action === 'highlight' || message.action === 'focus') highlightNode(message.id ?? message.name ?? message.query);
+      if (message.action === 'fit') fitToView();
+      if (message.action === 'collapse') { collapseToTop(); clearMatches(); update(root); setTimeout(fitToView, 120); }
+      if (message.action === 'expandAll') { clearMatches(); expandAll(root); update(root); setTimeout(fitToView, 120); }
+    }
+    window.addEventListener('message', handleNativeMessage);
+    document.addEventListener('message', handleNativeMessage);
+    chart.setHighlighted = (identifier) => { highlightNode(identifier); return chart; };
+    chart.search = (query) => { search(query || ''); return chart; };
+    chart.expandAll = () => { clearMatches(); expandAll(root); update(root); return chart; };
+    chart.collapseToTop = () => { collapseToTop(); clearMatches(); update(root); return chart; };
+    chart.fit = () => { fitToView(); return chart; };
+    window.govOrgChart = chart;
 
     function setTheme(theme) {
       const isDark = theme === 'dark';
@@ -1170,6 +1395,7 @@
     function setLanguage(nextLanguage) {
       language = nextLanguage;
       updateUIText();
+      updateMobileChromeMetrics();
       update(root);
       hideTooltip();
       try { localStorage.setItem('language', language); } catch {}
@@ -1187,7 +1413,8 @@
     document.getElementById('expandAll').addEventListener('click', () => { clearMatches(); expandAll(root); update(root); setTimeout(fitToView, 520); });
     document.getElementById('sideways').addEventListener('click', () => { layoutMode = 'horizontal'; document.getElementById('sideways').classList.add('active'); document.getElementById('topdown').classList.remove('active'); update(root); setTimeout(fitToView, 380); });
     document.getElementById('topdown').addEventListener('click', () => { layoutMode = 'vertical'; document.getElementById('topdown').classList.add('active'); document.getElementById('sideways').classList.remove('active'); update(root); setTimeout(fitToView, 380); });
-    window.addEventListener('resize', () => { update(root); fitToView(); });
+    window.addEventListener('resize', () => { updateMobileChromeMetrics(); update(root); fitToView(); });
+    updateMobileChromeMetrics();
     update(root);
     setTimeout(fitToView, 80);
   </script>
