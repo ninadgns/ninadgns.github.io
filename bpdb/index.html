@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BPDB Prepaid Recharge Tracker</title>
+<style>
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --bg: #eef2f0;
+  --surface: #ffffff;
+  --surface-2: #f4f7f5;
+  --text-primary: #16241d;
+  --text-secondary: #6a7d74;
+  --border: #e2e8e4;
+  --border-soft: #eef1ef;
+  --accent: #1f9d63;
+  --accent-strong: #168a55;
+  --accent-soft: #e4f5ec;
+  --danger: #dc2626;
+  --radius: 12px;
+  --radius-sm: 9px;
+  --shadow: 0 1px 2px rgba(16, 40, 30, .05), 0 8px 24px rgba(16, 40, 30, .06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1512;
+    --surface: #16201b;
+    --surface-2: #1b2722;
+    --text-primary: #e8efea;
+    --text-secondary: #93a89d;
+    --border: #25342c;
+    --border-soft: #1f2c26;
+    --accent: #34c27e;
+    --accent-strong: #2bb172;
+    --accent-soft: #15291f;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text-primary);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  padding: 24px 16px 64px;
+}
+
+.card {
+  max-width: 1120px;
+  margin: 0 auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 32px;
+  align-items: start;
+}
+.col-left { min-width: 0; }
+.col-right {
+  position: sticky;
+  top: 24px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+.col-right .btn-row { margin-top: 14px; }
+
+.placeholder {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.banner {
+  background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+  color: #fff;
+  padding: 26px 28px;
+}
+.banner h1 { font-size: 21px; font-weight: 600; letter-spacing: -.01em; display: flex; align-items: center; gap: 10px; }
+.banner p { font-size: 13.5px; opacity: .9; margin-top: 6px; }
+
+.body { padding: 24px 28px 28px; }
+
+.header-row, .entry-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 40px;
+  gap: 10px;
+  align-items: center;
+}
+.header-row { margin-bottom: 8px; }
+.header-row span { font-size: 11.5px; font-weight: 500; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; padding-left: 2px; }
+.entry-row { margin-bottom: 9px; }
+
+input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  transition: border-color .15s, box-shadow .15s;
+}
+input::placeholder { color: var(--text-secondary); opacity: .7; }
+input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+button { font-family: inherit; cursor: pointer; }
+
+.del-btn {
+  background: none; border: none; color: var(--text-secondary);
+  width: 40px; height: 40px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, color .15s;
+}
+.del-btn:hover { background: var(--surface-2); color: var(--danger); }
+
+.btn-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+
+.btn-secondary, .btn-primary {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 13.5px; font-weight: 500;
+  border-radius: var(--radius-sm); padding: 10px 16px;
+  transition: background .15s, border-color .15s, transform .05s;
+}
+.btn-secondary { background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--border); }
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent-strong); }
+.btn-primary { background: var(--accent); color: #fff; border: 1px solid var(--accent); }
+.btn-primary:hover { background: var(--accent-strong); }
+.btn-secondary:active, .btn-primary:active { transform: translateY(1px); }
+
+.error { font-size: 13px; color: var(--danger); margin: 12px 0 0; display: none; }
+.error.show { display: block; }
+
+.results { display: none; margin-top: 28px; }
+.results.show { display: block; }
+
+.hr { height: 1px; background: var(--border-soft); margin: 4px 0 24px; }
+
+.section-title {
+  font-size: 11.5px; font-weight: 600; color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px;
+}
+
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 26px; }
+.stat { background: var(--accent-soft); border-radius: var(--radius); padding: 14px 16px; }
+.stat-label { font-size: 11.5px; color: var(--text-secondary); margin-bottom: 4px; }
+.stat-val { font-size: 19px; font-weight: 600; color: var(--accent-strong); }
+.stat-val span { font-size: 12px; font-weight: 400; color: var(--text-secondary); }
+
+.month-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 11px; margin-bottom: 14px; }
+.mcard { background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 13px 15px; }
+.mcard-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; }
+.mcard-val { font-size: 21px; font-weight: 600; color: var(--text-primary); }
+.mcard-val span { font-size: 11px; font-weight: 500; color: var(--accent); background: var(--accent-soft); padding: 2px 6px; border-radius: 20px; margin-left: 4px; vertical-align: middle; }
+
+.title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.title-row .section-title { flex: 1; }
+.btn-mini {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; font-weight: 500; color: var(--text-secondary);
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 7px; padding: 5px 10px;
+  transition: border-color .15s, color .15s;
+}
+.btn-mini:hover { border-color: var(--accent); color: var(--accent-strong); }
+.chart-wrap { width: 100%; margin-bottom: 10px; }
+#chart { width: 100%; height: auto; display: block; overflow: visible; }
+.chart-legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 11.5px; color: var(--text-secondary); margin-bottom: 26px; }
+.chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.swatch.solid { background: var(--accent); }
+.swatch.hatched { background: var(--accent); opacity: .45; }
+.bar { transition: opacity .15s; }
+.bar:hover { opacity: .82; }
+.bar-val { font-size: 10.5px; font-weight: 600; fill: var(--text-primary); }
+.bar-lbl { font-size: 10.5px; fill: var(--text-secondary); }
+.grid-line { stroke: var(--border-soft); stroke-width: 1; }
+.grid-lbl { font-size: 9.5px; fill: var(--text-secondary); }
+
+.note { font-size: 12px; color: var(--text-secondary); margin-bottom: 26px; line-height: 1.55; }
+
+.txn-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.txn-table th { text-align: left; color: var(--text-secondary); font-weight: 500; font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em; padding: 0 10px 10px; border-bottom: 1px solid var(--border); }
+.txn-table td { padding: 9px 10px; border-bottom: 1px solid var(--border-soft); color: var(--text-primary); }
+.txn-table tr:last-child td { border-bottom: none; }
+.txn-table td.num, .txn-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.tag-ongoing { font-size: 11px; color: var(--accent); background: var(--accent-soft); padding: 2px 8px; border-radius: 20px; }
+
+.icon { width: 17px; height: 17px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; gap: 24px; }
+  .col-right { position: static; order: -1; }
+}
+
+@media (max-width: 520px) {
+  .body { padding: 20px 18px 24px; }
+  .banner { padding: 22px 20px; }
+  .stat-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="banner">
+    <h1>
+      <svg class="icon" style="width:22px;height:22px" viewBox="0 0 24 24"><path d="M13 2 3 14h7v8l10-12h-7z"/></svg>
+      BPDB Prepaid Recharge Tracker
+    </h1>
+    <p>Enter your recharges — the tool estimates how much you spent each month.</p>
+  </div>
+
+  <div class="body">
+   <div class="layout">
+    <div class="col-left">
+     <div class="placeholder" id="placeholder">Add your recharges on the right, then press <strong>Calculate</strong> to see your monthly spend, trend chart and log here.</div>
+     <div class="results" id="results">
+      <p class="section-title">Summary</p>
+      <div class="stat-grid" id="stat-grid"></div>
+
+      <div class="title-row">
+        <p class="section-title" style="margin-bottom:0">Monthly trend</p>
+        <button class="btn-mini" onclick="exportChart('png')">
+          <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          Save PNG
+        </button>
+        <button class="btn-mini" onclick="exportChart('svg')">
+          <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          SVG
+        </button>
+      </div>
+      <div class="chart-wrap"><svg id="chart" role="img" aria-label="Monthly spend bar chart"></svg></div>
+      <div class="chart-legend">
+        <span><i class="swatch solid"></i> Complete month</span>
+        <span><i class="swatch hatched"></i> Pending (not fully used)</span>
+      </div>
+
+      <p class="section-title">Estimated monthly spend</p>
+      <div class="month-grid" id="month-grid"></div>
+      <p class="note">
+        Each recharge is split across calendar months in proportion to the days until the next recharge,
+        assuming roughly even daily use. The latest balance is marked <em>pending</em> since it may not be
+        fully consumed yet, and is excluded from the average.<br>
+        Note: a BPDB recharge isn't pure energy — it also covers the monthly demand charge, meter rent,
+        5% VAT and any rebate, so these figures reflect <em>cash spent over time</em>, not kWh.
+      </p>
+
+      <p class="section-title">Recharge log</p>
+      <table class="txn-table">
+        <thead><tr><th>Date</th><th class="num">Amount</th><th>Next recharge</th><th class="num">Days gap</th></tr></thead>
+        <tbody id="txn-body"></tbody>
+      </table>
+     </div>
+    </div>
+
+    <div class="col-right">
+      <p class="section-title">Recharges</p>
+      <div class="header-row">
+        <span>Date (DD/MM/YYYY)</span>
+        <span>Amount (Tk)</span>
+        <span></span>
+      </div>
+      <div id="entries"></div>
+      <p class="error" id="err"></p>
+
+      <div class="btn-row">
+        <button class="btn-primary" onclick="calculate()">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l3-4 3 3 4-6"/></svg>
+          Calculate
+        </button>
+        <button class="btn-secondary" onclick="addRow()">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          Add recharge
+        </button>
+        <button class="btn-secondary" onclick="exportCsv()">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          Export CSV
+        </button>
+        <button class="btn-secondary" onclick="document.getElementById('csv-file').click()">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>
+          Import CSV
+        </button>
+        <input type="file" id="csv-file" accept=".csv,text/csv" style="display:none" onchange="importCsv(this)">
+      </div>
+    </div>
+   </div>
+  </div>
+</div>
+
+<script>
+const DEFAULT_DATA = [
+  {date:"03/12/2025", amount:500},
+  {date:"17/12/2025", amount:500},
+  {date:"01/01/2026", amount:500},
+  {date:"12/01/2026", amount:600},
+  {date:"29/01/2026", amount:750},
+  {date:"17/02/2026", amount:1000},
+  {date:"13/03/2026", amount:500},
+  {date:"21/03/2026", amount:200},
+  {date:"24/03/2026", amount:450},
+  {date:"01/04/2026", amount:1000},
+  {date:"27/04/2026", amount:500},
+  {date:"12/05/2026", amount:1000},
+  {date:"29/05/2026", amount:500},
+];
+
+const DAY = 86400000;
+const STORAGE_KEY = "bpdb_recharges_v1";
+let rows = [];
+
+function save() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rows.map(r => ({date: r.date, amount: r.amount}))));
+  } catch (e) { /* storage unavailable (e.g. file:// in some browsers, private mode) */ }
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) { /* ignore corrupt/blocked storage */ }
+  return null;
+}
+
+function parseDate(str) {
+  const p = String(str).trim().split("/");
+  if (p.length !== 3) return null;
+  const [d,m,y] = p.map(Number);
+  if (!d||!m||!y||isNaN(d)||isNaN(m)||isNaN(y)) return null;
+  const dt = new Date(y, m-1, d);
+  // reject impossible dates like 31/02
+  if (dt.getDate() !== d || dt.getMonth() !== m-1) return null;
+  return dt;
+}
+
+function fmtDate(d) { return d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}); }
+function monthKey(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; }
+function monthLabel(k) {
+  const [y,m] = k.split("-");
+  return new Date(+y,+m-1,1).toLocaleDateString("en-GB",{month:"short",year:"numeric"});
+}
+
+function addRow(d="", a="") {
+  const id = (rows.length ? Math.max(...rows.map(r=>r.id)) : 0) + 1;
+  rows.push({id, date: d, amount: a});
+  renderRows();
+  save();
+}
+function removeRow(id) { rows = rows.filter(r => r.id !== id); renderRows(); save(); }
+function getVal(id, field) { const el = document.getElementById(`${field}_${id}`); return el ? el.value : ""; }
+
+function renderRows() {
+  document.getElementById("entries").innerHTML = rows.map(r => `
+    <div class="entry-row" id="row_${r.id}">
+      <input type="text" id="date_${r.id}" placeholder="DD/MM/YYYY" value="${r.date}" maxlength="10" inputmode="numeric" oninput="syncRow(${r.id},'date',this.value)">
+      <input type="number" id="amount_${r.id}" placeholder="e.g. 500" value="${r.amount}" min="0" oninput="syncRow(${r.id},'amount',this.value)">
+      <button class="del-btn" onclick="removeRow(${r.id})" aria-label="Remove row">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>`).join("");
+}
+
+function syncRow(id, field, val) { const r = rows.find(r => r.id === id); if (r) { r[field] = val; save(); } }
+
+function exportCsv() {
+  // pull live values straight from the inputs so unsaved edits are included
+  const lines = ["date,amount"];
+  rows.forEach(r => {
+    const date = (getVal(r.id,"date") || r.date || "").trim();
+    const amount = (getVal(r.id,"amount") || r.amount || "").toString().trim();
+    if (date || amount) lines.push(`${date},${amount}`);
+  });
+  const blob = new Blob([lines.join("\r\n") + "\r\n"], {type: "text/csv;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "bpdb_recharges.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+}
+
+function importCsv(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = String(e.target.result).replace(/^﻿/, ""); // strip BOM
+    const parsed = [];
+    text.split(/\r\n|\r|\n/).forEach(line => {
+      const t = line.trim();
+      if (!t) return;
+      const cells = t.split(",").map(c => c.trim().replace(/^"|"$/g, ""));
+      const date = cells[0], amount = cells[1];
+      // skip header / non-data rows
+      if (!date || !/^\d/.test(date)) return;
+      if (!parseDate(date) || isNaN(parseFloat(amount))) return;
+      parsed.push({date, amount});
+    });
+
+    if (parsed.length === 0) {
+      const err = document.getElementById("err");
+      err.textContent = "No valid rows found in that CSV. Expected columns: date (DD/MM/YYYY), amount.";
+      err.classList.add("show");
+      input.value = "";
+      return;
+    }
+
+    rows = [];
+    renderRows();
+    parsed.forEach(d => addRow(d.date, d.amount)); // addRow already calls save()
+    document.getElementById("err").classList.remove("show");
+    calculate();
+    input.value = ""; // allow re-importing the same file
+  };
+  reader.readAsText(file);
+}
+
+function downloadBlob(blob, name) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+}
+
+// Build a self-contained SVG string with computed colors inlined,
+// since the live chart relies on CSS classes + var(--accent).
+function buildStandaloneSvg() {
+  const src = document.getElementById("chart");
+  if (!src || !src.innerHTML.trim()) return null;
+  const cs = getComputedStyle(document.documentElement);
+  const v = (n, fb) => (cs.getPropertyValue(n).trim() || fb);
+  const W = 720, H = 260, pad = 16;
+
+  const css =
+    `text{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}` +
+    `.bar-val{font-size:10.5px;font-weight:600;fill:${v('--text-primary','#16241d')}}` +
+    `.bar-lbl{font-size:10.5px;fill:${v('--text-secondary','#6a7d74')}}` +
+    `.grid-line{stroke:${v('--border-soft','#eef1ef')};stroke-width:1}` +
+    `.grid-lbl{font-size:9.5px;fill:${v('--text-secondary','#6a7d74')}}`;
+
+  const inner = src.innerHTML.replace(/var\(--accent\)/g, v('--accent', '#1f9d63'));
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W + pad*2}" height="${H + pad*2}" viewBox="${-pad} ${-pad} ${W + pad*2} ${H + pad*2}">`
+    + `<style>${css}</style>`
+    + `<rect x="${-pad}" y="${-pad}" width="${W + pad*2}" height="${H + pad*2}" fill="${v('--surface','#ffffff')}"/>`
+    + inner + `</svg>`;
+}
+
+function exportChart(type) {
+  const svgStr = buildStandaloneSvg();
+  if (!svgStr) return;
+
+  if (type === "svg") {
+    downloadBlob(new Blob([svgStr], {type: "image/svg+xml;charset=utf-8"}), "bpdb_monthly_chart.svg");
+    return;
+  }
+
+  const scale = 2; // retina-crisp PNG
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width * scale;
+    canvas.height = img.height * scale;
+    const ctx = canvas.getContext("2d");
+    ctx.scale(scale, scale);
+    ctx.drawImage(img, 0, 0);
+    canvas.toBlob(b => b && downloadBlob(b, "bpdb_monthly_chart.png"), "image/png");
+  };
+  img.onerror = () => alert("Could not render the chart image.");
+  img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgStr)));
+}
+
+function renderChart(keys, monthly) {
+  const svg = document.getElementById("chart");
+  const W = 720, H = 260;
+  const padL = 8, padR = 8, padT = 22, padB = 34;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const n = keys.length;
+
+  if (n === 0) { svg.innerHTML = ""; return; }
+
+  const max = Math.max(...keys.map(k => monthly[k].total), 1);
+  // "nice" axis top: round the max up to a clean step
+  const pow = Math.pow(10, Math.floor(Math.log10(max)));
+  const niceMax = Math.ceil(max / pow) * pow;
+  const y = v => padT + plotH - (v / niceMax) * plotH;
+
+  const slot = plotW / n;
+  const bw = Math.min(54, slot * 0.62);
+
+  let g = "";
+
+  // horizontal gridlines + axis labels (0, ½, max)
+  [0, 0.5, 1].forEach(f => {
+    const val = niceMax * f;
+    const yy = y(val);
+    g += `<line class="grid-line" x1="${padL}" y1="${yy.toFixed(1)}" x2="${W-padR}" y2="${yy.toFixed(1)}"/>`;
+    g += `<text class="grid-lbl" x="${padL}" y="${(yy-3).toFixed(1)}">${Math.round(val).toLocaleString()}</text>`;
+  });
+
+  keys.forEach((k, i) => {
+    const v = monthly[k];
+    const cx = padL + slot * i + slot / 2;
+    const x = cx - bw / 2;
+    const h = Math.max(2, (v.total / niceMax) * plotH);
+    const yy = padT + plotH - h;
+    const fill = v.pending ? "var(--accent)" : "var(--accent)";
+    const op = v.pending ? 0.45 : 1;
+    g += `<rect class="bar" x="${x.toFixed(1)}" y="${yy.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="${fill}" fill-opacity="${op}"><title>${monthLabel(k)}: Tk ${Math.round(v.total).toLocaleString()}${v.pending ? " (pending)" : ""}</title></rect>`;
+    g += `<text class="bar-val" x="${cx.toFixed(1)}" y="${(yy-6).toFixed(1)}" text-anchor="middle">${Math.round(v.total).toLocaleString()}</text>`;
+    const [yr, mo] = k.split("-");
+    const short = new Date(+yr, +mo-1, 1).toLocaleDateString("en-GB",{month:"short"});
+    g += `<text class="bar-lbl" x="${cx.toFixed(1)}" y="${(H-padB+15).toFixed(1)}" text-anchor="middle">${short}</text>`;
+    if (mo === "01" || i === 0) {
+      g += `<text class="bar-lbl" x="${cx.toFixed(1)}" y="${(H-padB+27).toFixed(1)}" text-anchor="middle">${yr}</text>`;
+    }
+  });
+
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = g;
+}
+
+function calculate() {
+  const err = document.getElementById("err");
+  err.classList.remove("show");
+
+  const raw = rows.map(r => ({
+    date: parseDate(getVal(r.id,"date") || r.date),
+    amount: parseFloat(getVal(r.id,"amount") || r.amount)
+  })).filter(r => r.date && !isNaN(r.amount) && r.amount > 0);
+
+  if (raw.length === 0) { err.textContent = "Please add at least one valid recharge."; err.classList.add("show"); return; }
+
+  raw.sort((a,b) => a.date - b.date);
+
+  // collapse exact duplicate (same date + amount) consecutive entries
+  const deduped = [];
+  raw.forEach(r => {
+    const last = deduped[deduped.length-1];
+    if (!last || +r.date !== +last.date || r.amount !== last.amount) deduped.push(r);
+  });
+
+  const monthly = {};
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  let totalRecharged = 0;
+
+  deduped.forEach((r, i) => {
+    totalRecharged += r.amount;
+    const next = deduped[i+1];
+    const end = next ? next.date : (today > r.date ? today : new Date(r.date.getTime() + DAY));
+    const totalDays = Math.max(1, Math.round((end - r.date) / DAY));
+
+    // walk calendar months with HALF-OPEN intervals [cur, firstOfNextMonth)
+    // so the per-month day counts sum exactly to totalDays (no boundary days lost).
+    let cur = new Date(r.date);
+    let allocated = 0;
+    while (cur < end) {
+      const firstOfNext = new Date(cur.getFullYear(), cur.getMonth()+1, 1);
+      const segEnd = firstOfNext < end ? firstOfNext : end;
+      const days = Math.round((segEnd - cur) / DAY);
+      const portion = (days / totalDays) * r.amount;
+      const mk = monthKey(cur);
+      if (!monthly[mk]) monthly[mk] = { total: 0, pending: false };
+      monthly[mk].total += portion;
+      if (!next) monthly[mk].pending = true;
+      allocated += portion;
+      cur = segEnd;
+    }
+    // guard against any rounding drift — pin the remainder to the last month touched
+    const drift = r.amount - allocated;
+    if (Math.abs(drift) > 1e-6) monthly[monthKey(new Date(end - DAY))].total += drift;
+  });
+
+  const sortedKeys = Object.keys(monthly).sort();
+
+  // ----- summary stats (average excludes pending month) -----
+  const complete = sortedKeys.filter(k => !monthly[k].pending);
+  const completeSum = complete.reduce((s,k) => s + monthly[k].total, 0);
+  const avg = complete.length ? completeSum / complete.length : 0;
+
+  document.getElementById("stat-grid").innerHTML = `
+    <div class="stat"><div class="stat-label">Total recharged</div><div class="stat-val">Tk ${Math.round(totalRecharged).toLocaleString()}</div></div>
+    <div class="stat"><div class="stat-label">Months tracked</div><div class="stat-val">${sortedKeys.length}</div></div>
+    <div class="stat"><div class="stat-label">Avg / month <span>(complete)</span></div><div class="stat-val">Tk ${Math.round(avg).toLocaleString()}</div></div>`;
+
+  renderChart(sortedKeys, monthly);
+
+  document.getElementById("month-grid").innerHTML = sortedKeys.map(k => {
+    const v = monthly[k];
+    return `<div class="mcard">
+      <div class="mcard-label">${monthLabel(k)}</div>
+      <div class="mcard-val">Tk ${Math.round(v.total).toLocaleString()}${v.pending ? '<span>pending</span>' : ''}</div>
+    </div>`;
+  }).join("");
+
+  document.getElementById("txn-body").innerHTML = deduped.map((r,i) => {
+    const next = deduped[i+1];
+    const end = next ? next.date : today;
+    const days = Math.max(0, Math.round((end - r.date) / DAY));
+    return `<tr>
+      <td>${fmtDate(r.date)}</td>
+      <td class="num">Tk ${r.amount.toLocaleString()}</td>
+      <td>${next ? fmtDate(next.date) : '<span class="tag-ongoing">ongoing</span>'}</td>
+      <td class="num">${days}</td>
+    </tr>`;
+  }).join("");
+
+  document.getElementById("results").classList.add("show");
+  document.getElementById("placeholder").style.display = "none";
+}
+
+const saved = load();
+(saved || DEFAULT_DATA).forEach(d => addRow(d.date, d.amount));
+calculate();
+</script>
+</body>
+</html>
