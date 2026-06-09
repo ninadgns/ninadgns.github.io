@@ -1,68 +1,49 @@
 # ninadgns.github.io
 
-My personal website and utility collection for CSEDU students.
+My personal website and utility collection — mostly for CSEDU students, plus a few personal experiments. Everything runs client-side in the browser.
 
-## Overview
+🔗 **Live:** [https://ninadgns.github.io](https://ninadgns.github.io)
 
-This repository contains my GitHub Pages website that hosts various educational tools and utilities, primarily designed for Computer Science and Engineering students at the University of Dhaka (CSEDU), particularly the 28th batch.
+## Tools
 
-## Features
+### 🧮 [CGPA Calculator](/cgpa/)
+A CGPA calculator built with React + Vite for CSEDU students. Supports theory and lab subjects, previous-CGPA carry-over, real-time calculation, and a mobile-responsive layout.
 
-### 🧮 [CGPA Calculator](/cgpa)
-A comprehensive CGPA calculator built with React that helps students calculate their cumulative grade point average. Features include:
-- Support for theory and lab subjects
-- Previous CGPA integration
-- Real-time calculation
-- Mobile-responsive design
+### ⚡ [BPDB Prepaid Recharge Tracker](/bpdb/)
+Log your BPDB prepaid electricity recharges and estimate how much you spent each month. Splits each recharge across calendar months proportionally by days, shows a summary, an SVG trend chart (exportable as PNG/SVG), and a recharge log. Data persists in `localStorage`, with CSV import/export.
 
-### 📅 [CSEDU28 Class Routine](/routine)
-Dynamic class routine display using FullCalendar library, synchronized with a Google Calendar that I maintain for the CSEDU 28th batch class schedule.
-<span style="color: red;">**Note: This routine is not maintained properly**</span>
+### 🏛️ [Government of Bangladesh Org Chart](/bangladesh-government/)
+An interactive organizational chart of the Government of Bangladesh — ministries, divisions, and their structure.
 
-### 📄 [Lab Report Cover Generator](/cover)
-A tool for generating standardized lab report covers. Currently redirects to a Python web application hosted on PythonAnywhere.
-<span style="color: red;">**Note: This part of the project is also not maintained properly**</span>
+### 📅 [CSEDU28 Class Routine](/routine/)
+Dynamic class routine for the CSEDU 28th batch, rendered with FullCalendar and synced from a Google Calendar.
+> **Note:** not actively maintained.
+
+### 📄 [Lab Report Cover Generator](/cover.html)
+Generates standardized lab report covers. Currently redirects to a Python (Flask) app hosted on PythonAnywhere.
+> **Note:** not actively maintained.
 
 ## Project Structure
 
 ```
-├── cover.html                     # Lab cover generator (redirects to external app)
-├── presentation_references.html   # Academic presentation references
-├── routine.html                   # Class routine display
-├── README.md                      # Project documentation
-├── style.css                      # Main stylesheet
-├── style2.css                     # Additional styles
-├── stylef.css                     # Additional styles
-├── cgpa/                          # Built CGPA calculator (production)
+├── index.html                 # Landing page — indexes all tools
+├── cover.html                 # Lab cover generator (redirects to external app)
+├── style.css / style2.css / stylef.css
+├── bpdb/                      # BPDB prepaid recharge tracker (self-contained HTML)
+│   └── index.html
+├── cgpa/                      # Built CGPA calculator (production)
 │   ├── index.html
 │   └── assets/
-├── CGPASource/                    # CGPA calculator source code
-│   ├── src/
-│   │   ├── App.jsx               # Main React component
-│   │   ├── InputSlider.jsx       # Slider input component
-│   │   ├── LabSubject.jsx        # Lab subject component
-│   │   ├── TheorySubject.jsx     # Theory subject component
-│   │   ├── PrevCGPA.jsx          # Previous CGPA component
-│   │   └── [Other components]
-│   ├── package.json
-│   └── vite.config.js
-└── CoverSource/                   # Lab cover generator source
-    └── app.py                     # Python Flask application
+├── CGPASource/                # CGPA calculator source (React + Vite)
+├── bangladesh-government/     # Government org chart
+├── routine/                   # Built class routine (Next.js export)
+├── RoutineSource/             # Class routine source
+└── CoverSource/               # Lab cover generator source (Flask)
 ```
-
-## Technologies Used
-
-- **Frontend**: HTML, CSS, JavaScript, React
-- **Build Tool**: Vite
-- **Calendar**: FullCalendar library
-- **Backend**: Python Flask (for cover generator)
-- **Hosting**: GitHub Pages, PythonAnywhere
 
 ## Development
 
 ### CGPA Calculator
-The CGPA calculator is built with React and Vite. To run locally:
-
 ```bash
 cd CGPASource
 npm install
@@ -70,22 +51,14 @@ npm run dev
 ```
 
 ### Lab Cover Generator
-The cover generator is a Python Flask application:
-
 ```bash
 cd CoverSource
 pip install flask
 python app.py
 ```
 
-## Live Website
-
-Visit the live website at: [https://ninadgns.github.io](https://ninadgns.github.io)
-
-## Contributing
-
-This project is primarily for personal use and CSEDU students, but suggestions and improvements are welcome!
+The BPDB tracker and the org chart are self-contained static pages — just open their `index.html` in a browser.
 
 ## License
 
-This project is open source and available under the MIT License.
+Open source under the MIT License.
