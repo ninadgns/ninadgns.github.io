@@ -168,6 +168,7 @@ button { font-family: inherit; cursor: pointer; }
 .mcard-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; }
 .mcard-val { font-size: 21px; font-weight: 600; color: var(--text-primary); }
 .mcard-val span { font-size: 11px; font-weight: 500; color: var(--accent); background: var(--accent-soft); padding: 2px 6px; border-radius: 20px; margin-left: 4px; vertical-align: middle; }
+.mcard-val span.unit { font-size: 12px; font-weight: 500; color: var(--text-secondary); background: none; padding: 0; border-radius: 0; margin-left: 3px; }
 
 .title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .title-row .section-title { flex: 1; }
@@ -204,6 +205,55 @@ button { font-family: inherit; cursor: pointer; }
 
 .icon { width: 17px; height: 17px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
 
+.settings { margin-bottom: 20px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
+.set-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+.set-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--text-secondary); }
+.set-grid .full { grid-column: 1 / -1; }
+.set-grid select {
+  width: 100%; font-family: inherit; font-size: 14px; color: var(--text-primary);
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 12px;
+}
+.set-grid select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.set-hint { font-size: 11px; color: var(--text-secondary); margin-top: 10px; line-height: 1.5; }
+
+.toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+.toggle button {
+  font-family: inherit; font-size: 11.5px; font-weight: 500; color: var(--text-secondary);
+  background: var(--surface-2); border: none; padding: 5px 11px; transition: background .15s, color .15s;
+}
+.toggle button.active { background: var(--accent); color: #fff; }
+
+.mcard-sub { font-size: 11.5px; color: var(--text-secondary); margin-top: 3px; }
+
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(8,18,14,.55); z-index: 50; padding: 24px; overflow-y: auto; }
+.modal-overlay.show { display: flex; align-items: flex-start; justify-content: center; }
+.modal { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); max-width: 720px; width: 100%; margin: auto; padding: 30px 30px 28px; }
+.modal-close {
+  position: absolute; top: 14px; right: 14px; background: var(--surface-2);
+  border: 1px solid var(--border); color: var(--text-secondary);
+  width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center;
+  transition: color .15s, border-color .15s;
+}
+.modal-close:hover { color: var(--danger); border-color: var(--danger); }
+
+.method { max-width: 760px; }
+.method h3 { font-size: 14.5px; font-weight: 600; color: var(--text-primary); margin: 26px 0 8px; }
+.method h3:first-child { margin-top: 0; }
+.method p { font-size: 13px; color: var(--text-secondary); line-height: 1.62; margin-bottom: 8px; }
+.method ol, .method ul { margin: 8px 0 10px 20px; }
+.method li { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 6px; }
+.method strong { color: var(--text-primary); font-weight: 600; }
+.method a { color: var(--accent-strong); }
+.method .k { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: 5px; padding: 1px 5px; color: var(--text-primary); white-space: nowrap; }
+.method .formula { background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 12px 14px; margin: 10px 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; color: var(--text-primary); line-height: 1.6; overflow-x: auto; }
+.method-tables { display: flex; flex-wrap: wrap; gap: 16px; margin: 12px 0 4px; }
+.mtable { border-collapse: collapse; font-size: 12.5px; flex: 1 1 240px; }
+.mtable th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--text-secondary); font-weight: 600; padding: 0 10px 8px; border-bottom: 1px solid var(--border); }
+.mtable td { padding: 7px 10px; border-bottom: 1px solid var(--border-soft); color: var(--text-primary); }
+.mtable tr:last-child td { border-bottom: none; }
+.mtable td.num, .mtable th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
 @media (max-width: 860px) {
   .layout { grid-template-columns: 1fr; gap: 24px; }
   .col-right { position: static; order: -1; }
@@ -223,7 +273,7 @@ button { font-family: inherit; cursor: pointer; }
       <svg class="icon" style="width:22px;height:22px" viewBox="0 0 24 24"><path d="M13 2 3 14h7v8l10-12h-7z"/></svg>
       BPDB Prepaid Recharge Tracker
     </h1>
-    <p>Enter your recharges — the tool estimates how much you spent each month.</p>
+    <p>Enter your recharges — the tool estimates your energy use (kWh) and spend each month, accounting for BPDB's rising slab rates.</p>
   </div>
 
   <div class="body">
@@ -236,6 +286,10 @@ button { font-family: inherit; cursor: pointer; }
 
       <div class="title-row">
         <p class="section-title" style="margin-bottom:0">Monthly trend</p>
+        <div class="toggle" id="metric-toggle">
+          <button id="m-kwh" class="active" onclick="setMetric('kwh')">kWh</button>
+          <button id="m-tk" onclick="setMetric('tk')">Tk</button>
+        </div>
         <button class="btn-mini" onclick="exportChart('png')">
           <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
           Save PNG
@@ -251,34 +305,52 @@ button { font-family: inherit; cursor: pointer; }
         <span><i class="swatch hatched"></i> Pending (not fully used)</span>
       </div>
 
-      <p class="section-title">Estimated monthly spend</p>
+      <p class="section-title">Estimated monthly usage</p>
       <div class="month-grid" id="month-grid"></div>
-      <p class="note">
-        Each recharge is split across calendar months in proportion to the days until the next recharge,
-        assuming roughly even daily use. The latest balance is marked <em>pending</em> since it may not be
-        fully consumed yet, and is excluded from the average.<br>
-        Note: a BPDB recharge isn't pure energy — it also covers the monthly demand charge, meter rent,
-        5% VAT and any rebate, so these figures reflect <em>cash spent over time</em>, not kWh.
+      <p class="note" style="margin-bottom:10px">
+        <strong>How this is estimated.</strong> Each recharge is converted to an energy balance using BPDB's
+        prepaid formula — VAT, the monthly demand charge, meter rent and rebate are removed. Your use is then
+        spread evenly across the days until your next recharge (same kWh per day, not same taka), and each
+        day's kWh is billed at that calendar month's progressive slab, which resets on the 1st. The latest balance is
+        <em>pending</em> and excluded from averages. Figures are estimates, not meter readings.
       </p>
+      <button class="btn-mini" style="margin-bottom:26px" onclick="openMath()">
+        <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+        See the full maths
+      </button>
 
       <p class="section-title">Recharge log</p>
       <table class="txn-table">
-        <thead><tr><th>Date</th><th class="num">Amount</th><th>Next recharge</th><th class="num">Days gap</th></tr></thead>
+        <thead><tr><th>Date</th><th class="num">Amount</th><th class="num">Est. kWh</th><th class="num">Tk/kWh</th><th>Next recharge</th><th class="num">Days gap</th></tr></thead>
         <tbody id="txn-body"></tbody>
       </table>
      </div>
     </div>
 
     <div class="col-right">
-      <p class="section-title">Recharges</p>
-      <div class="header-row">
-        <span>Date (DD/MM/YYYY)</span>
-        <span>Amount (Tk)</span>
-        <span></span>
+      <div class="settings">
+        <p class="section-title">Tariff &amp; connection</p>
+        <div class="set-grid">
+          <label>Sanctioned load (kW)
+            <input type="number" id="cfg_kw" min="0" step="0.5" value="2" oninput="syncCfg()">
+          </label>
+          <label>Demand charge (Tk/kW·mo)
+            <input type="number" id="cfg_demand" min="0" step="0.5" value="42" oninput="syncCfg()">
+          </label>
+          <label>Meter rent (Tk/mo)
+            <input type="number" id="cfg_rent" min="0" step="1" value="40" oninput="syncCfg()">
+          </label>
+          <label>VAT (%)
+            <input type="number" id="cfg_vat" min="0" step="0.1" value="5" oninput="syncCfg()">
+          </label>
+          <label>Rebate (%)
+            <input type="number" id="cfg_rebate" min="0" step="0.1" value="1" oninput="syncCfg()">
+          </label>
+        </div>
+        <p class="set-hint">Energy is estimated from each recharge using BPDB's official prepaid formula. Slab rates update automatically by date (Feb 2024, then the Jun 2026 hike). These settings are saved with your CSV.</p>
       </div>
-      <div id="entries"></div>
-      <p class="error" id="err"></p>
 
+      <p class="section-title">Recharges</p>
       <div class="btn-row">
         <button class="btn-primary" onclick="calculate()">
           <svg class="icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l3-4 3 3 4-6"/></svg>
@@ -298,7 +370,73 @@ button { font-family: inherit; cursor: pointer; }
         </button>
         <input type="file" id="csv-file" accept=".csv,text/csv" style="display:none" onchange="importCsv(this)">
       </div>
+      <p class="error" id="err"></p>
+
+      <div class="header-row">
+        <span>Date (DD/MM/YYYY)</span>
+        <span>Amount (Tk)</span>
+        <span></span>
+      </div>
+      <div id="entries"></div>
     </div>
+   </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="math-modal" onclick="if(event.target===this)closeMath()">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="How the estimate is calculated">
+    <button class="modal-close" onclick="closeMath()" aria-label="Close">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <div class="method">
+     <h3>What this tool does</h3>
+     <p>A BPDB prepaid meter never shows you kWh — you just recharge taka, and the meter prices your electricity as you use it. This tool reverses BPDB's official prepaid pricing to estimate how many units (kWh) each recharge funds and which month actually used them.</p>
+
+     <h3>Step 1 — Turn each recharge into &ldquo;energy money&rdquo;</h3>
+     <p>For a recharge of <span class="k">R</span> taka, the meter peels off the non-energy charges first:</p>
+     <ol>
+       <li><strong>VAT</strong> (5%) comes out of the whole recharge: <span class="k">VAT = R &times; 5 &divide; 105</span>.</li>
+       <li><strong>Demand charge</strong> and <strong>meter rent</strong> are monthly — taken only on the <em>first</em> recharge of each calendar month. Demand charge = <span class="k">load(kW) &times; rate</span>. If a month had no recharge at all, the next recharge pays that backlog (&times;N months).</li>
+       <li><strong>Rebate</strong> (1%) is added back: <span class="k">rebate = (R &minus; VAT &minus; meter rent) &divide; 101</span>.</li>
+     </ol>
+     <div class="formula">Energy money (E) = R &minus; VAT &minus; demand charge &minus; meter rent + rebate</div>
+     <div id="worked-example"></div>
+     <p class="note">This energy money is <em>not</em> turned into a fixed number of units at the counter. BPDB's own example simply states the amount that &ldquo;will be inserted in meter&rdquo; — the meter holds it as a balance and prices kWh only as you consume.</p>
+
+     <h3>Step 2 — Spread your <em>use</em> evenly across the days</h3>
+     <p>A recharge isn't consumed the instant you buy it — it drains gradually until your next top-up. We assume you use roughly the <strong>same number of kWh each day</strong> across that window (not the same taka — cheap and expensive days cost differently). So a month's slice of the use is just its share of the days:</p>
+     <div class="formula">month's kWh = window's total kWh × (days of the window in that month ÷ total days in the window)</div>
+     <p>The window runs from each recharge up to (but not including) the next one, so no day is double-counted.</p>
+
+     <h3>Step 3 — Price each day's use at its month's slab</h3>
+     <p>BPDB rates are <strong>progressive</strong>: the first 75 units of a month are cheapest and each higher band costs more. The slab counter is cumulative within a calendar month and <strong>resets on the 1st</strong> — the meter prices each kWh by <em>how much you have already consumed that month</em>, not by when you recharged. So each day's use is billed up its month's slabs from that month's running total, and days that land in a fresh month start again at the cheap low bands.</p>
+     <p>How many kWh did the window actually buy? We pick the <em>one</em> total that makes the priced cost of all those days add up exactly to the energy money from Step 1. That's why a balance carrying into a new month buys more — its spillover days are billed at the reset, cheaper slabs — and why recharging early in a fresh month stretches further than topping up late in an expensive one.</p>
+     <p><strong>Example.</strong> Suppose a recharge on <strong>20 Jan</strong> works out to about 95 kWh of use and your next recharge was on <strong>8 Feb</strong>. That's a 19-day window — 12 days fall in January (20–31 Jan) and 7 in February (1–7 Feb), and each month's slice is then priced at its own slab:</p>
+     <table class="mtable" style="width:100%"><thead><tr><th>Month</th><th class="num">Days in window</th><th class="num">Share</th><th class="num">kWh credited</th></tr></thead><tbody>
+       <tr><td>January</td><td class="num">12</td><td class="num">12 / 19</td><td class="num">60.0</td></tr>
+       <tr><td>February</td><td class="num">7</td><td class="num">7 / 19</td><td class="num">35.0</td></tr>
+     </tbody></table>
+     <p>Each month's total on the cards and chart is the sum of these slices from every recharge that overlaps it. A few finer points:</p>
+     <ul>
+       <li>Windows are <strong>half-open</strong>: the day of the next recharge starts the next window, so no day is counted twice and the slices always add back to the recharge's full kWh.</li>
+       <li>The <strong>most recent recharge</strong> has no next top-up, so it's spread from its date up to <em>today</em> and marked <em>pending</em> — you likely haven't used it all yet, so it's excluded from the monthly averages.</li>
+       <li>The <strong>first month</strong> in your data usually starts mid-month, so it captures only part of that month's use and can read low.</li>
+       <li>This assumes <strong>roughly even daily use</strong>. Real consumption varies with weather and travel, so read each month as a solid estimate, not an exact meter figure.</li>
+     </ul>
+
+     <h3>Slab rates used</h3>
+     <p>Rates are set by BERC and applied <strong>automatically by date of use</strong>: the <strong>Feb 2024</strong> schedule through 31 May 2026, and the <strong>Jun 2026</strong> hike from 1 Jun 2026 onward.</p>
+     <div class="method-tables" id="slab-tables"></div>
+
+     <h3>Assumptions &amp; limitations</h3>
+     <ul>
+       <li>This is an <strong>estimate</strong> from recharge amounts and dates, not from meter readings.</li>
+       <li>It assumes roughly even daily use between recharges.</li>
+       <li>Demand charge defaults to <strong>42 Tk/kW</strong> (a common bill figure); BPDB's published example uses 30 Tk/kW. Change it on the Tracker tab if yours differs.</li>
+       <li>The <em>Lifeline</em> rate (≤ 50 kWh across a whole month) is not applied separately — it only matters for very low-usage months.</li>
+       <li>The first month in your data is often partial, so its usage can read low.</li>
+     </ul>
+     <p>Based on BPDB's official prepaid mechanics and worked example: <a href="https://bpdb.portal.gov.bd/pages/static-pages/6922dcd8933eb65569e125b5" target="_blank" rel="noopener">bpdb.portal.gov.bd</a>.</p>
    </div>
   </div>
 </div>
@@ -318,10 +456,28 @@ const DEFAULT_DATA = [
   {date:"27/04/2026", amount:500},
   {date:"12/05/2026", amount:1000},
   {date:"29/05/2026", amount:500},
+  {date:"09/06/2026", amount:800},
+  {date:"22/06/2026", amount:800},
 ];
 
 const DAY = 86400000;
 const STORAGE_KEY = "bpdb_recharges_v1";
+const CONFIG_KEY = "bpdb_config_v1";
+
+// BPDB residential slab rates (BDT/kWh). bands: [cumulativeUpperBound_kWh, rate].
+// lifeline applies to the WHOLE month only if total monthly use <= 50 kWh.
+const SLABS = {
+  "2023-01": { label:"Jan 2023", lifeline:4.35, bands:[[75,4.85],[200,6.63],[300,6.95],[400,7.34],[600,11.51],[Infinity,13.26]] },
+  "2024-02": { label:"Feb 2024", lifeline:4.63, bands:[[75,5.26],[200,7.20],[300,7.59],[400,8.02],[600,12.67],[Infinity,14.61]] },
+  "2026-06": { label:"Jun 2026", lifeline:5.32, bands:[[75,6.18],[200,8.50],[300,9.10],[400,9.62],[600,15.01],[Infinity,17.35]] },
+};
+// In "auto" mode, recharges on/after this date use the Jun 2026 table, earlier ones use Feb 2024.
+const RATE_CUTOVER = new Date(2026, 5, 1); // 1 Jun 2026
+
+const DEFAULT_CFG = { kw:2, demand:42, rent:40, vat:5, rebate:1 };
+let cfg = { ...DEFAULT_CFG };
+let metric = "kwh"; // chart metric: "kwh" | "tk"
+
 let rows = [];
 
 function save() {
@@ -336,6 +492,16 @@ function load() {
     if (raw) return JSON.parse(raw);
   } catch (e) { /* ignore corrupt/blocked storage */ }
   return null;
+}
+
+function saveCfg() {
+  try { localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg)); } catch (e) { /* ignore */ }
+}
+function loadCfg() {
+  try {
+    const raw = localStorage.getItem(CONFIG_KEY);
+    if (raw) cfg = { ...DEFAULT_CFG, ...JSON.parse(raw) };
+  } catch (e) { /* ignore */ }
 }
 
 function parseDate(str) {
@@ -366,7 +532,8 @@ function removeRow(id) { rows = rows.filter(r => r.id !== id); renderRows(); sav
 function getVal(id, field) { const el = document.getElementById(`${field}_${id}`); return el ? el.value : ""; }
 
 function renderRows() {
-  document.getElementById("entries").innerHTML = rows.map(r => `
+  // newest recharge on top (rows is kept oldest-first internally)
+  document.getElementById("entries").innerHTML = rows.slice().reverse().map(r => `
     <div class="entry-row" id="row_${r.id}">
       <input type="text" id="date_${r.id}" placeholder="DD/MM/YYYY" value="${r.date}" maxlength="10" inputmode="numeric" oninput="syncRow(${r.id},'date',this.value)">
       <input type="number" id="amount_${r.id}" placeholder="e.g. 500" value="${r.amount}" min="0" oninput="syncRow(${r.id},'amount',this.value)">
@@ -378,9 +545,83 @@ function renderRows() {
 
 function syncRow(id, field, val) { const r = rows.find(r => r.id === id); if (r) { r[field] = val; save(); } }
 
+function renderCfg() {
+  document.getElementById("cfg_kw").value = cfg.kw;
+  document.getElementById("cfg_demand").value = cfg.demand;
+  document.getElementById("cfg_rent").value = cfg.rent;
+  document.getElementById("cfg_vat").value = cfg.vat;
+  document.getElementById("cfg_rebate").value = cfg.rebate;
+}
+function syncCfg() {
+  const num = (id, fb) => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? fb : v; };
+  cfg.kw     = num("cfg_kw", DEFAULT_CFG.kw);
+  cfg.demand = num("cfg_demand", DEFAULT_CFG.demand);
+  cfg.rent   = num("cfg_rent", DEFAULT_CFG.rent);
+  cfg.vat    = num("cfg_vat", DEFAULT_CFG.vat);
+  cfg.rebate = num("cfg_rebate", DEFAULT_CFG.rebate);
+  saveCfg();
+  calculate();
+}
+function setMetric(m) {
+  metric = m;
+  document.getElementById("m-kwh").classList.toggle("active", m === "kwh");
+  document.getElementById("m-tk").classList.toggle("active", m === "tk");
+  calculate();
+}
+
+function openMath() {
+  document.getElementById("math-modal").classList.add("show");
+  document.body.style.overflow = "hidden";
+}
+function closeMath() {
+  document.getElementById("math-modal").classList.remove("show");
+  document.body.style.overflow = "";
+}
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeMath(); });
+
+// Renders the "How it's calculated" tab: slab tables + a live worked example using current settings.
+function renderMethod() {
+  const bandLabels = ["1–75 (1st)","76–200 (2nd)","201–300 (3rd)","301–400 (4th)","401–600 (5th)","Above 600 (6th)"];
+  const tbl = key => {
+    const s = SLABS[key];
+    let r = `<tr><td>Lifeline (whole month ≤ 50)</td><td class="num">${s.lifeline.toFixed(2)}</td></tr>`;
+    s.bands.forEach((b,i) => r += `<tr><td>${bandLabels[i]}</td><td class="num">${b[1].toFixed(2)}</td></tr>`);
+    return `<table class="mtable"><thead><tr><th>${s.label} — kWh band</th><th class="num">Tk/kWh</th></tr></thead><tbody>${r}</tbody></table>`;
+  };
+  const st = document.getElementById("slab-tables");
+  if (st) st.innerHTML = tbl("2024-02") + tbl("2026-06");
+
+  const we = document.getElementById("worked-example");
+  if (!we) return;
+  const R = 1000, v = Math.max(0,cfg.vat)/100, rb = Math.max(0,cfg.rebate)/100;
+  const vat = R * v / (1 + v), demand = cfg.demand * cfg.kw, rent = cfg.rent;
+  const reb1 = Math.max(0, R - vat - rent) * rb / (1 + rb), E1 = Math.max(0, R - vat - demand - rent + reb1);
+  const reb2 = Math.max(0, R - vat) * rb / (1 + rb), E2 = Math.max(0, R - vat + reb2);
+  const f = x => x.toFixed(2);
+  we.innerHTML =
+    `<p>Worked example for a <strong>Tk 1,000</strong> recharge with your current settings (load ${cfg.kw} kW, demand ${cfg.demand} Tk/kW, meter rent ${cfg.rent} Tk, VAT ${cfg.vat}%, rebate ${cfg.rebate}%):</p>` +
+    `<table class="mtable" style="width:100%"><thead><tr><th>Component</th><th class="num">1st recharge of month</th><th class="num">Later, same month</th></tr></thead><tbody>` +
+    `<tr><td>Recharge</td><td class="num">1000.00</td><td class="num">1000.00</td></tr>` +
+    `<tr><td>− VAT (${cfg.vat}%)</td><td class="num">−${f(vat)}</td><td class="num">−${f(vat)}</td></tr>` +
+    `<tr><td>− Demand charge (${cfg.kw} × ${cfg.demand})</td><td class="num">−${f(demand)}</td><td class="num">0.00</td></tr>` +
+    `<tr><td>− Meter rent</td><td class="num">−${f(rent)}</td><td class="num">0.00</td></tr>` +
+    `<tr><td>+ Rebate (${cfg.rebate}%)</td><td class="num">+${f(reb1)}</td><td class="num">+${f(reb2)}</td></tr>` +
+    `<tr><td><strong>= Energy money</strong></td><td class="num"><strong>${f(E1)}</strong></td><td class="num"><strong>${f(E2)}</strong></td></tr>` +
+    `</tbody></table>` +
+    `<p>This energy money is stored in the meter as a balance and billed as you consume — each kWh priced at that month's slab, by month-to-date <em>consumption</em>. The later recharge keeps <em>more</em> energy money because its fixed charges were already paid earlier in the month; recharge timing only changes those one-time fixed charges, not the per-unit energy price.</p>`;
+}
+
 function exportCsv() {
   // pull live values straight from the inputs so unsaved edits are included
-  const lines = ["date,amount"];
+  const lines = [
+    "# BPDB recharge tracker settings (lines starting with # are config)",
+    `# load_kw,${cfg.kw}`,
+    `# demand_rate,${cfg.demand}`,
+    `# meter_rent,${cfg.rent}`,
+    `# vat_pct,${cfg.vat}`,
+    `# rebate_pct,${cfg.rebate}`,
+    "date,amount"
+  ];
   rows.forEach(r => {
     const date = (getVal(r.id,"date") || r.date || "").trim();
     const amount = (getVal(r.id,"amount") || r.amount || "").toString().trim();
@@ -403,9 +644,20 @@ function importCsv(input) {
   reader.onload = e => {
     const text = String(e.target.result).replace(/^﻿/, ""); // strip BOM
     const parsed = [];
+    const cfgFromCsv = {};
+    const CFG_MAP = { load_kw:"kw", demand_rate:"demand", meter_rent:"rent", vat_pct:"vat", rebate_pct:"rebate" };
     text.split(/\r\n|\r|\n/).forEach(line => {
       const t = line.trim();
       if (!t) return;
+      // config line, e.g. "# load_kw,2"
+      if (t.startsWith("#")) {
+        const kv = t.slice(1).split(",").map(c => c.trim());
+        const key = CFG_MAP[kv[0]], val = kv[1];
+        if (key && val !== undefined && val !== "") {
+          const n = parseFloat(val); if (!isNaN(n)) cfgFromCsv[key] = n;
+        }
+        return;
+      }
       const cells = t.split(",").map(c => c.trim().replace(/^"|"$/g, ""));
       const date = cells[0], amount = cells[1];
       // skip header / non-data rows
@@ -425,6 +677,7 @@ function importCsv(input) {
     rows = [];
     renderRows();
     parsed.forEach(d => addRow(d.date, d.amount)); // addRow already calls save()
+    if (Object.keys(cfgFromCsv).length) { cfg = { ...cfg, ...cfgFromCsv }; renderCfg(); saveCfg(); }
     document.getElementById("err").classList.remove("show");
     calculate();
     input.value = ""; // allow re-importing the same file
@@ -490,6 +743,28 @@ function exportChart(type) {
   img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgStr)));
 }
 
+// ---- BPDB prepaid model helpers ----
+function slabSetForDate(d) {
+  // rate era chosen automatically by recharge date
+  return d >= RATE_CUTOVER ? SLABS["2026-06"] : SLABS["2024-02"];
+}
+// Taka cost to consume `kwh` units, starting from cumulative month-to-date `cum`, up the slabs.
+// (The meter prices energy as it's consumed — this is the inverse of "how many units does E buy".)
+function costKwh(kwh, cum, bands) {
+  let rem = kwh, cost = 0, c = cum;
+  for (const [upTo, rate] of bands) {
+    if (c >= upTo) continue;
+    const take = Math.min(rem, upTo - c);
+    cost += take * rate; c += take; rem -= take;
+    if (rem <= 1e-9) break;
+  }
+  return cost;
+}
+function monthsBetweenKeys(aKey, bDate) {
+  const [ay, am] = aKey.split("-").map(Number);
+  return (bDate.getFullYear() - ay) * 12 + (bDate.getMonth() + 1 - am);
+}
+
 function renderChart(keys, monthly) {
   const svg = document.getElementById("chart");
   const W = 720, H = 260;
@@ -497,9 +772,14 @@ function renderChart(keys, monthly) {
   const plotW = W - padL - padR, plotH = H - padT - padB;
   const n = keys.length;
 
-  if (n === 0) { svg.innerHTML = ""; return; }
+  if (n === 0) { svg.innerHTML = ""; svg.setAttribute("viewBox", `0 0 ${W} ${H}`); return; }
 
-  const max = Math.max(...keys.map(k => monthly[k].total), 1);
+  const field = metric === "kwh" ? "kwh" : "tk";
+  const pre = metric === "kwh" ? "" : "Tk ";
+  const suf = metric === "kwh" ? " kWh" : "";
+  const valOf = k => monthly[k][field];
+
+  const max = Math.max(...keys.map(valOf), 1);
   // "nice" axis top: round the max up to a clean step
   const pow = Math.pow(10, Math.floor(Math.log10(max)));
   const niceMax = Math.ceil(max / pow) * pow;
@@ -512,22 +792,21 @@ function renderChart(keys, monthly) {
 
   // horizontal gridlines + axis labels (0, ½, max)
   [0, 0.5, 1].forEach(f => {
-    const val = niceMax * f;
-    const yy = y(val);
+    const v = niceMax * f;
+    const yy = y(v);
     g += `<line class="grid-line" x1="${padL}" y1="${yy.toFixed(1)}" x2="${W-padR}" y2="${yy.toFixed(1)}"/>`;
-    g += `<text class="grid-lbl" x="${padL}" y="${(yy-3).toFixed(1)}">${Math.round(val).toLocaleString()}</text>`;
+    g += `<text class="grid-lbl" x="${padL}" y="${(yy-3).toFixed(1)}">${Math.round(v).toLocaleString()}</text>`;
   });
 
   keys.forEach((k, i) => {
-    const v = monthly[k];
+    const v = valOf(k);
     const cx = padL + slot * i + slot / 2;
     const x = cx - bw / 2;
-    const h = Math.max(2, (v.total / niceMax) * plotH);
+    const h = Math.max(2, (v / niceMax) * plotH);
     const yy = padT + plotH - h;
-    const fill = v.pending ? "var(--accent)" : "var(--accent)";
-    const op = v.pending ? 0.45 : 1;
-    g += `<rect class="bar" x="${x.toFixed(1)}" y="${yy.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="${fill}" fill-opacity="${op}"><title>${monthLabel(k)}: Tk ${Math.round(v.total).toLocaleString()}${v.pending ? " (pending)" : ""}</title></rect>`;
-    g += `<text class="bar-val" x="${cx.toFixed(1)}" y="${(yy-6).toFixed(1)}" text-anchor="middle">${Math.round(v.total).toLocaleString()}</text>`;
+    const op = monthly[k].pending ? 0.45 : 1;
+    g += `<rect class="bar" x="${x.toFixed(1)}" y="${yy.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="var(--accent)" fill-opacity="${op}"><title>${monthLabel(k)}: ${pre}${Math.round(v).toLocaleString()}${suf}${monthly[k].pending ? " (pending)" : ""}</title></rect>`;
+    g += `<text class="bar-val" x="${cx.toFixed(1)}" y="${(yy-6).toFixed(1)}" text-anchor="middle">${Math.round(v).toLocaleString()}</text>`;
     const [yr, mo] = k.split("-");
     const short = new Date(+yr, +mo-1, 1).toLocaleDateString("en-GB",{month:"short"});
     g += `<text class="bar-lbl" x="${cx.toFixed(1)}" y="${(H-padB+15).toFixed(1)}" text-anchor="middle">${short}</text>`;
@@ -560,49 +839,107 @@ function calculate() {
     if (!last || +r.date !== +last.date || r.amount !== last.amount) deduped.push(r);
   });
 
-  const monthly = {};
   const today = new Date();
   today.setHours(0,0,0,0);
+
+  // ----- per-recharge energy money, then price kWh at CONSUMPTION time -----
+  // BPDB inserts a taka "energy balance" into the meter at vending — it does NOT fix kWh then.
+  // The meter prices each kWh as it is consumed, by month-to-date CONSUMPTION, resetting on the
+  // 1st. We assume even daily kWh use across the window (NOT even daily taka), price each day up a
+  // slab counter keyed to the consumption month, and pick the window's total kWh so the priced
+  // cost equals the energy money.
+  const vatRate = Math.max(0, cfg.vat) / 100;
+  const rebRate = Math.max(0, cfg.rebate) / 100;
+  const monthCum = {};          // consumption month key -> kWh consumed so far that month
+  const vended = {};            // calendar month -> has had a vending (drives monthly fixed charges)
+  let lastChargedKey = null;    // last calendar month that paid fixed (demand + rent) charges
   let totalRecharged = 0;
+  const monthly = {};
 
   deduped.forEach((r, i) => {
     totalRecharged += r.amount;
+    const mk = monthKey(r.date);
+
+    // fixed charges (demand + meter rent) are owed once per calendar month of VENDING; a skipped
+    // month rolls into the next vending. This is keyed to recharge date, independent of consumption.
+    const firstVending = !(mk in vended);
+    let monthsDue = 0;
+    if (firstVending) {
+      monthsDue = lastChargedKey === null ? 1 : Math.max(1, monthsBetweenKeys(lastChargedKey, r.date));
+      lastChargedKey = mk;
+      vended[mk] = true;
+    }
+
+    const R = r.amount;
+    const vat    = R * vatRate / (1 + vatRate);                 // VAT extracted from gross recharge
+    const demand = firstVending ? cfg.demand * cfg.kw * monthsDue : 0;
+    const rent   = firstVending ? cfg.rent * monthsDue : 0;
+    const rebate = Math.max(0, R - vat - rent) * rebRate / (1 + rebRate);
+    const energyMoney = Math.max(0, R - vat - demand - rent + rebate);  // taka inserted into meter
+
+    // consumption window [r.date, end): the balance drains until the next recharge (or today).
     const next = deduped[i+1];
     const end = next ? next.date : (today > r.date ? today : new Date(r.date.getTime() + DAY));
     const totalDays = Math.max(1, Math.round((end - r.date) / DAY));
 
-    // walk calendar months with HALF-OPEN intervals [cur, firstOfNextMonth)
-    // so the per-month day counts sum exactly to totalDays (no boundary days lost).
+    // split the window into per-calendar-month slices (half-open), each priced at its own
+    // month-to-date consumption and rate era.
+    const segs = [];
     let cur = new Date(r.date);
-    let allocated = 0;
     while (cur < end) {
       const firstOfNext = new Date(cur.getFullYear(), cur.getMonth()+1, 1);
       const segEnd = firstOfNext < end ? firstOfNext : end;
-      const days = Math.round((segEnd - cur) / DAY);
-      const portion = (days / totalDays) * r.amount;
-      const mk = monthKey(cur);
-      if (!monthly[mk]) monthly[mk] = { total: 0, pending: false };
-      monthly[mk].total += portion;
-      if (!next) monthly[mk].pending = true;
-      allocated += portion;
+      const smk = monthKey(cur);
+      if (!(smk in monthCum)) monthCum[smk] = 0;
+      segs.push({ mk: smk, frac: Math.round((segEnd - cur) / DAY) / totalDays,
+                  bands: slabSetForDate(cur).bands, cum: monthCum[smk] });
       cur = segEnd;
     }
-    // guard against any rounding drift — pin the remainder to the last month touched
-    const drift = r.amount - allocated;
-    if (Math.abs(drift) > 1e-6) monthly[monthKey(new Date(end - DAY))].total += drift;
+
+    // Even daily energy use: find total window kWh K such that the priced cost == energyMoney,
+    // where each month's slice (K·frac) is billed from that month's running consumption counter.
+    // cost(K) is monotonically increasing in K, so binary-search it.
+    const cost = K => segs.reduce((s, g) => s + costKwh(K * g.frac, g.cum, g.bands), 0);
+    let lo = 0, hi = energyMoney / 4 + 1;        // lowest band rate > 4, so /4 over-bounds K
+    while (cost(hi) < energyMoney) hi *= 2;
+    for (let it = 0; it < 60; it++) {
+      const mid = (lo + hi) / 2;
+      if (cost(mid) < energyMoney) lo = mid; else hi = mid;
+    }
+    const K = (lo + hi) / 2;
+
+    r.kwh = K;
+    r.rate = K > 0 ? R / K : 0;                   // all-in Tk/kWh for this recharge
+
+    // credit each month its kWh slice + cash share, and advance its consumption counter.
+    let allocK = 0, allocT = 0, lastMk = mk;
+    segs.forEach(g => {
+      const segK = K * g.frac, segT = R * g.frac;
+      if (!monthly[g.mk]) monthly[g.mk] = { kwh: 0, tk: 0, pending: false };
+      monthly[g.mk].kwh += segK;
+      monthly[g.mk].tk  += segT;
+      if (!next) monthly[g.mk].pending = true;
+      monthCum[g.mk] += segK;
+      allocK += segK; allocT += segT; lastMk = g.mk;
+    });
+    // pin any rounding drift to the last month touched
+    if (monthly[lastMk]) {
+      monthly[lastMk].kwh += K - allocK; monthly[lastMk].tk += R - allocT;
+      monthCum[lastMk]    += K - allocK;
+    }
   });
 
   const sortedKeys = Object.keys(monthly).sort();
 
-  // ----- summary stats (average excludes pending month) -----
+  // ----- summary stats (averages exclude the pending month) -----
   const complete = sortedKeys.filter(k => !monthly[k].pending);
-  const completeSum = complete.reduce((s,k) => s + monthly[k].total, 0);
-  const avg = complete.length ? completeSum / complete.length : 0;
+  const avgK = complete.length ? complete.reduce((s,k) => s + monthly[k].kwh, 0) / complete.length : 0;
+  const avgT = complete.length ? complete.reduce((s,k) => s + monthly[k].tk, 0) / complete.length : 0;
 
   document.getElementById("stat-grid").innerHTML = `
     <div class="stat"><div class="stat-label">Total recharged</div><div class="stat-val">Tk ${Math.round(totalRecharged).toLocaleString()}</div></div>
-    <div class="stat"><div class="stat-label">Months tracked</div><div class="stat-val">${sortedKeys.length}</div></div>
-    <div class="stat"><div class="stat-label">Avg / month <span>(complete)</span></div><div class="stat-val">Tk ${Math.round(avg).toLocaleString()}</div></div>`;
+    <div class="stat"><div class="stat-label">Avg usage / month <span>(complete)</span></div><div class="stat-val">${Math.round(avgK).toLocaleString()} <span>kWh</span></div></div>
+    <div class="stat"><div class="stat-label">Avg spend / month <span>(complete)</span></div><div class="stat-val">Tk ${Math.round(avgT).toLocaleString()}</div></div>`;
 
   renderChart(sortedKeys, monthly);
 
@@ -610,7 +947,8 @@ function calculate() {
     const v = monthly[k];
     return `<div class="mcard">
       <div class="mcard-label">${monthLabel(k)}</div>
-      <div class="mcard-val">Tk ${Math.round(v.total).toLocaleString()}${v.pending ? '<span>pending</span>' : ''}</div>
+      <div class="mcard-val">${Math.round(v.kwh).toLocaleString()}<span class="unit">kWh</span>${v.pending ? '<span>pending</span>' : ''}</div>
+      <div class="mcard-sub">Tk ${Math.round(v.tk).toLocaleString()} · ${v.kwh > 0 ? (v.tk / v.kwh).toFixed(2) : '–'} Tk/kWh</div>
     </div>`;
   }).join("");
 
@@ -621,15 +959,20 @@ function calculate() {
     return `<tr>
       <td>${fmtDate(r.date)}</td>
       <td class="num">Tk ${r.amount.toLocaleString()}</td>
+      <td class="num">${r.kwh.toFixed(1)}</td>
+      <td class="num">${r.rate ? r.rate.toFixed(2) : '–'}</td>
       <td>${next ? fmtDate(next.date) : '<span class="tag-ongoing">ongoing</span>'}</td>
       <td class="num">${days}</td>
     </tr>`;
   }).join("");
 
+  renderMethod();
   document.getElementById("results").classList.add("show");
   document.getElementById("placeholder").style.display = "none";
 }
 
+loadCfg();
+renderCfg();
 const saved = load();
 (saved || DEFAULT_DATA).forEach(d => addRow(d.date, d.amount));
 calculate();
