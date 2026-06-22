@@ -98,7 +98,7 @@ body {
 
 .header-row, .entry-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 40px;
+  grid-template-columns: 1.5fr 1fr 40px;
   gap: 10px;
   align-items: center;
 }
@@ -119,6 +119,20 @@ input {
 }
 input::placeholder { color: var(--text-secondary); opacity: .7; }
 input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.date-field {
+  position: relative; display: flex; align-items: center; gap: 8px; min-width: 0;
+  width: 100%; font-size: 14px; color: var(--text-primary);
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 10px; cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+}
+.date-field:hover { border-color: var(--accent); }
+.date-field:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.date-display { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.date-display.placeholder { color: var(--text-secondary); opacity: .7; }
+.date-cal { width: 16px; height: 16px; stroke: var(--text-secondary); flex-shrink: 0; }
+.date-native { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; margin: 0; padding: 0; pointer-events: none; }
 
 button { font-family: inherit; cursor: pointer; }
 
@@ -162,6 +176,14 @@ button { font-family: inherit; cursor: pointer; }
 .stat-label { font-size: 11.5px; color: var(--text-secondary); margin-bottom: 4px; }
 .stat-val { font-size: 19px; font-weight: 600; color: var(--accent-strong); }
 .stat-val span { font-size: 12px; font-weight: 400; color: var(--text-secondary); }
+
+.forecast { display: flex; align-items: flex-start; gap: 12px; background: var(--accent-soft); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 26px; }
+.forecast .fc-ico { color: var(--accent-strong); flex-shrink: 0; margin-top: 1px; }
+.forecast .fc-head { font-size: 15px; font-weight: 600; color: var(--text-primary); letter-spacing: -.01em; }
+.forecast .fc-sub { font-size: 12.5px; color: var(--text-secondary); margin-top: 3px; line-height: 1.5; }
+.forecast.overdue { background: #fdecec; border-color: #f3c4c4; border-left-color: var(--danger); }
+.forecast.overdue .fc-ico { color: var(--danger); }
+@media (prefers-color-scheme: dark) { .forecast.overdue { background: #281514; border-color: #4a2522; } }
 
 .month-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 11px; margin-bottom: 14px; }
 .mcard { background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 13px 15px; }
@@ -283,11 +305,13 @@ button { font-family: inherit; cursor: pointer; }
      <div class="results" id="results">
       <p class="section-title">Summary</p>
       <div class="stat-grid" id="stat-grid"></div>
+      <div class="forecast" id="forecast" style="display:none"></div>
 
       <div class="title-row">
         <p class="section-title" style="margin-bottom:0">Monthly trend</p>
         <div class="toggle" id="metric-toggle">
           <button id="m-kwh" class="active" onclick="setMetric('kwh')">kWh</button>
+          <button id="m-perday" onclick="setMetric('perday')">kWh/day</button>
           <button id="m-tk" onclick="setMetric('tk')">Tk</button>
         </div>
         <button class="btn-mini" onclick="exportChart('png')">
@@ -300,7 +324,7 @@ button { font-family: inherit; cursor: pointer; }
         </button>
       </div>
       <div class="chart-wrap"><svg id="chart" role="img" aria-label="Monthly spend bar chart"></svg></div>
-      <div class="chart-legend">
+      <div class="chart-legend" id="chart-legend">
         <span><i class="swatch solid"></i> Complete month</span>
         <span><i class="swatch hatched"></i> Pending (not fully used)</span>
       </div>
@@ -373,7 +397,7 @@ button { font-family: inherit; cursor: pointer; }
       <p class="error" id="err"></p>
 
       <div class="header-row">
-        <span>Date (DD/MM/YYYY)</span>
+        <span>Date</span>
         <span>Amount (Tk)</span>
         <span></span>
       </div>
@@ -423,6 +447,9 @@ button { font-family: inherit; cursor: pointer; }
        <li>The <strong>first month</strong> in your data usually starts mid-month, so it captures only part of that month's use and can read low.</li>
        <li>This assumes <strong>roughly even daily use</strong>. Real consumption varies with weather and travel, so read each month as a solid estimate, not an exact meter figure.</li>
      </ul>
+
+     <h3>Forecasting your next recharge</h3>
+     <p>Your most recent top-up still has balance left in the meter. To estimate when it runs out, the tool takes your <strong>recent average daily use</strong> — kWh per day over roughly the last two months of completed windows — and drains the remaining energy money forward one day at a time, pricing each day at its month's slab and resetting on the 1st, until the balance reaches zero. That date is shown as <em>Next recharge</em>: the latest you'd need to top up if your usual habits hold. It shifts with weather and travel, so treat it as a heads-up, not a deadline.</p>
 
      <h3>Slab rates used</h3>
      <p>Rates are set by BERC and applied <strong>automatically by date of use</strong>: the <strong>Feb 2024</strong> schedule through 31 May 2026, and the <strong>Jun 2026</strong> hike from 1 Jun 2026 onward.</p>
@@ -531,16 +558,49 @@ function addRow(d="", a="") {
 function removeRow(id) { rows = rows.filter(r => r.id !== id); renderRows(); save(); }
 function getVal(id, field) { const el = document.getElementById(`${field}_${id}`); return el ? el.value : ""; }
 
+// date helpers for the native date picker (recharge dates are stored internally as DD/MM/YYYY,
+// the format the CSV and parseDate use; the native <input type="date"> needs ISO YYYY-MM-DD).
+function toISO(ddmmyyyy) {
+  const d = parseDate(ddmmyyyy);
+  return d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}` : "";
+}
+function fromISO(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso));
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : "";
+}
+function openDatePicker(id) {
+  const inp = document.getElementById(`date_${id}`);
+  if (!inp) return;
+  try { inp.showPicker(); } catch (e) { inp.focus(); }   // showPicker unsupported -> focus fallback
+}
+function syncDate(id, iso) {
+  const r = rows.find(r => r.id === id);
+  if (!r) return;
+  r.date = fromISO(iso);   // keep DD/MM/YYYY internally; "" if the picker was cleared
+  save();
+  renderRows();            // refresh the "23 Jun 2026" display text
+}
+
 function renderRows() {
-  // newest recharge on top (rows is kept oldest-first internally)
-  document.getElementById("entries").innerHTML = rows.slice().reverse().map(r => `
+  // newest recharge on top (rows is kept oldest-first internally). The date is shown formatted
+  // ("23 Jun 2026") and backed by a native date picker; the amount stays a plain number input.
+  document.getElementById("entries").innerHTML = rows.slice().reverse().map(r => {
+    const d = parseDate(r.date);
+    const disp = d ? fmtDate(d) : "Select date";
+    return `
     <div class="entry-row" id="row_${r.id}">
-      <input type="text" id="date_${r.id}" placeholder="DD/MM/YYYY" value="${r.date}" maxlength="10" inputmode="numeric" oninput="syncRow(${r.id},'date',this.value)">
+      <div class="date-field" role="button" tabindex="0" aria-label="Recharge date${d ? ': ' + disp : ', not set'}"
+           onclick="openDatePicker(${r.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDatePicker(${r.id})}">
+        <span class="date-display${d ? '' : ' placeholder'}">${disp}</span>
+        <svg class="icon date-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+        <input type="date" id="date_${r.id}" class="date-native" value="${toISO(r.date)}" onchange="syncDate(${r.id},this.value)" tabindex="-1" aria-hidden="true">
+      </div>
       <input type="number" id="amount_${r.id}" placeholder="e.g. 500" value="${r.amount}" min="0" oninput="syncRow(${r.id},'amount',this.value)">
       <button class="del-btn" onclick="removeRow(${r.id})" aria-label="Remove row">
         <svg class="icon" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
-    </div>`).join("");
+    </div>`;
+  }).join("");
 }
 
 function syncRow(id, field, val) { const r = rows.find(r => r.id === id); if (r) { r[field] = val; save(); } }
@@ -564,8 +624,7 @@ function syncCfg() {
 }
 function setMetric(m) {
   metric = m;
-  document.getElementById("m-kwh").classList.toggle("active", m === "kwh");
-  document.getElementById("m-tk").classList.toggle("active", m === "tk");
+  ["kwh", "perday", "tk"].forEach(x => document.getElementById("m-" + x).classList.toggle("active", m === x));
   calculate();
 }
 
@@ -623,7 +682,7 @@ function exportCsv() {
     "date,amount"
   ];
   rows.forEach(r => {
-    const date = (getVal(r.id,"date") || r.date || "").trim();
+    const date = (r.date || "").trim();
     const amount = (getVal(r.id,"amount") || r.amount || "").toString().trim();
     if (date || amount) lines.push(`${date},${amount}`);
   });
@@ -765,19 +824,77 @@ function monthsBetweenKeys(aKey, bDate) {
   return (bDate.getFullYear() - ay) * 12 + (bDate.getMonth() + 1 - am);
 }
 
-function renderChart(keys, monthly) {
+// ---- next-recharge forecast ----
+// Recent average daily kWh, from COMPLETE windows only (weighted by days), within a trailing
+// lookback. Excludes the pending recharge (its window is open-ended and would bias the rate).
+function recentDailyKwh(deduped, today) {
+  const LOOKBACK = 60, cutoff = new Date(today.getTime() - LOOKBACK * DAY);
+  const tally = clip => {
+    let k = 0, d = 0;
+    for (let i = 0; i < deduped.length - 1; i++) {        // exclude the pending (last) recharge
+      const r = deduped[i], next = deduped[i + 1];
+      const wDays = Math.max(1, Math.round((next.date - r.date) / DAY));
+      const start = clip && r.date < cutoff ? cutoff : r.date;
+      if (start >= next.date) continue;
+      const days = Math.max(0, Math.round((next.date - start) / DAY));
+      if (!days) continue;
+      k += r.kwh * (days / wDays); d += days;              // even daily kWh -> clip kWh by day-share
+    }
+    return { k, d };
+  };
+  let { k, d } = tally(true);
+  if (d < 7) ({ k, d } = tally(false));                   // too little recent data -> use all complete windows
+  return d > 0 ? k / d : 0;
+}
+
+// Drain the pending balance forward at `dailyKwh`/day, pricing each day up the consumption slabs
+// (month-to-date counter continued from `cumSnap`, reset on the 1st) until it hits zero. Returns the
+// run-dry date and the balance still left as of `today`. Mirrors the consumption-time model exactly.
+function forecastNextRecharge(start, energyMoney, cumSnap, dailyKwh, today) {
+  if (!(dailyKwh > 0) || !(energyMoney > 0)) return null;
+  let bal = energyMoney, balanceToday = null;
+  const cum = { ...cumSnap };
+  let day = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  for (let i = 0; i < 1200; i++) {                        // safety cap (~3.3 yrs of daily steps)
+    if (balanceToday === null && day >= today) balanceToday = bal;
+    const mk = monthKey(day);
+    if (!(mk in cum)) cum[mk] = 0;                         // new calendar month -> slab counter resets
+    const dayCost = costKwh(dailyKwh, cum[mk], slabSetForDate(day).bands);
+    if (dayCost <= 0) break;
+    if (bal <= dayCost) {                                  // depletes partway through this day
+      const depletion = new Date(day.getTime() + (bal / dayCost) * DAY);
+      return { depletion, balanceToday: balanceToday === null ? 0 : Math.max(0, balanceToday) };
+    }
+    bal -= dayCost; cum[mk] += dailyKwh;
+    day = new Date(day.getTime() + DAY);
+  }
+  return null;
+}
+
+function renderChart(keys, monthly, windows) {
   const svg = document.getElementById("chart");
   const W = 720, H = 260;
+
+  const legend = document.getElementById("chart-legend");
+  if (legend) legend.innerHTML = metric === "perday"
+    ? `<span>Average <strong>kWh/day</strong> in each gap between recharges — hover a point for its dates. The still-draining latest recharge is excluded.</span>`
+    : `<span><i class="swatch solid"></i> Complete month</span><span><i class="swatch hatched"></i> Pending (not fully used)</span>`;
+  svg.setAttribute("aria-label", metric === "perday"
+    ? "Average kWh per day between recharges, line chart" : "Monthly usage bar chart");
+
+  // kWh/day is drawn as a per-recharge-window line chart — more granular than the monthly bars.
+  if (metric === "perday") return renderRateLine(svg, windows, W, H);
+
   const padL = 8, padR = 8, padT = 22, padB = 34;
   const plotW = W - padL - padR, plotH = H - padT - padB;
   const n = keys.length;
 
   if (n === 0) { svg.innerHTML = ""; svg.setAttribute("viewBox", `0 0 ${W} ${H}`); return; }
 
-  const field = metric === "kwh" ? "kwh" : "tk";
-  const pre = metric === "kwh" ? "" : "Tk ";
+  const pre = metric === "tk" ? "Tk " : "";
   const suf = metric === "kwh" ? " kWh" : "";
-  const valOf = k => monthly[k][field];
+  const valOf = k => metric === "tk" ? monthly[k].tk : monthly[k].kwh;
+  const fmtV = v => Math.round(v).toLocaleString();
 
   const max = Math.max(...keys.map(valOf), 1);
   // "nice" axis top: round the max up to a clean step
@@ -795,7 +912,7 @@ function renderChart(keys, monthly) {
     const v = niceMax * f;
     const yy = y(v);
     g += `<line class="grid-line" x1="${padL}" y1="${yy.toFixed(1)}" x2="${W-padR}" y2="${yy.toFixed(1)}"/>`;
-    g += `<text class="grid-lbl" x="${padL}" y="${(yy-3).toFixed(1)}">${Math.round(v).toLocaleString()}</text>`;
+    g += `<text class="grid-lbl" x="${padL}" y="${(yy-3).toFixed(1)}">${fmtV(v)}</text>`;
   });
 
   keys.forEach((k, i) => {
@@ -805,8 +922,8 @@ function renderChart(keys, monthly) {
     const h = Math.max(2, (v / niceMax) * plotH);
     const yy = padT + plotH - h;
     const op = monthly[k].pending ? 0.45 : 1;
-    g += `<rect class="bar" x="${x.toFixed(1)}" y="${yy.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="var(--accent)" fill-opacity="${op}"><title>${monthLabel(k)}: ${pre}${Math.round(v).toLocaleString()}${suf}${monthly[k].pending ? " (pending)" : ""}</title></rect>`;
-    g += `<text class="bar-val" x="${cx.toFixed(1)}" y="${(yy-6).toFixed(1)}" text-anchor="middle">${Math.round(v).toLocaleString()}</text>`;
+    g += `<rect class="bar" x="${x.toFixed(1)}" y="${yy.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="var(--accent)" fill-opacity="${op}"><title>${monthLabel(k)}: ${pre}${fmtV(v)}${suf}${monthly[k].pending ? " (pending)" : ""}</title></rect>`;
+    g += `<text class="bar-val" x="${cx.toFixed(1)}" y="${(yy-6).toFixed(1)}" text-anchor="middle">${fmtV(v)}</text>`;
     const [yr, mo] = k.split("-");
     const short = new Date(+yr, +mo-1, 1).toLocaleDateString("en-GB",{month:"short"});
     g += `<text class="bar-lbl" x="${cx.toFixed(1)}" y="${(H-padB+15).toFixed(1)}" text-anchor="middle">${short}</text>`;
@@ -819,12 +936,93 @@ function renderChart(keys, monthly) {
   svg.innerHTML = g;
 }
 
+// Smooth interpolating curve (Catmull-Rom -> cubic Bezier) through evenly-spaced points. Tangents
+// are zeroed at local extrema so the curve passes through every real point without overshooting a
+// peak or dipping below a trough.
+function smoothPath(P) {
+  const n = P.length;
+  if (n < 2) return n ? `M ${P[0].x.toFixed(2)} ${P[0].y.toFixed(2)}` : "";
+  const m = P.map((p, i) =>
+    i === 0 ? P[1].y - P[0].y : i === n-1 ? P[n-1].y - P[n-2].y : (P[i+1].y - P[i-1].y) / 2);
+  for (let i = 1; i < n-1; i++) {
+    if ((P[i].y - P[i-1].y) * (P[i+1].y - P[i].y) < 0) m[i] = 0;   // local peak/trough -> flat tangent
+  }
+  let d = `M ${P[0].x.toFixed(2)} ${P[0].y.toFixed(2)}`;
+  for (let i = 0; i < n-1; i++) {
+    const dx = P[i+1].x - P[i].x;
+    d += ` C ${(P[i].x + dx/3).toFixed(2)} ${(P[i].y + m[i]/3).toFixed(2)},`
+       + ` ${(P[i+1].x - dx/3).toFixed(2)} ${(P[i+1].y - m[i+1]/3).toFixed(2)},`
+       + ` ${P[i+1].x.toFixed(2)} ${P[i+1].y.toFixed(2)}`;
+  }
+  return d;
+}
+
+// Line chart of average kWh/day for each gap between consecutive recharges (one point per
+// completed window). The pending window is excluded — its short, still-draining span gives a
+// meaningless rate. Points are evenly spaced and labelled by the recharge date.
+function renderRateLine(svg, windows, W, H) {
+  const padR = 8, padT = 22, padB = 34;
+  const x0 = 34, x1 = W - padR;                 // x0 leaves room for the y-axis labels
+  const plotH = H - padT - padB;
+  const n = windows.length;
+  if (n === 0) { svg.innerHTML = ""; svg.setAttribute("viewBox", `0 0 ${W} ${H}`); return; }
+
+  const max = Math.max(...windows.map(w => w.perday), 1);
+  const pow = Math.pow(10, Math.floor(Math.log10(max)));
+  const niceMax = Math.ceil(max / pow) * pow;
+  const y = v => padT + plotH - (v / niceMax) * plotH;
+  const X = i => n === 1 ? (x0 + x1) / 2 : x0 + (x1 - x0) * i / (n - 1);
+  const f1 = v => Number.isInteger(v) ? String(v) : v.toFixed(1);
+
+  let g = "";
+  [0, 0.5, 1].forEach(fr => {
+    const v = niceMax * fr, yy = y(v);
+    g += `<line class="grid-line" x1="8" y1="${yy.toFixed(1)}" x2="${W-padR}" y2="${yy.toFixed(1)}"/>`;
+    g += `<text class="grid-lbl" x="8" y="${(yy-3).toFixed(1)}">${f1(v)}</text>`;
+  });
+
+  const P = windows.map((w, i) => ({ x: X(i), y: y(w.perday) }));
+  g += `<path fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" d="${smoothPath(P)}"/>`;
+
+  windows.forEach((w, i) => {
+    const cx = X(i), cy = y(w.perday);
+    g += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3" fill="var(--accent)"><title>${fmtDate(w.date)} → ${fmtDate(w.end)} · ${w.days} day${w.days === 1 ? "" : "s"} · ${w.perday.toFixed(2)} kWh/day</title></circle>`;
+    g += `<text class="bar-val" x="${cx.toFixed(1)}" y="${(cy-8).toFixed(1)}" text-anchor="middle">${w.perday.toFixed(1)}</text>`;
+    if (n <= 12 || i % 2 === 0 || i === n - 1) {
+      const dl = w.date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+      g += `<text class="bar-lbl" x="${cx.toFixed(1)}" y="${(H-padB+15).toFixed(1)}" text-anchor="middle">${dl}</text>`;
+    }
+  });
+
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = g;
+}
+
+function renderForecast(fc, dailyKwh, today) {
+  const el = document.getElementById("forecast");
+  if (!fc || !(dailyKwh > 0)) { el.style.display = "none"; el.innerHTML = ""; return; }
+  const dep = fc.depletion;
+  const daysLeft = Math.round((dep - today) / DAY);
+  const overdue = daysLeft < 0;
+  const kwhLeft = Math.max(0, dailyKwh * (dep - today) / DAY);
+  const when = dep.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
+  const head = overdue ? "Recharge likely due now" : `Next recharge ≈ ${when}`;
+  const sub = overdue
+    ? `Your last top-up's balance should have run out around ${fmtDate(dep)} — about ${-daysLeft} day${-daysLeft === 1 ? "" : "s"} ago, at a recent ≈ ${dailyKwh.toFixed(1)} kWh/day.`
+    : `~${daysLeft} day${daysLeft === 1 ? "" : "s"} from today · ≈ Tk ${Math.round(fc.balanceToday).toLocaleString()} (${Math.round(kwhLeft)} kWh) left · using ≈ ${dailyKwh.toFixed(1)} kWh/day recently`;
+  el.className = "forecast" + (overdue ? " overdue" : "");
+  el.style.display = "";
+  el.innerHTML =
+    `<svg class="icon fc-ico" style="width:20px;height:20px" viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 10v4"/><path d="M9.5 9 7.5 12h3l-2 3"/></svg>` +
+    `<div><div class="fc-head">${head}</div><div class="fc-sub">${sub}</div></div>`;
+}
+
 function calculate() {
   const err = document.getElementById("err");
   err.classList.remove("show");
 
   const raw = rows.map(r => ({
-    date: parseDate(getVal(r.id,"date") || r.date),
+    date: parseDate(r.date),
     amount: parseFloat(getVal(r.id,"amount") || r.amount)
   })).filter(r => r.date && !isNaN(r.amount) && r.amount > 0);
 
@@ -832,11 +1030,19 @@ function calculate() {
 
   raw.sort((a,b) => a.date - b.date);
 
-  // collapse exact duplicate (same date + amount) consecutive entries
+  // collapse same-date recharges. An exact (date + amount) repeat is treated as an accidental
+  // double-entry and dropped; two DIFFERENT amounts on the same day are merged (summed) into one.
+  // Merging keeps every window non-empty (a zero-length window would make the slab inversion blow
+  // up to Infinity) and is exactly equivalent to pricing them separately — VAT and rebate are
+  // linear in the amount and the demand/rent fixed charges are billed once per calendar month.
   const deduped = [];
   raw.forEach(r => {
     const last = deduped[deduped.length-1];
-    if (!last || +r.date !== +last.date || r.amount !== last.amount) deduped.push(r);
+    if (last && +r.date === +last.date) {
+      if (r.amount !== last.amount) last.amount += r.amount;   // merge distinct same-day top-ups
+      return;                                                  // else drop the exact duplicate
+    }
+    deduped.push({ date: r.date, amount: r.amount });
   });
 
   const today = new Date();
@@ -855,6 +1061,7 @@ function calculate() {
   let lastChargedKey = null;    // last calendar month that paid fixed (demand + rent) charges
   let totalRecharged = 0;
   const monthly = {};
+  let predCtx = null;           // snapshot for the next-recharge forecast (pending recharge state)
 
   deduped.forEach((r, i) => {
     totalRecharged += r.amount;
@@ -882,6 +1089,10 @@ function calculate() {
     const end = next ? next.date : (today > r.date ? today : new Date(r.date.getTime() + DAY));
     const totalDays = Math.max(1, Math.round((end - r.date) / DAY));
 
+    // the last (pending) recharge still has balance draining: snapshot the month-to-date
+    // consumption BEFORE this recharge is spread, so the forecast can continue it forward.
+    if (!next) predCtx = { start: r.date, energyMoney, cumSnap: { ...monthCum } };
+
     // split the window into per-calendar-month slices (half-open), each priced at its own
     // month-to-date consumption and rate era.
     const segs = [];
@@ -890,8 +1101,9 @@ function calculate() {
       const firstOfNext = new Date(cur.getFullYear(), cur.getMonth()+1, 1);
       const segEnd = firstOfNext < end ? firstOfNext : end;
       const smk = monthKey(cur);
+      const segDays = Math.round((segEnd - cur) / DAY);
       if (!(smk in monthCum)) monthCum[smk] = 0;
-      segs.push({ mk: smk, frac: Math.round((segEnd - cur) / DAY) / totalDays,
+      segs.push({ mk: smk, frac: segDays / totalDays,
                   bands: slabSetForDate(cur).bands, cum: monthCum[smk] });
       cur = segEnd;
     }
@@ -941,7 +1153,19 @@ function calculate() {
     <div class="stat"><div class="stat-label">Avg usage / month <span>(complete)</span></div><div class="stat-val">${Math.round(avgK).toLocaleString()} <span>kWh</span></div></div>
     <div class="stat"><div class="stat-label">Avg spend / month <span>(complete)</span></div><div class="stat-val">Tk ${Math.round(avgT).toLocaleString()}</div></div>`;
 
-  renderChart(sortedKeys, monthly);
+  // per-recharge-window daily rate (kWh ÷ days gap) for the granular kWh/day line chart;
+  // the pending (open-ended) window is excluded.
+  const windows = [];
+  deduped.forEach((r, i) => {
+    const next = deduped[i+1];
+    if (!next) return;
+    const days = Math.max(1, Math.round((next.date - r.date) / DAY));
+    windows.push({ date: r.date, end: next.date, days, kwh: r.kwh, perday: r.kwh / days });
+  });
+  renderChart(sortedKeys, monthly, windows);
+
+  const dailyKwh = recentDailyKwh(deduped, today);
+  renderForecast(predCtx ? forecastNextRecharge(predCtx.start, predCtx.energyMoney, predCtx.cumSnap, dailyKwh, today) : null, dailyKwh, today);
 
   document.getElementById("month-grid").innerHTML = sortedKeys.map(k => {
     const v = monthly[k];
