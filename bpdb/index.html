@@ -50,6 +50,15 @@ body {
   padding: 24px 16px 64px;
 }
 
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+
 .card {
   max-width: 1120px;
   margin: 0 auto;
@@ -57,7 +66,9 @@ body {
   border: 1px solid var(--border);
   border-radius: 18px;
   box-shadow: var(--shadow);
-  overflow: hidden;
+  /* `clip` keeps the banner corners rounded without creating a scroll container —
+     `overflow: hidden` here would silently break position:sticky on .col-right */
+  overflow: clip;
 }
 
 .layout {
@@ -70,29 +81,73 @@ body {
 .col-right {
   position: sticky;
   top: 24px;
+  max-height: calc(100dvh - 48px);
+  display: flex;
+  flex-direction: column;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 18px;
+  padding: 18px 18px 0;
+  /* the panel is the scroll area when it outgrows the window; the action row below
+     stays pinned to its bottom edge, so Calculate is never scrolled out of reach */
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
-.col-right .btn-row { margin-top: 14px; }
 
-.placeholder {
+/* The recharge list can grow long; it scrolls inside the panel so the actions below it
+   (and the settings above) stay reachable. It caps its own height rather than flexing to
+   fill the panel: height does NOT propagate down through a <details>, whose content sits
+   in a ::details-content box, so a flexed list would just overflow its section. */
+.entry-scroll {
+  max-height: 40vh;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  margin: 0 -4px;
+  padding: 0 4px;
+  /* soften the cut-off row at the fold so it reads as "scrolls on" */
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
+}
+.entry-scroll .header-row {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-2);
+  padding-bottom: 6px;
+}
+
+.col-right .btn-row {
+  position: sticky; bottom: 0; z-index: 2;
+  align-items: center; gap: 8px 10px; margin-top: 14px;
+  padding: 12px 0 18px; border-top: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.col-right .btn-primary { flex: 1 1 100%; justify-content: center; }   /* full-width primary, CSV actions below */
+
+/* the panel itself is --surface-2, so its controls lift to --surface to stay legible
+   (same trick the planner already uses inside its tinted box) */
+.col-right input, .col-right select, .col-right .date-field, .col-right .btn-mini { background: var(--surface); }
+.col-right .del-btn:hover { background: var(--surface); }
+
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
   border: 1px dashed var(--border);
   border-radius: var(--radius);
   padding: 40px 24px;
   text-align: center;
   color: var(--text-secondary);
   font-size: 13px;
+  text-wrap: pretty;
 }
+.empty-state p { max-width: 42ch; }
 
 .banner {
   background: linear-gradient(135deg, var(--accent-strong), var(--accent));
   color: #fff;
   padding: 26px 28px;
 }
-.banner h1 { font-size: 21px; font-weight: 600; letter-spacing: -.01em; display: flex; align-items: center; gap: 10px; }
-.banner p { font-size: 13.5px; opacity: .9; margin-top: 6px; }
+.banner h1 { font-size: 21px; font-weight: 600; letter-spacing: -.01em; display: flex; align-items: flex-start; gap: 10px; text-wrap: balance; }
+.banner h1 svg { flex-shrink: 0; margin-top: 3px; }
+.banner p { font-size: 13.5px; opacity: .9; margin-top: 6px; max-width: 68ch; text-wrap: pretty; }
 
 .body { padding: 24px 28px 28px; }
 
@@ -110,6 +165,7 @@ input {
   width: 100%;
   font-family: inherit;
   font-size: 14px;
+  line-height: 1.45;
   color: var(--text-primary);
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -117,14 +173,15 @@ input {
   padding: 10px 12px;
   transition: border-color .15s, box-shadow .15s;
 }
+input[type=number] { font-variant-numeric: tabular-nums; }
 input::placeholder { color: var(--text-secondary); opacity: .7; }
 input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
 .date-field {
   position: relative; display: flex; align-items: center; gap: 8px; min-width: 0;
-  width: 100%; font-size: 14px; color: var(--text-primary);
+  width: 100%; font-size: 14px; line-height: 1.45; color: var(--text-primary);
   background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 10px 10px; cursor: pointer;
+  border-radius: var(--radius-sm); padding: 10px 12px; cursor: pointer;
   transition: border-color .15s, box-shadow .15s;
 }
 .date-field:hover { border-color: var(--accent); }
@@ -172,10 +229,10 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 26px; }
-.stat { background: var(--accent-soft); border-radius: var(--radius); padding: 14px 16px; }
+.stat { background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 14px 16px; }
 .stat-label { font-size: 11.5px; color: var(--text-secondary); margin-bottom: 4px; }
-.stat-val { font-size: 19px; font-weight: 600; color: var(--accent-strong); }
-.stat-val span { font-size: 12px; font-weight: 400; color: var(--text-secondary); }
+.stat-val { font-size: 21px; font-weight: 600; color: var(--text-primary); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.stat-val span { font-size: 12px; font-weight: 400; color: var(--text-secondary); letter-spacing: 0; }
 
 .forecast { display: flex; align-items: flex-start; gap: 12px; background: var(--accent-soft); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 26px; }
 .forecast .fc-ico { color: var(--accent-strong); flex-shrink: 0; margin-top: 1px; }
@@ -185,25 +242,51 @@ button { font-family: inherit; cursor: pointer; }
 .forecast.overdue .fc-ico { color: var(--danger); }
 @media (prefers-color-scheme: dark) { .forecast.overdue { background: #281514; border-color: #4a2522; } }
 
+.planner { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 26px; }
+.plan-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+.plan-head .fc-ico { color: var(--accent-strong); flex-shrink: 0; margin-top: 1px; }
+.plan-title { font-size: 15px; font-weight: 600; color: var(--text-primary); letter-spacing: -.01em; }
+.plan-sub { font-size: 12.5px; color: var(--text-secondary); margin-top: 3px; line-height: 1.5; }
+.plan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.plan-grid .date-field, .plan-grid input { background: var(--surface); }
+.plan-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-secondary); margin-top: 12px; cursor: pointer; }
+.plan-check input { width: auto; flex-shrink: 0; accent-color: var(--accent); }
+.plan-msg { font-size: 12.5px; color: var(--text-secondary); margin-top: 14px; text-wrap: pretty; }
+.plan-msg.warn { color: var(--danger); }
+.plan-result { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.plan-amount { font-size: 28px; font-weight: 600; color: var(--accent-strong); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.plan-amount span { font-size: 13px; font-weight: 400; color: var(--text-secondary); margin-left: 6px; letter-spacing: 0; }
+.plan-detail { font-size: 12.5px; color: var(--text-secondary); margin-top: 5px; line-height: 1.55; }
+.plan-note { font-size: 12px; color: var(--text-secondary); margin-top: 10px; line-height: 1.5; border-left: 2px solid var(--border); padding-left: 10px; }
+.plan-breakdown { margin-top: 12px; }
+.plan-breakdown summary { font-size: 12px; color: var(--accent-strong); cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 5px; }
+.plan-breakdown summary::-webkit-details-marker { display: none; }
+.plan-breakdown summary::before { content: "▸"; font-size: 10px; }
+.plan-breakdown[open] summary::before { content: "▾"; }
+.plan-breakdown .mtable { width: 100%; margin-top: 10px; }
+.plan-breakdown .mtable td.tot { font-weight: 600; }
+
 .month-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 11px; margin-bottom: 14px; }
 .mcard { background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 13px 15px; }
 .mcard-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; }
-.mcard-val { font-size: 21px; font-weight: 600; color: var(--text-primary); }
+.mcard-val { font-size: 21px; font-weight: 600; color: var(--text-primary); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
 .mcard-val span { font-size: 11px; font-weight: 500; color: var(--accent); background: var(--accent-soft); padding: 2px 6px; border-radius: 20px; margin-left: 4px; vertical-align: middle; }
 .mcard-val span.unit { font-size: 12px; font-weight: 500; color: var(--text-secondary); background: none; padding: 0; border-radius: 0; margin-left: 3px; }
 
-.title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.title-row .section-title { flex: 1; }
+.title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; margin-bottom: 12px; }
+.title-row .section-title { flex: 1 0 auto; margin-bottom: 0; }
 .btn-mini {
-  display: inline-flex; align-items: center; gap: 5px;
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
   font-size: 11.5px; font-weight: 500; color: var(--text-secondary);
   background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: 7px; padding: 5px 10px;
+  border-radius: 7px; padding: 6px 10px;
   transition: border-color .15s, color .15s;
 }
 .btn-mini:hover { border-color: var(--accent); color: var(--accent-strong); }
-.chart-wrap { width: 100%; margin-bottom: 10px; }
-#chart { width: 100%; height: auto; display: block; overflow: visible; }
+/* the chart keeps a legible minimum width and scrolls inside its own box rather than
+   shrinking its labels to nothing on a phone */
+.chart-wrap { width: 100%; margin-bottom: 10px; overflow-x: auto; overscroll-behavior-x: contain; }
+#chart { width: 100%; min-width: 480px; height: auto; display: block; overflow: visible; }
 .chart-legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 11.5px; color: var(--text-secondary); margin-bottom: 26px; }
 .chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
@@ -211,46 +294,76 @@ button { font-family: inherit; cursor: pointer; }
 .swatch.hatched { background: var(--accent); opacity: .45; }
 .bar { transition: opacity .15s; }
 .bar:hover { opacity: .82; }
-.bar-val { font-size: 10.5px; font-weight: 600; fill: var(--text-primary); }
+.bar-val { font-size: 10.5px; font-weight: 600; fill: var(--text-primary); font-variant-numeric: tabular-nums; }
 .bar-lbl { font-size: 10.5px; fill: var(--text-secondary); }
 .grid-line { stroke: var(--border-soft); stroke-width: 1; }
-.grid-lbl { font-size: 9.5px; fill: var(--text-secondary); }
+.grid-lbl { font-size: 10px; fill: var(--text-secondary); font-variant-numeric: tabular-nums; }
 
 .note { font-size: 12px; color: var(--text-secondary); margin-bottom: 26px; line-height: 1.55; }
 
+.table-wrap { width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
 .txn-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.txn-table th { text-align: left; color: var(--text-secondary); font-weight: 500; font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em; padding: 0 10px 10px; border-bottom: 1px solid var(--border); }
-.txn-table td { padding: 9px 10px; border-bottom: 1px solid var(--border-soft); color: var(--text-primary); }
+.txn-table th { text-align: left; color: var(--text-secondary); font-weight: 500; font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em; padding: 0 10px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.txn-table td { padding: 9px 10px; border-bottom: 1px solid var(--border-soft); color: var(--text-primary); white-space: nowrap; }
+.txn-table tbody tr:hover td { background: var(--surface-2); }
+.txn-table th:first-child, .txn-table td:first-child { padding-left: 0; }
+.txn-table th:last-child, .txn-table td:last-child { padding-right: 0; }
 .txn-table tr:last-child td { border-bottom: none; }
 .txn-table td.num, .txn-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .tag-ongoing { font-size: 11px; color: var(--accent); background: var(--accent-soft); padding: 2px 8px; border-radius: 20px; }
 
 .icon { width: 17px; height: 17px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
 
-.settings { margin-bottom: 20px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
-.set-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
-.set-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--text-secondary); }
+/* collapsible panel sections (tariff, recharges) */
+/* flex: none matters — a <details> squeezed below its content height does not clip, it
+   spills over the section beneath it. Only the recharge list may flex, and it absorbs
+   the pressure through .entry-scroll. */
+.panel-sec { flex: none; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--border); }
+.panel-sec:last-child { padding-bottom: 0; margin-bottom: 0; border-bottom: none; }
+.panel-sec > summary {
+  display: flex; align-items: center; gap: 10px; cursor: pointer; list-style: none;
+  padding: 6px 6px; margin: -6px -6px 0; border-radius: 8px;
+  transition: background .15s;
+}
+.panel-sec > summary::-webkit-details-marker { display: none; }
+.panel-sec > summary:hover { background: var(--surface); }
+.panel-sec > summary .section-title { flex: 1; margin-bottom: 0; }
+.sec-meta { font-size: 11.5px; color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sec-chev { width: 15px; height: 15px; flex-shrink: 0; stroke: var(--text-secondary); stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s ease-out; }
+.panel-sec[open] > summary .sec-chev { transform: rotate(180deg); }
+.sec-body { padding-top: 12px; }
+.sec-actions { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+
+
+.set-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* labels wrap to two lines at narrow widths — margin-top:auto keeps every field in a
+   row bottom-aligned instead of stepping up and down with the caption height */
+.set-grid label, .plan-grid label { display: flex; flex-direction: column; gap: 5px; font-size: 11px; line-height: 1.35; color: var(--text-secondary); }
+.set-grid label input, .set-grid label select, .plan-grid label input, .plan-grid label .date-field { margin-top: auto; }
 .set-grid .full { grid-column: 1 / -1; }
 .set-grid select {
-  width: 100%; font-family: inherit; font-size: 14px; color: var(--text-primary);
+  width: 100%; font-family: inherit; font-size: 14px; line-height: 1.45; color: var(--text-primary);
   background: var(--surface-2); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 10px 12px;
 }
 .set-grid select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.set-hint { font-size: 11px; color: var(--text-secondary); margin-top: 10px; line-height: 1.5; }
+.set-hint { font-size: 11px; color: var(--text-secondary); margin-top: 12px; line-height: 1.5; text-wrap: pretty; }
 
 .toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
 .toggle button {
   font-family: inherit; font-size: 11.5px; font-weight: 500; color: var(--text-secondary);
-  background: var(--surface-2); border: none; padding: 5px 11px; transition: background .15s, color .15s;
+  background: var(--surface-2); border: none; padding: 6px 11px; transition: background .15s, color .15s;
 }
+.toggle button:hover:not(.active) { color: var(--text-primary); }
 .toggle button.active { background: var(--accent); color: #fff; }
+.toggle button:focus-visible { outline-offset: -2px; }
 
 .mcard-sub { font-size: 11.5px; color: var(--text-secondary); margin-top: 3px; }
 
-.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(8,18,14,.55); z-index: 50; padding: 24px; overflow-y: auto; }
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(8,18,14,.55); z-index: 50; padding: 24px; overflow-y: auto; overscroll-behavior: contain; }
 .modal-overlay.show { display: flex; align-items: flex-start; justify-content: center; }
 .modal { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); max-width: 720px; width: 100%; margin: auto; padding: 30px 30px 28px; }
+.modal .method h3:first-child { padding-right: 44px; }   /* clear the close button */
 .modal-close {
   position: absolute; top: 14px; right: 14px; background: var(--surface-2);
   border: 1px solid var(--border); color: var(--text-secondary);
@@ -277,14 +390,49 @@ button { font-family: inherit; cursor: pointer; }
 .mtable td.num, .mtable th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 @media (max-width: 860px) {
-  .layout { grid-template-columns: 1fr; gap: 24px; }
-  .col-right { position: static; order: -1; }
+  .layout { grid-template-columns: 1fr; gap: 20px; }
+  .col-right { position: static; order: -1; max-height: none; }
+  /* Stacked, the panel sits above the results. Its sections start collapsed (see
+     applyPanelSections), so it stays a compact header rather than a wall of rows —
+     and an expanded list scrolls in place instead of pushing the insights offscreen. */
+  /* lead with the answer people open the page for: when is the next recharge due */
+  .results.show { display: flex; flex-direction: column; }
+  .results > .forecast { order: -1; }
 }
 
 @media (max-width: 520px) {
-  .body { padding: 20px 18px 24px; }
+  .body { padding: 20px 16px 24px; }
   .banner { padding: 22px 20px; }
-  .stat-grid { grid-template-columns: 1fr; }
+  .plan-grid { grid-template-columns: 1fr; }
+  /* three stacked cards cost ~280px of scroll for three numbers — lay them out as
+     label-left / value-right rows instead */
+  .stat-grid { grid-template-columns: 1fr; gap: 8px; }
+  .stat { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 11px 14px; }
+  .stat-label { margin-bottom: 0; }
+  .stat-val { font-size: 18px; white-space: nowrap; }
+  .month-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+  /* claw back horizontal room so the date reads "22 Jun 2026", not "22 Jun 20…" */
+  .header-row, .entry-row { grid-template-columns: 1.6fr 1fr 36px; gap: 8px; }
+  .date-field { padding: 10px 10px; }
+  .del-btn { width: 36px; }
+  .entry-scroll { scrollbar-gutter: auto; }   /* touch scrollbars overlay; header scrolls with the rows */
+  .title-row.chart-head .section-title { flex-basis: 100%; }   /* toolbar gets its own line */
+  .modal { padding: 26px 20px 24px; border-radius: 14px; }
+  .modal-overlay { padding: 12px; }
+  .method-tables { gap: 12px; }
+}
+
+/* iPhone SE class: trade outer padding and row chrome for text width, so a date still
+   reads "22 Jun 2026" rather than eliding to "22 Jun 20…" */
+@media (max-width: 360px) {
+  body { padding: 16px 10px 48px; }
+  .body { padding: 18px 12px 22px; }
+  .col-right { padding: 14px; }
+  .stat { padding: 10px 12px; }
+  .header-row, .entry-row { grid-template-columns: 1.7fr 1fr 32px; gap: 6px; }
+  .del-btn { width: 32px; }
+  .date-field { padding: 10px 8px; gap: 6px; }
+  .date-cal { width: 14px; height: 14px; }
 }
 </style>
 </head>
@@ -301,24 +449,58 @@ button { font-family: inherit; cursor: pointer; }
   <div class="body">
    <div class="layout">
     <div class="col-left">
-     <div class="placeholder" id="placeholder">Add your recharges on the right, then press <strong>Calculate</strong> to see your monthly spend, trend chart and log here.</div>
+     <div class="empty-state" id="placeholder">
+       <p>Add your recharges, then press <strong>Calculate</strong> — your monthly spend, usage trend and next-recharge estimate show up here.</p>
+       <button class="btn-secondary" onclick="addRecharge()">
+         <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+         Add a recharge
+       </button>
+     </div>
      <div class="results" id="results">
       <p class="section-title">Summary</p>
       <div class="stat-grid" id="stat-grid"></div>
       <div class="forecast" id="forecast" style="display:none"></div>
 
-      <div class="title-row">
-        <p class="section-title" style="margin-bottom:0">Monthly trend</p>
-        <div class="toggle" id="metric-toggle">
-          <button id="m-kwh" class="active" onclick="setMetric('kwh')">kWh</button>
-          <button id="m-perday" onclick="setMetric('perday')">kWh/day</button>
-          <button id="m-tk" onclick="setMetric('tk')">Tk</button>
+      <div class="planner" id="planner" style="display:none">
+        <div class="plan-head">
+          <svg class="icon fc-ico" style="width:20px;height:20px" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/><path d="M12 14v3M10.5 15.5h3"/></svg>
+          <div>
+            <div class="plan-title">Plan a recharge</div>
+            <div class="plan-sub">Pick when you'd like your <em>next</em> top-up to fall due, and this works out what to recharge today — assuming your balance is about to run out.</div>
+          </div>
         </div>
-        <button class="btn-mini" onclick="exportChart('png')">
+        <div class="plan-grid">
+          <label>Next recharge on
+            <div class="date-field" role="button" tabindex="0" aria-label="Target date for the next recharge"
+                 onclick="openPlanPicker()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPlanPicker()}">
+              <span class="date-display placeholder" id="plan-date-display">Select date</span>
+              <svg class="icon date-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+              <input type="date" id="plan_date" class="date-native" onchange="syncPlanDate(this.value)" tabindex="-1" aria-hidden="true">
+            </div>
+          </label>
+          <label>Daily use (kWh/day)
+            <input type="number" id="plan_rate" min="0" step="0.1" oninput="syncPlanRate(this.value)">
+          </label>
+        </div>
+        <label class="plan-check">
+          <input type="checkbox" id="plan_credit" onchange="syncPlanCredit(this.checked)">
+          Count the balance still left in the meter
+        </label>
+        <div id="plan-out"></div>
+      </div>
+
+      <div class="title-row chart-head">
+        <p class="section-title">Monthly trend</p>
+        <div class="toggle" id="metric-toggle" role="group" aria-label="Chart metric">
+          <button id="m-kwh" class="active" aria-pressed="true" onclick="setMetric('kwh')">kWh</button>
+          <button id="m-perday" aria-pressed="false" onclick="setMetric('perday')">kWh/day</button>
+          <button id="m-tk" aria-pressed="false" onclick="setMetric('tk')">Tk</button>
+        </div>
+        <button class="btn-mini" onclick="exportChart('png')" aria-label="Download chart as PNG">
           <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-          Save PNG
+          PNG
         </button>
-        <button class="btn-mini" onclick="exportChart('svg')">
+        <button class="btn-mini" onclick="exportChart('svg')" aria-label="Download chart as SVG">
           <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
           SVG
         </button>
@@ -344,64 +526,88 @@ button { font-family: inherit; cursor: pointer; }
       </button>
 
       <p class="section-title">Recharge log</p>
-      <table class="txn-table">
-        <thead><tr><th>Date</th><th class="num">Amount</th><th class="num">Est. kWh</th><th class="num">Tk/kWh</th><th>Next recharge</th><th class="num">Days gap</th></tr></thead>
-        <tbody id="txn-body"></tbody>
-      </table>
+      <div class="table-wrap">
+        <table class="txn-table">
+          <thead><tr><th>Date</th><th class="num">Amount</th><th class="num">Est. kWh</th><th class="num">Tk/kWh</th><th>Next recharge</th><th class="num">Days gap</th></tr></thead>
+          <tbody id="txn-body"></tbody>
+        </table>
+      </div>
      </div>
     </div>
 
     <div class="col-right">
-      <div class="settings">
-        <p class="section-title">Tariff &amp; connection</p>
-        <div class="set-grid">
-          <label>Sanctioned load (kW)
-            <input type="number" id="cfg_kw" min="0" step="0.5" value="2" oninput="syncCfg()">
-          </label>
-          <label>Demand charge (Tk/kW·mo)
-            <input type="number" id="cfg_demand" min="0" step="0.5" value="42" oninput="syncCfg()">
-          </label>
-          <label>Meter rent (Tk/mo)
-            <input type="number" id="cfg_rent" min="0" step="1" value="40" oninput="syncCfg()">
-          </label>
-          <label>VAT (%)
-            <input type="number" id="cfg_vat" min="0" step="0.1" value="5" oninput="syncCfg()">
-          </label>
-          <label>Rebate (%)
-            <input type="number" id="cfg_rebate" min="0" step="0.1" value="1" oninput="syncCfg()">
-          </label>
+      <!-- both blocks are <details> so they can collapse to a single line on a phone,
+           where the panel sits above the results and would otherwise bury them -->
+      <details class="panel-sec" id="sec-settings" open>
+        <summary>
+          <span class="section-title">Tariff &amp; connection</span>
+          <span class="sec-meta" id="cfg-meta"></span>
+          <svg class="sec-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
+        <div class="sec-body">
+          <div class="set-grid">
+            <label>Sanctioned load (kW)
+              <input type="number" id="cfg_kw" min="0" step="0.5" value="2" oninput="syncCfg()">
+            </label>
+            <label>Demand charge (Tk/kW·mo)
+              <input type="number" id="cfg_demand" min="0" step="0.5" value="42" oninput="syncCfg()">
+            </label>
+            <label>Meter rent (Tk/mo)
+              <input type="number" id="cfg_rent" min="0" step="1" value="40" oninput="syncCfg()">
+            </label>
+            <label>VAT (%)
+              <input type="number" id="cfg_vat" min="0" step="0.1" value="5" oninput="syncCfg()">
+            </label>
+            <label>Rebate (%)
+              <input type="number" id="cfg_rebate" min="0" step="0.1" value="1" oninput="syncCfg()">
+            </label>
+          </div>
+          <p class="set-hint">Energy is estimated from each recharge using BPDB's official prepaid formula. Slab rates update automatically by date (Feb 2024, then the Jun 2026 hike). These settings are saved with your CSV.</p>
         </div>
-        <p class="set-hint">Energy is estimated from each recharge using BPDB's official prepaid formula. Slab rates update automatically by date (Feb 2024, then the Jun 2026 hike). These settings are saved with your CSV.</p>
-      </div>
+      </details>
 
-      <p class="section-title">Recharges</p>
-      <div class="btn-row">
-        <button class="btn-primary" onclick="calculate()">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l3-4 3 3 4-6"/></svg>
-          Calculate
-        </button>
-        <button class="btn-secondary" onclick="addRow()">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-          Add recharge
-        </button>
-        <button class="btn-secondary" onclick="exportCsv()">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-          Export CSV
-        </button>
-        <button class="btn-secondary" onclick="document.getElementById('csv-file').click()">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>
-          Import CSV
-        </button>
-        <input type="file" id="csv-file" accept=".csv,text/csv" style="display:none" onchange="importCsv(this)">
-      </div>
-      <p class="error" id="err"></p>
+      <details class="panel-sec" id="sec-recharges" open>
+        <summary>
+          <span class="section-title">Recharges</span>
+          <span class="sec-meta" id="rc-meta"></span>
+          <svg class="sec-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
+        <div class="sec-body">
+          <div class="sec-actions">
+            <button class="btn-mini" onclick="addRecharge()">
+              <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              Add recharge
+            </button>
+          </div>
+          <div class="entry-scroll">
+            <div class="header-row">
+              <span>Date</span>
+              <span>Amount (Tk)</span>
+              <span></span>
+            </div>
+            <div id="entries"></div>
+          </div>
 
-      <div class="header-row">
-        <span>Date</span>
-        <span>Amount (Tk)</span>
-        <span></span>
-      </div>
-      <div id="entries"></div>
+          <!-- the actions live with the rows they act on: collapsed on a phone, the whole
+               panel is then just two summary lines and the insights start near the top -->
+          <p class="error" id="err"></p>
+          <div class="btn-row">
+            <button class="btn-primary" onclick="runCalculate()">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l3-4 3 3 4-6"/></svg>
+              Calculate
+            </button>
+            <button class="btn-mini" onclick="exportCsv()">
+              <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+              Export CSV
+            </button>
+            <button class="btn-mini" onclick="document.getElementById('csv-file').click()">
+              <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>
+              Import CSV
+            </button>
+            <input type="file" id="csv-file" accept=".csv,text/csv" style="display:none" onchange="importCsv(this)">
+          </div>
+        </div>
+      </details>
     </div>
    </div>
   </div>
@@ -450,6 +656,16 @@ button { font-family: inherit; cursor: pointer; }
 
      <h3>Forecasting your next recharge</h3>
      <p>Your most recent top-up still has balance left in the meter. To estimate when it runs out, the tool takes your <strong>recent average daily use</strong> — kWh per day over roughly the last two months of completed windows — and drains the remaining energy money forward one day at a time, pricing each day at its month's slab and resetting on the 1st, until the balance reaches zero. That date is shown as <em>Next recharge</em>: the latest you'd need to top up if your usual habits hold. It shifts with weather and travel, so treat it as a heads-up, not a deadline.</p>
+
+     <h3>Planning a recharge — the same maths, run backwards</h3>
+     <p>The <strong>Plan a recharge</strong> panel answers the opposite question: <em>if I want my next top-up to fall on a particular date, what do I recharge today?</em> It assumes your current balance is about to run out, and works in two steps.</p>
+     <p><strong>1. How much energy money the stretch needs.</strong> Exactly the forecast walk above, but summing instead of draining: step day by day from today to the day before your target, charge each day's kWh up its month's slabs — carrying on from the units you've <em>already</em> consumed this month, and resetting on the 1st — and add it all up. The balance therefore hits zero at the start of the target day, which is what makes that day the next recharge.</p>
+     <div class="formula">E = Σ (each day from today to target−1) cost of one day's kWh at that month's slab</div>
+     <p><strong>2. Gross it back up into a recharge.</strong> Step 1 of the forward model turns a recharge <span class="k">R</span> into energy money <span class="k">E</span>. That formula inverts exactly — no guessing. With <span class="k">v</span> = VAT rate and <span class="k">k = rebate ÷ (1 + rebate)</span>:</p>
+     <div class="formula">R = (1 + v) × [ (E + demand charge) ÷ (1 + k) + meter rent ]</div>
+     <p>The demand charge and meter rent are only in there if you <strong>haven't yet recharged this calendar month</strong> — top up again in a month you've already vended in and they drop out, so the whole recharge goes to energy. The result is rounded up to the nearest Tk 10.</p>
+     <p><strong>One thing to watch.</strong> Those fixed charges are collected when you <em>vend</em>, not as you consume. So a recharge big enough to carry you past the end of the month doesn't pay next month's demand charge and rent — they pile up and are taken out of the <em>next</em> top-up. The panel warns you when that happens, and says how much is being deferred.</p>
+     <p>Leave the <em>daily use</em> box blank to plan at your recent average, or type a figure to plan around a heatwave or a trip away. Tick <em>count the balance still left in the meter</em> if you're topping up before the old balance is actually spent.</p>
 
      <h3>Slab rates used</h3>
      <p>Rates are set by BERC and applied <strong>automatically by date of use</strong>: the <strong>Feb 2024</strong> schedule through 31 May 2026, and the <strong>Jun 2026</strong> hike from 1 Jun 2026 onward.</p>
@@ -507,6 +723,12 @@ let metric = "kwh"; // chart metric: "kwh" | "tk"
 
 let rows = [];
 
+// Model state left behind by the last calculate(), so the "plan a recharge" panel can pick up the
+// slab counters and vending history where the real recharges stopped. null until first calculate().
+let planState = null;
+// User's inputs on that panel. rate = null -> fall back to the recent average.
+let plan = { target: "", rate: null, credit: false };
+
 function save() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(rows.map(r => ({date: r.date, amount: r.amount}))));
@@ -556,13 +778,56 @@ function addRow(d="", a="") {
   save();
 }
 function removeRow(id) { rows = rows.filter(r => r.id !== id); renderRows(); save(); }
+
+// ---- panel sections: open on desktop, collapsed on a phone ----
+// On a narrow screen the panel stacks ABOVE the results, so 15 recharge rows would push
+// every insight below the fold. Collapsed, the panel is a two-line header instead.
+const NARROW = window.matchMedia("(max-width: 860px)");
+const scrollBehavior = () =>
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+
+function applyPanelSections() {
+  document.querySelectorAll(".panel-sec").forEach(d => { d.open = !NARROW.matches; });
+}
+NARROW.addEventListener("change", applyPanelSections);
+
+// each collapsed section still says what's inside it
+function renderSectionMeta() {
+  const total = rows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+  const rc = document.getElementById("rc-meta");
+  if (rc) rc.textContent = rows.length
+    ? `${rows.length} · Tk ${Math.round(total).toLocaleString()}`
+    : "none yet";
+  const cm = document.getElementById("cfg-meta");
+  if (cm) cm.textContent = `${cfg.kw} kW · ${cfg.demand} Tk/kW`;
+}
+
+// adding a recharge from a collapsed section (or from the empty state) has to open it first
+function addRecharge() {
+  const sec = document.getElementById("sec-recharges");
+  if (sec) sec.open = true;
+  addRow();
+  const row = document.querySelector("#entries .entry-row");   // newest row renders on top
+  if (row) row.scrollIntoView({ block: "nearest", behavior: scrollBehavior() });
+}
+
+// on a phone the results sit below the panel, so a manual Calculate should take you to them
+function runCalculate() {
+  calculate();
+  if (!NARROW.matches) return;
+  const res = document.getElementById("results");
+  if (res.classList.contains("show")) res.scrollIntoView({ block: "start", behavior: scrollBehavior() });
+}
 function getVal(id, field) { const el = document.getElementById(`${field}_${id}`); return el ? el.value : ""; }
 
 // date helpers for the native date picker (recharge dates are stored internally as DD/MM/YYYY,
 // the format the CSV and parseDate use; the native <input type="date"> needs ISO YYYY-MM-DD).
+function isoOf(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
 function toISO(ddmmyyyy) {
   const d = parseDate(ddmmyyyy);
-  return d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}` : "";
+  return d ? isoOf(d) : "";
 }
 function fromISO(iso) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso));
@@ -601,9 +866,13 @@ function renderRows() {
       </button>
     </div>`;
   }).join("");
+  renderSectionMeta();
 }
 
-function syncRow(id, field, val) { const r = rows.find(r => r.id === id); if (r) { r[field] = val; save(); } }
+function syncRow(id, field, val) {
+  const r = rows.find(r => r.id === id);
+  if (r) { r[field] = val; save(); renderSectionMeta(); }
+}
 
 function renderCfg() {
   document.getElementById("cfg_kw").value = cfg.kw;
@@ -611,6 +880,7 @@ function renderCfg() {
   document.getElementById("cfg_rent").value = cfg.rent;
   document.getElementById("cfg_vat").value = cfg.vat;
   document.getElementById("cfg_rebate").value = cfg.rebate;
+  renderSectionMeta();
 }
 function syncCfg() {
   const num = (id, fb) => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? fb : v; };
@@ -620,21 +890,33 @@ function syncCfg() {
   cfg.vat    = num("cfg_vat", DEFAULT_CFG.vat);
   cfg.rebate = num("cfg_rebate", DEFAULT_CFG.rebate);
   saveCfg();
+  renderSectionMeta();
   calculate();
 }
 function setMetric(m) {
   metric = m;
-  ["kwh", "perday", "tk"].forEach(x => document.getElementById("m-" + x).classList.toggle("active", m === x));
+  ["kwh", "perday", "tk"].forEach(x => {
+    const b = document.getElementById("m-" + x);
+    b.classList.toggle("active", m === x);
+    b.setAttribute("aria-pressed", String(m === x));
+  });
   calculate();
 }
 
+let mathOpener = null;   // focus is handed back to whatever opened the modal
 function openMath() {
+  mathOpener = document.activeElement;
   document.getElementById("math-modal").classList.add("show");
   document.body.style.overflow = "hidden";
+  document.querySelector("#math-modal .modal-close").focus();
 }
 function closeMath() {
-  document.getElementById("math-modal").classList.remove("show");
+  const modal = document.getElementById("math-modal");
+  if (!modal.classList.contains("show")) return;
+  modal.classList.remove("show");
   document.body.style.overflow = "";
+  if (mathOpener && mathOpener.focus) mathOpener.focus();
+  mathOpener = null;
 }
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeMath(); });
 
@@ -768,7 +1050,7 @@ function buildStandaloneSvg() {
     `.bar-val{font-size:10.5px;font-weight:600;fill:${v('--text-primary','#16241d')}}` +
     `.bar-lbl{font-size:10.5px;fill:${v('--text-secondary','#6a7d74')}}` +
     `.grid-line{stroke:${v('--border-soft','#eef1ef')};stroke-width:1}` +
-    `.grid-lbl{font-size:9.5px;fill:${v('--text-secondary','#6a7d74')}}`;
+    `.grid-lbl{font-size:10px;fill:${v('--text-secondary','#6a7d74')}}`;
 
   const inner = src.innerHTML.replace(/var\(--accent\)/g, v('--accent', '#1f9d63'));
 
@@ -871,6 +1153,143 @@ function forecastNextRecharge(start, energyMoney, cumSnap, dailyKwh, today) {
   return null;
 }
 
+// ---- reverse forecast: what to recharge now so the NEXT recharge falls on a chosen date ----
+// forecastNextRecharge run forwards. Meter taka needed to consume `dailyKwh` a day from `start` up
+// to — but not including — `target`, each day priced up its month's slabs from the month-to-date
+// counter in `cumSnap` (which resets on the 1st). Half-open, so the balance hits zero at the start
+// of `target`: that day is the next recharge.
+function energyNeeded(start, target, dailyKwh, cumSnap) {
+  const cum = { ...cumSnap };
+  let E = 0;
+  let day = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  for (let i = 0; i < 1200 && day < target; i++) {
+    const mk = monthKey(day);
+    if (!(mk in cum)) cum[mk] = 0;
+    E += costKwh(dailyKwh, cum[mk], slabSetForDate(day).bands);
+    cum[mk] += dailyKwh;
+    day = new Date(day.getTime() + DAY);
+  }
+  return E;
+}
+
+// Inverse of the vending formula in calculate(). With v = VAT rate and k = rb/(1+rb):
+//   E = R/(1+v) − demand − rent + (R/(1+v) − rent)·k    =>    R = (1+v)·[ (E + demand)/(1+k) + rent ]
+// Returns the gross recharge plus every component, so the panel can show the build-up.
+function grossForEnergy(E, demand, rent) {
+  const v = Math.max(0, cfg.vat) / 100;
+  const rb = Math.max(0, cfg.rebate) / 100;
+  const k = rb / (1 + rb);
+  const preVat = Math.max(0, (E + demand) / (1 + k) + rent);   // recharge net of VAT
+  return { R: preVat * (1 + v), preVat, vat: preVat * v, rebate: Math.max(0, preVat - rent) * k, demand, rent };
+}
+
+// Fixed charges a recharge on `date` would pay: none if that calendar month has already been
+// vended, otherwise one month — plus the backlog for any month that was skipped entirely.
+function fixedChargesFor(date, st) {
+  if (monthKey(date) in st.vended) return { demand: 0, rent: 0, months: 0 };
+  const months = st.lastChargedKey === null ? 1 : Math.max(1, monthsBetweenKeys(st.lastChargedKey, date));
+  return { demand: cfg.demand * cfg.kw * months, rent: cfg.rent * months, months };
+}
+
+function openPlanPicker() {
+  const i = document.getElementById("plan_date");
+  try { i.showPicker(); } catch (e) { i.focus(); }
+}
+function syncPlanDate(iso) { plan.target = fromISO(iso); renderPlanner(); }
+function syncPlanRate(v) { const n = parseFloat(v); plan.rate = (!isNaN(n) && n > 0) ? n : null; renderPlanner(); }
+function syncPlanCredit(c) { plan.credit = !!c; renderPlanner(); }
+
+function renderPlanner() {
+  const st = planState;
+  const wrap = document.getElementById("planner");
+  const out = document.getElementById("plan-out");
+  if (!st) { wrap.style.display = "none"; return; }
+  wrap.style.display = "";
+
+  const rate = plan.rate !== null ? plan.rate : st.dailyKwh;
+  const rateEl = document.getElementById("plan_rate");
+  rateEl.placeholder = st.dailyKwh > 0 ? st.dailyKwh.toFixed(1) : "e.g. 8";
+  rateEl.title = st.dailyKwh > 0 ? `Leave blank to use your recent average, ${st.dailyKwh.toFixed(1)} kWh/day` : "";
+
+  const dateEl = document.getElementById("plan_date");
+  dateEl.min = isoOf(new Date(st.today.getTime() + DAY));
+  const target = plan.target ? parseDate(plan.target) : null;
+  if (dateEl.value !== (target ? isoOf(target) : "")) dateEl.value = target ? isoOf(target) : "";
+  const disp = document.getElementById("plan-date-display");
+  disp.textContent = target ? fmtDate(target) : "Select date";
+  disp.classList.toggle("placeholder", !target);
+
+  const msg = (t, warn) => { out.innerHTML = `<p class="plan-msg${warn ? " warn" : ""}">${t}</p>`; };
+  if (!(rate > 0)) return msg("Add at least two recharges (or type a daily figure above) so the tool knows how fast you use power.");
+  if (!target) return msg("Pick the date you'd like your next recharge to fall on.");
+  if (target <= st.today) return msg("Pick a date after today.", true);
+
+  const days = Math.round((target - st.today) / DAY);
+  if (days > 730) return msg("That's more than two years out — pick a nearer date.", true);
+
+  const f = x => x.toFixed(2);
+  const money = x => Math.round(x).toLocaleString();
+
+  // 1. taka the meter will eat between now and the target date
+  const horizonCost = energyNeeded(st.today, target, rate, st.monthCum);
+  // 2. optionally credit what's still sitting in the meter, then gross the remainder back up
+  const credit = plan.credit ? Math.max(0, Math.min(st.balanceToday, horizonCost)) : 0;
+  const E = Math.max(0, horizonCost - credit);
+  if (plan.credit && E <= 0.005) {
+    return msg(`The Tk ${money(st.balanceToday)} already in your meter covers that whole stretch — no top-up needed to reach ${fmtDate(target)}.`);
+  }
+  const fx = fixedChargesFor(st.today, st);
+  const b = grossForEnergy(E, fx.demand, fx.rent);
+  const suggested = Math.ceil(b.R / 10) * 10;                 // vending counters deal in round taka
+
+  const totalKwh = rate * days;
+  const when = target.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
+
+  // Fixed charges are taken at VENDING, not as you consume — so a recharge that carries you past
+  // the end of a month leaves that month's demand charge + rent to be collected on the NEXT top-up.
+  const nextChargedKey = fx.months > 0 ? monthKey(st.today) : st.lastChargedKey;
+  const backlog = nextChargedKey === null ? 1 : Math.max(1, monthsBetweenKeys(nextChargedKey, target));
+  const perMonthFixed = cfg.demand * cfg.kw + cfg.rent;
+
+  const notes = [];
+  notes.push(fx.months > 0
+    ? `You haven't recharged in ${monthLabel(monthKey(st.today))} yet, so this top-up also pays ${fx.months === 1 ? "the" : `${fx.months} months of`} demand charge and meter rent (Tk ${money(fx.demand + fx.rent)}).`
+    : `${monthLabel(monthKey(st.today))}'s demand charge and meter rent are already paid, so none are deducted — every taka here goes to energy.`);
+  if (backlog > 1) {
+    notes.push(`This carries you past the end of ${monthLabel(monthKey(st.today))}, so ${backlog} months of demand charge and meter rent (about Tk ${money(perMonthFixed * backlog)}) will come out of the recharge you make on ${fmtDate(target)}.`);
+  }
+
+  out.innerHTML =
+    `<div class="plan-result">
+      <div class="plan-amount">Tk ${suggested.toLocaleString()}<span>rounded up from Tk ${b.R.toFixed(2)}</span></div>
+      <div class="plan-detail">
+        Carries you ${days} day${days === 1 ? "" : "s"} — to <strong>${when}</strong> — at ${rate.toFixed(1)} kWh/day
+        (about ${Math.round(totalKwh).toLocaleString()} kWh)${plan.credit && credit > 0
+          ? `, counting the Tk ${money(credit)} still left in your meter`
+          : ""}.
+      </div>
+      ${notes.map(n => `<p class="plan-note">${n}</p>`).join("")}
+      <details class="plan-breakdown">
+        <summary>Show the breakdown</summary>
+        <table class="mtable">
+          <thead><tr><th>Component</th><th class="num">Tk</th></tr></thead>
+          <tbody>
+            <tr><td>Energy the meter will bill over ${days} day${days === 1 ? "" : "s"}</td><td class="num">${f(horizonCost)}</td></tr>
+            ${credit > 0 ? `<tr><td>− Balance already in the meter</td><td class="num">−${f(credit)}</td></tr>` : ""}
+            <tr><td class="tot">= Energy money to add</td><td class="num tot">${f(E)}</td></tr>
+            ${fx.demand > 0 ? `<tr><td>+ Demand charge (${cfg.kw} kW × ${cfg.demand}${fx.months > 1 ? ` × ${fx.months} mo` : ""})</td><td class="num">${f(fx.demand)}</td></tr>` : ""}
+            ${fx.rent > 0 ? `<tr><td>+ Meter rent${fx.months > 1 ? ` (× ${fx.months} mo)` : ""}</td><td class="num">${f(fx.rent)}</td></tr>` : ""}
+            <tr><td>− Rebate (${cfg.rebate}%)</td><td class="num">−${f(b.rebate)}</td></tr>
+            <tr><td>+ VAT (${cfg.vat}%)</td><td class="num">${f(b.vat)}</td></tr>
+            <tr><td class="tot">= Recharge</td><td class="num tot">${f(b.R)}</td></tr>
+          </tbody>
+        </table>
+      </details>
+    </div>`;
+}
+
+const AXIS_W = 42;   // left gutter reserved for y-axis labels in both charts
+
 function renderChart(keys, monthly, windows) {
   const svg = document.getElementById("chart");
   const W = 720, H = 260;
@@ -885,7 +1304,7 @@ function renderChart(keys, monthly, windows) {
   // kWh/day is drawn as a per-recharge-window line chart — more granular than the monthly bars.
   if (metric === "perday") return renderRateLine(svg, windows, W, H);
 
-  const padL = 8, padR = 8, padT = 22, padB = 34;
+  const padL = AXIS_W, padR = 8, padT = 22, padB = 34;   // padL is the y-axis label gutter
   const plotW = W - padL - padR, plotH = H - padT - padB;
   const n = keys.length;
 
@@ -907,12 +1326,13 @@ function renderChart(keys, monthly, windows) {
 
   let g = "";
 
-  // horizontal gridlines + axis labels (0, ½, max)
+  // horizontal gridlines + axis labels (0, ½, max), sitting in their own left gutter so
+  // they never overlap the bars
   [0, 0.5, 1].forEach(f => {
     const v = niceMax * f;
     const yy = y(v);
     g += `<line class="grid-line" x1="${padL}" y1="${yy.toFixed(1)}" x2="${W-padR}" y2="${yy.toFixed(1)}"/>`;
-    g += `<text class="grid-lbl" x="${padL}" y="${(yy-3).toFixed(1)}">${fmtV(v)}</text>`;
+    g += `<text class="grid-lbl" x="${padL-8}" y="${yy.toFixed(1)}" text-anchor="end" dominant-baseline="middle">${fmtV(v)}</text>`;
   });
 
   keys.forEach((k, i) => {
@@ -962,7 +1382,7 @@ function smoothPath(P) {
 // meaningless rate. Points are evenly spaced and labelled by the recharge date.
 function renderRateLine(svg, windows, W, H) {
   const padR = 8, padT = 22, padB = 34;
-  const x0 = 34, x1 = W - padR;                 // x0 leaves room for the y-axis labels
+  const x0 = AXIS_W + 6, x1 = W - padR;         // x0 clears the y-axis label gutter
   const plotH = H - padT - padB;
   const n = windows.length;
   if (n === 0) { svg.innerHTML = ""; svg.setAttribute("viewBox", `0 0 ${W} ${H}`); return; }
@@ -977,8 +1397,8 @@ function renderRateLine(svg, windows, W, H) {
   let g = "";
   [0, 0.5, 1].forEach(fr => {
     const v = niceMax * fr, yy = y(v);
-    g += `<line class="grid-line" x1="8" y1="${yy.toFixed(1)}" x2="${W-padR}" y2="${yy.toFixed(1)}"/>`;
-    g += `<text class="grid-lbl" x="8" y="${(yy-3).toFixed(1)}">${f1(v)}</text>`;
+    g += `<line class="grid-line" x1="${AXIS_W}" y1="${yy.toFixed(1)}" x2="${W-padR}" y2="${yy.toFixed(1)}"/>`;
+    g += `<text class="grid-lbl" x="${AXIS_W-8}" y="${yy.toFixed(1)}" text-anchor="end" dominant-baseline="middle">${f1(v)}</text>`;
   });
 
   const P = windows.map((w, i) => ({ x: X(i), y: y(w.perday) }));
@@ -1165,7 +1585,14 @@ function calculate() {
   renderChart(sortedKeys, monthly, windows);
 
   const dailyKwh = recentDailyKwh(deduped, today);
-  renderForecast(predCtx ? forecastNextRecharge(predCtx.start, predCtx.energyMoney, predCtx.cumSnap, dailyKwh, today) : null, dailyKwh, today);
+  const fc = predCtx ? forecastNextRecharge(predCtx.start, predCtx.energyMoney, predCtx.cumSnap, dailyKwh, today) : null;
+  renderForecast(fc, dailyKwh, today);
+
+  // hand the model's end state to the "plan a recharge" panel: monthCum is the slab counter as of
+  // today (windows are half-open, so it stops at yesterday), and vended/lastChargedKey decide
+  // whether a recharge made today still owes the monthly fixed charges.
+  planState = { today, monthCum, vended, lastChargedKey, dailyKwh, balanceToday: fc ? fc.balanceToday : 0 };
+  renderPlanner();
 
   document.getElementById("month-grid").innerHTML = sortedKeys.map(k => {
     const v = monthly[k];
@@ -1199,6 +1626,7 @@ loadCfg();
 renderCfg();
 const saved = load();
 (saved || DEFAULT_DATA).forEach(d => addRow(d.date, d.amount));
+applyPanelSections();
 calculate();
 </script>
 </body>
