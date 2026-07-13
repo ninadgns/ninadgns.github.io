@@ -99,12 +99,16 @@ body {
    fill the panel: height does NOT propagate down through a <details>, whose content sits
    in a ::details-content box, so a flexed list would just overflow its section. */
 .entry-scroll {
-  max-height: 40vh;
+  max-height: 40dvh;
   overflow-y: auto;
   scrollbar-gutter: stable;
   margin: 0 -4px;
   padding: 0 4px;
-  /* soften the cut-off row at the fold so it reads as "scrolls on" */
+}
+/* soften the cut-off row at the fold so it reads as "scrolls on". The mask is painted on the
+   border box, not the scrolled content, so it would dim the last row even with nothing left to
+   scroll — updateEntryFade() adds the class only while rows remain below the fold. */
+.entry-scroll.is-clipped {
   mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
 }
 .entry-scroll .header-row {
@@ -144,6 +148,9 @@ body {
   background: linear-gradient(135deg, var(--accent-strong), var(--accent));
   color: #fff;
   padding: 26px 28px;
+  /* .card clips this, but `overflow: clip` is dropped wholesale on Safari < 16 — round the top
+     corners here too so the gradient still sits inside the card's radius there */
+  border-radius: 17px 17px 0 0;
 }
 .banner h1 { font-size: 21px; font-weight: 600; letter-spacing: -.01em; display: flex; align-items: flex-start; gap: 10px; text-wrap: balance; }
 .banner h1 svg { flex-shrink: 0; margin-top: 3px; }
@@ -251,6 +258,8 @@ button { font-family: inherit; cursor: pointer; }
 .plan-grid .date-field, .plan-grid input { background: var(--surface); }
 .plan-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-secondary); margin-top: 12px; cursor: pointer; }
 .plan-check input { width: auto; flex-shrink: 0; accent-color: var(--accent); }
+/* nothing to credit until the forecast knows what's left in the meter (needs two recharges) */
+.plan-check.disabled { opacity: .5; cursor: default; }
 .plan-msg { font-size: 12.5px; color: var(--text-secondary); margin-top: 14px; text-wrap: pretty; }
 .plan-msg.warn { color: var(--danger); }
 .plan-result { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
@@ -333,7 +342,6 @@ button { font-family: inherit; cursor: pointer; }
 .panel-sec[open] > summary .sec-chev { transform: rotate(180deg); }
 .sec-body { padding-top: 12px; }
 .sec-actions { display: flex; justify-content: flex-end; margin-bottom: 10px; }
-
 
 .set-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 /* labels wrap to two lines at narrow widths — margin-top:auto keeps every field in a
@@ -475,7 +483,7 @@ button { font-family: inherit; cursor: pointer; }
                  onclick="openPlanPicker()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPlanPicker()}">
               <span class="date-display placeholder" id="plan-date-display">Select date</span>
               <svg class="icon date-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
-              <input type="date" id="plan_date" class="date-native" onchange="syncPlanDate(this.value)" tabindex="-1" aria-hidden="true">
+              <input type="date" id="plan_date" class="date-native" onchange="syncPlanDate(this.value)" tabindex="-1" aria-hidden="true" aria-label="Target date for the next recharge">
             </div>
           </label>
           <label>Daily use (kWh/day)
@@ -786,10 +794,24 @@ const NARROW = window.matchMedia("(max-width: 860px)");
 const scrollBehavior = () =>
   window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
 
+// ...but once the user has opened or closed a section themselves, that's their call to keep —
+// don't stomp it the next time the window crosses the breakpoint.
+let panelTouched = false;
 function applyPanelSections() {
+  if (panelTouched) return;
   document.querySelectorAll(".panel-sec").forEach(d => { d.open = !NARROW.matches; });
 }
 NARROW.addEventListener("change", applyPanelSections);
+document.querySelectorAll(".panel-sec > summary")
+  .forEach(s => s.addEventListener("click", () => { panelTouched = true; }));
+
+// The fade at the foot of the recharge list is a mask on the box, so it sits there whether or not
+// anything is actually cut off. Only wear it while there are rows still below the fold.
+function updateEntryFade() {
+  const el = document.querySelector(".entry-scroll");
+  if (!el) return;
+  el.classList.toggle("is-clipped", el.scrollHeight - el.clientHeight - el.scrollTop > 1);
+}
 
 // each collapsed section still says what's inside it
 function renderSectionMeta() {
@@ -833,11 +855,20 @@ function fromISO(iso) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso));
   return m ? `${m[3]}/${m[2]}/${m[1]}` : "";
 }
-function openDatePicker(id) {
-  const inp = document.getElementById(`date_${id}`);
+// The native input is transparent and aria-hidden: the wrapper is the one control screen readers
+// see. Where showPicker() is unavailable (Safari < 16, Firefox < 101) we fall back to focusing it,
+// and an aria-hidden element must never hold focus — so lift the attribute for as long as it does.
+function openNativeDate(inp) {
   if (!inp) return;
-  try { inp.showPicker(); } catch (e) { inp.focus(); }   // showPicker unsupported -> focus fallback
+  try {
+    inp.showPicker();
+  } catch (e) {
+    inp.removeAttribute("aria-hidden");
+    inp.addEventListener("blur", () => inp.setAttribute("aria-hidden", "true"), { once: true });
+    inp.focus();
+  }
 }
+function openDatePicker(id) { openNativeDate(document.getElementById(`date_${id}`)); }
 function syncDate(id, iso) {
   const r = rows.find(r => r.id === id);
   if (!r) return;
@@ -858,7 +889,7 @@ function renderRows() {
            onclick="openDatePicker(${r.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDatePicker(${r.id})}">
         <span class="date-display${d ? '' : ' placeholder'}">${disp}</span>
         <svg class="icon date-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
-        <input type="date" id="date_${r.id}" class="date-native" value="${toISO(r.date)}" onchange="syncDate(${r.id},this.value)" tabindex="-1" aria-hidden="true">
+        <input type="date" id="date_${r.id}" class="date-native" value="${toISO(r.date)}" onchange="syncDate(${r.id},this.value)" tabindex="-1" aria-hidden="true" aria-label="Recharge date">
       </div>
       <input type="number" id="amount_${r.id}" placeholder="e.g. 500" value="${r.amount}" min="0" oninput="syncRow(${r.id},'amount',this.value)">
       <button class="del-btn" onclick="removeRow(${r.id})" aria-label="Remove row">
@@ -867,6 +898,7 @@ function renderRows() {
     </div>`;
   }).join("");
   renderSectionMeta();
+  updateEntryFade();
 }
 
 function syncRow(id, field, val) {
@@ -1131,26 +1163,35 @@ function recentDailyKwh(deduped, today) {
 
 // Drain the pending balance forward at `dailyKwh`/day, pricing each day up the consumption slabs
 // (month-to-date counter continued from `cumSnap`, reset on the 1st) until it hits zero. Returns the
-// run-dry date and the balance still left as of `today`. Mirrors the consumption-time model exactly.
+// run-dry date, the balance still left as of `today`, and the slab counter `today` opens with —
+// which is the honest month-to-date consumption, and what the planner must carry on from. Mirrors
+// the consumption-time model exactly.
 function forecastNextRecharge(start, energyMoney, cumSnap, dailyKwh, today) {
   if (!(dailyKwh > 0) || !(energyMoney > 0)) return null;
-  let bal = energyMoney, balanceToday = null;
   const cum = { ...cumSnap };
+  let bal = energyMoney, depletion = null, balanceToday = null, cumToday = null;
   let day = new Date(start.getFullYear(), start.getMonth(), start.getDate());
   for (let i = 0; i < 1200; i++) {                        // safety cap (~3.3 yrs of daily steps)
-    if (balanceToday === null && day >= today) balanceToday = bal;
+    if (cumToday === null && day >= today) { cumToday = { ...cum }; balanceToday = Math.max(0, bal); }
+    if (depletion !== null && cumToday !== null) break;   // both snapshots taken; nothing left to walk
     const mk = monthKey(day);
     if (!(mk in cum)) cum[mk] = 0;                         // new calendar month -> slab counter resets
     const dayCost = costKwh(dailyKwh, cum[mk], slabSetForDate(day).bands);
     if (dayCost <= 0) break;
-    if (bal <= dayCost) {                                  // depletes partway through this day
-      const depletion = new Date(day.getTime() + (bal / dayCost) * DAY);
-      return { depletion, balanceToday: balanceToday === null ? 0 : Math.max(0, balanceToday) };
+    if (depletion === null) {
+      if (bal <= dayCost) {                                // depletes partway through this day
+        depletion = new Date(day.getTime() + (bal / dayCost) * DAY);
+        bal = 0;                                           // ran dry; keep walking only to reach `today`
+      } else {
+        bal -= dayCost;
+      }
     }
-    bal -= dayCost; cum[mk] += dailyKwh;
+    cum[mk] += dailyKwh;                                   // use continues at the same rate either way
     day = new Date(day.getTime() + DAY);
   }
-  return null;
+  if (depletion === null) return null;
+  return { depletion, balanceToday: balanceToday === null ? 0 : balanceToday,
+           cumToday: cumToday === null ? { ...cum } : cumToday };
 }
 
 // ---- reverse forecast: what to recharge now so the NEXT recharge falls on a chosen date ----
@@ -1191,10 +1232,7 @@ function fixedChargesFor(date, st) {
   return { demand: cfg.demand * cfg.kw * months, rent: cfg.rent * months, months };
 }
 
-function openPlanPicker() {
-  const i = document.getElementById("plan_date");
-  try { i.showPicker(); } catch (e) { i.focus(); }
-}
+function openPlanPicker() { openNativeDate(document.getElementById("plan_date")); }
 function syncPlanDate(iso) { plan.target = fromISO(iso); renderPlanner(); }
 function syncPlanRate(v) { const n = parseFloat(v); plan.rate = (!isNaN(n) && n > 0) ? n : null; renderPlanner(); }
 function syncPlanCredit(c) { plan.credit = !!c; renderPlanner(); }
@@ -1218,6 +1256,18 @@ function renderPlanner() {
   const disp = document.getElementById("plan-date-display");
   disp.textContent = target ? fmtDate(target) : "Select date";
   disp.classList.toggle("placeholder", !target);
+
+  // there's only a balance to credit once the forecast can see one (needs two recharges); leaving
+  // the box live but inert would just silently do nothing when ticked
+  const creditEl = document.getElementById("plan_credit");
+  const hasBalance = st.balanceToday > 0;
+  if (!hasBalance && plan.credit) plan.credit = false;
+  creditEl.disabled = !hasBalance;
+  creditEl.checked = plan.credit;
+  creditEl.closest(".plan-check").classList.toggle("disabled", !hasBalance);
+  creditEl.closest(".plan-check").title = hasBalance
+    ? `About Tk ${Math.round(st.balanceToday).toLocaleString()} is still in the meter`
+    : "Add a second recharge so the tool can work out what's left in the meter";
 
   const msg = (t, warn) => { out.innerHTML = `<p class="plan-msg${warn ? " warn" : ""}">${t}</p>`; };
   if (!(rate > 0)) return msg("Add at least two recharges (or type a daily figure above) so the tool knows how fast you use power.");
@@ -1446,7 +1496,11 @@ function calculate() {
     amount: parseFloat(getVal(r.id,"amount") || r.amount)
   })).filter(r => r.date && !isNaN(r.amount) && r.amount > 0);
 
-  if (raw.length === 0) { err.textContent = "Please add at least one valid recharge."; err.classList.add("show"); return; }
+  if (raw.length === 0) {
+    err.textContent = "Please add at least one valid recharge."; err.classList.add("show");
+    planState = null; renderPlanner();   // never leave a recommendation standing on data that's gone
+    return;
+  }
 
   raw.sort((a,b) => a.date - b.date);
 
@@ -1588,10 +1642,14 @@ function calculate() {
   const fc = predCtx ? forecastNextRecharge(predCtx.start, predCtx.energyMoney, predCtx.cumSnap, dailyKwh, today) : null;
   renderForecast(fc, dailyKwh, today);
 
-  // hand the model's end state to the "plan a recharge" panel: monthCum is the slab counter as of
-  // today (windows are half-open, so it stops at yesterday), and vended/lastChargedKey decide
-  // whether a recharge made today still owes the monthly fixed charges.
-  planState = { today, monthCum, vended, lastChargedKey, dailyKwh, balanceToday: fc ? fc.balanceToday : 0 };
+  // Hand the model's end state to the "plan a recharge" panel. The slab counter comes from the
+  // FORECAST walk, not from monthCum: monthCum spreads the pending recharge's whole energy money
+  // across [recharge, today), i.e. it assumes the balance is already spent, so the current month's
+  // counter is inflated by exactly the kWh still sitting in the meter — which would price the days
+  // ahead several slabs too high. fc.cumToday is the same model's honest month-to-date figure.
+  // (No forecast means no balance to carry, so the spread counter is already the whole story.)
+  planState = { today, monthCum: fc ? fc.cumToday : monthCum, vended, lastChargedKey, dailyKwh,
+                balanceToday: fc ? fc.balanceToday : 0 };
   renderPlanner();
 
   document.getElementById("month-grid").innerHTML = sortedKeys.map(k => {
@@ -1628,6 +1686,12 @@ const saved = load();
 (saved || DEFAULT_DATA).forEach(d => addRow(d.date, d.amount));
 applyPanelSections();
 calculate();
+
+// the fold moves with the scroll position, the section opening, and the viewport
+document.querySelector(".entry-scroll").addEventListener("scroll", updateEntryFade, { passive: true });
+document.getElementById("sec-recharges").addEventListener("toggle", updateEntryFade);
+window.addEventListener("resize", updateEntryFade, { passive: true });
+updateEntryFade();
 </script>
 </body>
 </html>
