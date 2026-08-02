@@ -721,7 +721,7 @@ button { font-family: inherit; cursor: pointer; }
        <li>If the reading is old enough that the measured rate would have emptied the meter before today, the balance is booked over the days it actually lasted rather than smeared across days the meter had nothing left to give. The row is then fully spent, so it carries no <em>so far</em> tag.</li>
        <li>That window is no longer open-ended, so it counts as an ordinary measured window: it joins the kWh/day chart, and as long as it's at least a week long the <strong>forecast runs at the measured rate</strong> rather than the trailing average — the average deliberately mixes in the older habits the reading has just contradicted.</li>
        <li>The forecast then drains the <em>known</em> balance forward from the day you read it, so <em>Next recharge</em> is grounded in the meter rather than an assumption. If the reading is a few days old, the days since are estimated at the measured rate.</li>
-       <li><em>Plan a recharge</em> can now credit what's really left, and prices the days ahead from your true month-to-date slab position instead of one inflated by kWh you never used. With a reading there is no ambiguity left to hedge against, so the panel follows the measured rate rather than your average.</li>
+       <li><em>Plan a recharge</em> can now credit what's really left, and prices the days ahead from your true month-to-date slab position instead of one inflated by kWh you never used. With a reading spanning a week or more there is no ambiguity left to hedge against, so the panel follows the measured rate rather than your average; below that the reading still fixes the balance, but the rate falls back to the average.</li>
      </ul>
      <p>The reading is saved with your settings and travels in the CSV, always paired with the date it was taken — the panel tells you how old it is, since that date sets the window, the rate and where the forecast starts. Clear it and the tool falls back to the ceiling argument.</p>
 
@@ -1359,8 +1359,12 @@ function meterSpend(start, end, energyMoney, cum) {
   // that actually happened, [start, dryAt), rather than smearing the same taka thinly across days
   // the meter had nothing left to give: that would contradict the rate just measured, and leave
   // the panel showing one kWh/day in the reading and quite another on the chart.
+  // Bounded by the window it is searching, for the same reason forecastNextRecharge is: stopping
+  // short would hand back a dryAt that is really just "wherever the loop gave up", and the window
+  // is only ever [start, end), so there is nothing past it to find.
   let left = energyMoney, c = { ...cum }, dry = new Date(start);
-  for (let i = 0; i < 1200 && left > 0; i++) {
+  const dryLimit = Math.max(1, Math.round((end - start) / DAY)) + 1;
+  for (let i = 0; i < dryLimit && left > 0; i++) {
     const mk = monthKey(dry);
     if (!(mk in c)) c[mk] = 0;
     const dayCost = costKwh(rate, c[mk], slabSetForDate(dry).bands);
@@ -2044,7 +2048,8 @@ function calculate() {
 
   document.getElementById("txn-body").innerHTML = deduped.map((r,i) => {
     const next = deduped[i+1];
-    const end = next ? next.date : today;
+    // the booked window, so the gap is the denominator that actually produced the kWh beside it
+    const end = r.end || (next ? next.date : today);
     const days = Math.max(0, Math.round((end - r.date) / DAY));
     return `<tr>
       <td>${fmtDate(r.date)}</td>
