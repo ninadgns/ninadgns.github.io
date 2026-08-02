@@ -61,7 +61,7 @@ The BPDB tracker and the org chart are self-contained static pages — just open
 
 ## License
 
-[PolyForm Noncommercial 1.0.0](LICENSE) — source-available, not open source.
+[PolyForm Noncommercial 1.0.0](LICENSE.md) — source-available, not open source.
 
 Use it, read it, fork it, change it, share it: all fine for any **noncommercial**
 purpose, including personal use, research, teaching and charitable work.

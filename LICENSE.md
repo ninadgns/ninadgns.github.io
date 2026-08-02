@@ -1,13 +1,12 @@
-Required Notice: Copyright 2022-2026 Muhaiminul Islam Ninad (https://ninadgns.github.io)
-
-Commercial use is not granted by these terms. For a commercial licence,
-contact the copyright holder.
-
-----
-
 # PolyForm Noncommercial License 1.0.0
 
 <https://polyformproject.org/licenses/noncommercial/1.0.0>
+
+Required Notice: Copyright 2022-2026 Muhaiminul Islam Ninad (https://ninadgns.github.io)
+
+> **Commercial use is not granted by these terms.** That includes use in or for a
+> business — a product, an internal tool, or a service you charge for. For a
+> commercial licence, contact the copyright holder.
 
 ## Acceptance
 
