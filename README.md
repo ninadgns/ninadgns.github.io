@@ -61,4 +61,17 @@ The BPDB tracker and the org chart are self-contained static pages — just open
 
 ## License
 
-Open source under the MIT License.
+[PolyForm Noncommercial 1.0.0](LICENSE) — source-available, not open source.
+
+Use it, read it, fork it, change it, share it: all fine for any **noncommercial**
+purpose, including personal use, research, teaching and charitable work.
+
+**Commercial use requires a separate licence in writing.** That includes using
+this code, or a derivative of it, in or for a business — a product, an internal
+tool, or a service you charge for. If that is what you want, get in touch; I am
+happy to license it.
+
+Earlier revisions of this README described the project as MIT-licensed. That
+statement was removed on 2 Aug 2026 and does not apply to this or any later
+revision. Nothing here revokes rights anyone actually obtained under those
+earlier terms.
