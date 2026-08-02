@@ -827,9 +827,11 @@ function loadCfg() {
   } catch (e) { /* ignore */ }
 }
 
+// A balance without its date is unusable, so a half-written pair is never stored — otherwise it
+// would survive the session only to be rejected by loadMeter, losing the number without saying so.
 function saveMeter() {
   try {
-    if (meter.bal === null) localStorage.removeItem(METER_KEY);
+    if (meter.bal === null || !meter.asOf) localStorage.removeItem(METER_KEY);
     else localStorage.setItem(METER_KEY, JSON.stringify(meter));
   } catch (e) { /* ignore */ }
 }
@@ -1013,9 +1015,12 @@ function syncCfg() {
 const DEFAULT_METER_HINT = "Your prepaid meter shows the taka balance still sitting on it. Type that in and the tool stops assuming your latest recharge is already spent — usage, the monthly figures and the next-recharge date are all worked back from the reading instead.";
 
 function renderMeter() {
+  // Compare the parsed number, not the text: rewriting "05" to "5" mid-entry jumps the caret.
   const balEl = document.getElementById("mtr_bal");
-  const v = meter.bal === null ? "" : String(meter.bal);
-  if (balEl.value !== v) balEl.value = v;
+  const shown = balEl.value.trim() === "" ? null : parseFloat(balEl.value);
+  if (!(meter.bal === null ? shown === null : shown === meter.bal)) {
+    balEl.value = meter.bal === null ? "" : String(meter.bal);
+  }
 
   const dateEl = document.getElementById("mtr_date");
   const iso = meter.asOf ? toISO(meter.asOf) : "";
@@ -1034,12 +1039,17 @@ function renderMeter() {
   hint.className = "set-hint" + (meterNote.kind ? " " + meterNote.kind : "");
   hint.innerHTML = meterNote.text || DEFAULT_METER_HINT;
 
-  document.getElementById("mtr-actions").style.display = meter.bal === null ? "none" : "";
+  // offer Clear whenever there is anything at all to clear, date included
+  document.getElementById("mtr-actions").style.display =
+    (meter.bal === null && !meter.asOf) ? "none" : "";
 }
 function syncMeterBal(v) {
   const n = parseFloat(v);
   meter.bal = (!isNaN(n) && n >= 0) ? n : null;
-  if (meter.bal !== null && !meter.asOf) meter.asOf = fromISO(isoOf(startOfToday()));
+  // Blanking the number is starting over, so the date goes with it. Keeping it would silently
+  // date the next reading you type to whenever the last one was taken.
+  if (meter.bal === null) meter.asOf = "";
+  else if (!meter.asOf) meter.asOf = fromISO(isoOf(startOfToday()));
   saveMeter(); calculate();
 }
 function syncMeterDate(iso) { meter.asOf = fromISO(iso); saveMeter(); calculate(); }
@@ -1341,7 +1351,9 @@ function meterSpend(start, end, energyMoney, cum) {
 // Recent average daily kWh, from windows whose consumption is KNOWN (weighted by days), within a
 // trailing lookback. The pending recharge is normally excluded — its window is open-ended, so its
 // kWh is an assumption, not an observation. Pass `includePending` once a meter reading has pinned
-// how much of it is really gone: it is then an ordinary measured window and belongs in the average.
+// how much of it is really gone, which makes it countable like any other window. (If the reading
+// is old enough that the balance ran dry before today, the tail of that window is back to being an
+// assumption — but a bounded one: it can never exceed what the balance was able to buy.)
 function recentDailyKwh(deduped, today, includePending) {
   const LOOKBACK = 60, cutoff = new Date(today.getTime() - LOOKBACK * DAY);
   const last = includePending ? deduped.length : deduped.length - 1;
@@ -1383,20 +1395,26 @@ function forecastNextRecharge(start, energyMoney, cumSnap, dailyKwh, today) {
     if (!(mk in cum)) cum[mk] = 0;                         // new calendar month -> slab counter resets
     const dayCost = costKwh(dailyKwh, cum[mk], slabSetForDate(day).bands);
     if (dayCost <= 0) break;
+    // Only kWh the balance actually paid for advance the slab counter. Past the run-dry point the
+    // meter has nothing to bill against, so accruing there would hand the planner a month-to-date
+    // figure covering units that were never drawn — pricing the days ahead several slabs too high.
     if (depletion === null) {
       if (bal <= dayCost) {                                // depletes partway through this day
-        depletion = new Date(day.getTime() + (bal / dayCost) * DAY);
+        const frac = bal / dayCost;
+        depletion = new Date(day.getTime() + frac * DAY);
+        cum[mk] += dailyKwh * frac;
         bal = 0;                                           // ran dry; keep walking only to reach `today`
       } else {
         bal -= dayCost;
+        cum[mk] += dailyKwh;
       }
     }
-    cum[mk] += dailyKwh;                                   // use continues at the same rate either way
     day = new Date(day.getTime() + DAY);
   }
-  return { depletion, beyond: depletion === null,
-           balanceToday: balanceToday === null ? 0 : balanceToday,
-           cumToday: cumToday === null ? { ...cum } : cumToday };
+  // Never reaching `today` means the walk learnt nothing about the present — no balance, no
+  // counter. Reporting that as "outlives the horizon" would dress a blank in confident clothing.
+  if (balanceToday === null) return null;
+  return { depletion, beyond: depletion === null, balanceToday, cumToday };
 }
 
 // ---- reverse forecast: what to recharge now so the NEXT recharge falls on a chosen date ----
@@ -1512,6 +1530,13 @@ function renderPlanner() {
   const perMonthFixed = cfg.demand * cfg.kw + cfg.rent;
 
   const notes = [];
+  // The forecast card is showing a lower ceiling. Quoting from it would under-buy if the reason
+  // the balance lasted is leftover credit rather than thrift, so the panel deliberately prices at
+  // the usual rate — and says so, because two different kWh/day figures on one screen otherwise
+  // just look like a bug.
+  if (st.capped && plan.rate === null) {
+    notes.push(`Priced at your usual ${st.dailyKwh.toFixed(1)} kWh/day, not the lower ceiling on the card above — buying a little too much only leaves credit in the meter, whereas buying too little misses ${fmtDate(target)} altogether. A <strong>meter reading</strong> replaces the guess, or type your own figure above.`);
+  }
   notes.push(fx.months > 0
     ? `You haven't recharged in ${monthLabel(monthKey(st.today))} yet, so this top-up also pays ${fx.months === 1 ? "the" : `${fx.months} months of`} demand charge and meter rent (Tk ${money(fx.demand + fx.rent)}).`
     : `${monthLabel(monthKey(st.today))}'s demand charge and meter rent are already paid, so none are deducted — every taka here goes to energy.`);
@@ -1707,13 +1732,13 @@ function renderForecast(fc, dailyKwh, today, info) {
   const kwhLeft = Math.max(0, dailyKwh * (dep - today) / DAY);
   const when = dep.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
 
-  // The balance has outlived the trailing average, and no reading says by how much. All the tool
-  // can honestly report is the ceiling that the missing recharge implies — so it says so, rather
-  // than dressing a bound up as a prediction the way the old "overdue" card did.
+  // The balance has outlived the trailing average, and no reading says by how much. Two things
+  // explain that and the model cannot tell them apart, so it names both rather than dressing a
+  // bound up as a prediction the way the old "overdue" card did.
   if (capped) {
     const wd = info.wouldDeplete ? ` around ${fmtDate(info.wouldDeplete)}` : "";
     return paint("capped", "Balance is outlasting the estimate",
-      `At your usual ≈ ${info.raw.toFixed(1)} kWh/day this should have run dry${wd}, but you have not topped up — so you cannot be using more than <strong>≈ ${dailyKwh.toFixed(1)} kWh/day</strong>, and everything below is worked out at that ceiling. Enter your meter balance under <strong>Meter reading</strong> for the real figure.`);
+      `At your usual ≈ ${info.raw.toFixed(1)} kWh/day this should have run dry${wd}, but you have not topped up. So either you are using well under that — no more than <strong>≈ ${dailyKwh.toFixed(1)} kWh/day</strong> — or your meter still had credit when you last recharged. Enter your meter balance under <strong>Meter reading</strong> to settle which.`);
   }
   if (overdue) {
     return paint("overdue", "Recharge likely due now",
@@ -1881,7 +1906,7 @@ function calculate() {
     if (!next && !(measured && today > r.date)) return;
     const end = next ? next.date : today;
     const days = Math.max(1, Math.round((end - r.date) / DAY));
-    windows.push({ date: r.date, end, days, kwh: r.kwh, perday: r.kwh / days, open: !next });
+    windows.push({ date: r.date, end, days, kwh: r.kwh, perday: r.kwh / days });
   });
   renderChart(sortedKeys, monthly, windows, measured);
 
@@ -1892,11 +1917,11 @@ function calculate() {
   //    observation like any other: it counts towards the average, and the forecast drains the
   //    KNOWN balance forward from the day it was read.
   //  * CENSORED — no reading. All the log proves is that you have not topped up, i.e. the balance
-  //    is still alive. That is a CEILING, not a measurement: your use cannot have been faster than
-  //    the rate that would have drained the balance exactly by today, or you would have recharged.
-  //    When the trailing average exceeds that ceiling it is provably stale, so the ceiling replaces
-  //    it — which is what stops the tool calling a recharge overdue while the meter still has taka
-  //    on it. The ceiling tightens by itself every further day you go without topping up.
+  //    is still alive, which bounds how fast it can have been draining. The bound holds only if the
+  //    meter was empty when you last topped up: recharge on top of leftover credit and the real
+  //    starting balance was bigger, so the true rate is higher than this. The model has no way to
+  //    tell those apart — which is exactly what the meter reading is for — so the ceiling is
+  //    reported as one of two explanations rather than as fact.
   const dailyRaw = recentDailyKwh(deduped, today, measured);
   // A measured pending window is a direct reading of how fast THIS balance is draining, so it is
   // the right thing to forecast it with — the trailing average deliberately mixes in the older
@@ -1904,10 +1929,15 @@ function calculate() {
   // that falls back to the average.
   const MIN_MEASURED_DAYS = 7;
   const usingMeasured = measured && predCtx.read.days >= MIN_MEASURED_DAYS && predCtx.read.rate > 0;
-  const ceiling = (!measured && predCtx && predCtx.days > 0 && today > predCtx.start)
+  // predCtx.kwh is 0 when fixed charges swallow the whole top-up — no energy bought, so no bound
+  const ceiling = (!measured && predCtx && predCtx.days > 0 && today > predCtx.start && predCtx.kwh > 0)
     ? predCtx.kwh / predCtx.days : null;
   const capped = ceiling !== null && dailyRaw > ceiling + 1e-9;
   const dailyKwh = usingMeasured ? predCtx.read.rate : capped ? ceiling : dailyRaw;
+  // The planner is deliberately NOT held to the ceiling. Quote high and the surplus just sits in
+  // the meter; quote low and you run dry before the date you asked for. Under an ambiguity the
+  // model cannot resolve, that asymmetry says use the larger rate and explain the choice.
+  const planKwh = capped ? dailyRaw : dailyKwh;
 
   let fc = null, fcInfo = null;
   if (predCtx) {
@@ -1932,14 +1962,14 @@ function calculate() {
   // (No forecast means no balance to carry, so the spread counter is already the whole story.)
   // a reading is a fact about the balance even when the walk can't run (no usable rate yet), so
   // never let a missing forecast throw away what the meter already told us
-  planState = { today, monthCum: fc ? fc.cumToday : monthCum, vended, lastChargedKey, dailyKwh,
+  planState = { today, monthCum: fc ? fc.cumToday : monthCum, vended, lastChargedKey,
+                dailyKwh: planKwh,
                 balanceToday: fc ? fc.balanceToday : (measured ? Math.max(0, meter.bal) : 0),
-                measured, capped };
+                measured, capped, ceiling };
   renderPlanner();
 
   // report back what the reading did, or why it could not be used
   if (meter.bal === null) meterNote = { text: "", kind: "" };
-  else if (!predCtx) meterNote = { text: "Add a recharge first — a meter reading only means something measured against the balance a recharge put in.", kind: "warn" };
   else if (predCtx.read && predCtx.read.why) meterNote = { text: predCtx.read.why, kind: "warn" };
   else {
     const rd = predCtx.read;
