@@ -18,6 +18,7 @@
   --accent-strong: #168a55;
   --accent-soft: #e4f5ec;
   --danger: #dc2626;
+  --caution: #b45309;
   --radius: 12px;
   --radius-sm: 9px;
   --shadow: 0 1px 2px rgba(16, 40, 30, .05), 0 8px 24px rgba(16, 40, 30, .06);
@@ -35,6 +36,7 @@
     --accent: #34c27e;
     --accent-strong: #2bb172;
     --accent-soft: #15291f;
+    --caution: #d9982f;
     --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
   }
 }
@@ -248,6 +250,12 @@ button { font-family: inherit; cursor: pointer; }
 .forecast.overdue { background: #fdecec; border-color: #f3c4c4; border-left-color: var(--danger); }
 .forecast.overdue .fc-ico { color: var(--danger); }
 @media (prefers-color-scheme: dark) { .forecast.overdue { background: #281514; border-color: #4a2522; } }
+/* the balance has outlived the estimate. Not an error and not a normal forecast either: what the
+   card reports is a CEILING on your use, not a prediction — so it gets its own, calmer colour. */
+.forecast.capped { background: #fdf5e6; border-color: #eedfbd; border-left-color: var(--caution); }
+.forecast.capped .fc-ico { color: var(--caution); }
+@media (prefers-color-scheme: dark) { .forecast.capped { background: #271f12; border-color: #493a1e; } }
+.fc-sub strong { color: var(--text-primary); font-weight: 600; }
 
 .planner { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 26px; }
 .plan-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
@@ -320,6 +328,8 @@ button { font-family: inherit; cursor: pointer; }
 .txn-table tr:last-child td { border-bottom: none; }
 .txn-table td.num, .txn-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .tag-ongoing { font-size: 11px; color: var(--accent); background: var(--accent-soft); padding: 2px 8px; border-radius: 20px; }
+/* a pending recharge measured against the meter is only part-spent — say so next to the figure */
+.so-far { font-size: 10.5px; color: var(--text-secondary); margin-left: 4px; }
 
 .icon { width: 17px; height: 17px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
 
@@ -356,6 +366,8 @@ button { font-family: inherit; cursor: pointer; }
 }
 .set-grid select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .set-hint { font-size: 11px; color: var(--text-secondary); margin-top: 12px; line-height: 1.5; text-wrap: pretty; }
+.set-hint.ok { color: var(--accent-strong); }
+.set-hint.warn { color: var(--caution); }
 
 .toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
 .toggle button {
@@ -526,7 +538,8 @@ button { font-family: inherit; cursor: pointer; }
         prepaid formula — VAT, the monthly demand charge, meter rent and rebate are removed. Your use is then
         spread evenly across the days until your next recharge (same kWh per day, not same taka), and each
         day's kWh is billed at that calendar month's progressive slab, which resets on the 1st. The latest balance is
-        <em>pending</em> and excluded from averages. Figures are estimates, not meter readings.
+        <em>pending</em> and excluded from averages — and assumed spent by today unless you enter a
+        <strong>meter reading</strong>, which books only the part you've actually used.
       </p>
       <button class="btn-mini" style="margin-bottom:26px" onclick="openMath()">
         <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
@@ -571,6 +584,36 @@ button { font-family: inherit; cursor: pointer; }
             </label>
           </div>
           <p class="set-hint">Energy is estimated from each recharge using BPDB's official prepaid formula. Slab rates update automatically by date (Feb 2024, then the Jun 2026 hike). These settings are saved with your CSV.</p>
+        </div>
+      </details>
+
+      <details class="panel-sec" id="sec-meter">
+        <summary>
+          <span class="section-title">Meter reading</span>
+          <span class="sec-meta" id="mtr-meta"></span>
+          <svg class="sec-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
+        <div class="sec-body">
+          <div class="set-grid">
+            <label>Balance left (Tk)
+              <input type="number" id="mtr_bal" min="0" step="1" placeholder="e.g. 420" oninput="syncMeterBal(this.value)">
+            </label>
+            <label>Read on
+              <div class="date-field" role="button" tabindex="0" aria-label="Date the meter was read"
+                   onclick="openMeterPicker()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMeterPicker()}">
+                <span class="date-display placeholder" id="mtr-date-display">Select date</span>
+                <svg class="icon date-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+                <input type="date" id="mtr_date" class="date-native" onchange="syncMeterDate(this.value)" tabindex="-1" aria-hidden="true" aria-label="Date the meter was read">
+              </div>
+            </label>
+          </div>
+          <p class="set-hint" id="mtr-hint"></p>
+          <div class="sec-actions" style="margin: 10px 0 0" id="mtr-actions">
+            <button class="btn-mini" onclick="clearMeter()">
+              <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              Clear reading
+            </button>
+          </div>
         </div>
       </details>
 
@@ -657,13 +700,27 @@ button { font-family: inherit; cursor: pointer; }
      <p>Each month's total on the cards and chart is the sum of these slices from every recharge that overlaps it. A few finer points:</p>
      <ul>
        <li>Windows are <strong>half-open</strong>: the day of the next recharge starts the next window, so no day is counted twice and the slices always add back to the recharge's full kWh.</li>
-       <li>The <strong>most recent recharge</strong> has no next top-up, so it's spread from its date up to <em>today</em> and marked <em>pending</em> — you likely haven't used it all yet, so it's excluded from the monthly averages.</li>
+       <li>The <strong>most recent recharge</strong> has no next top-up to bound it, so it's spread from its date up to <em>today</em> and marked <em>pending</em> — you likely haven't used it all yet, so it's excluded from the monthly averages. Give the tool a <strong>meter reading</strong> and only the part you've actually burnt is booked (see below).</li>
        <li>The <strong>first month</strong> in your data usually starts mid-month, so it captures only part of that month's use and can read low.</li>
        <li>This assumes <strong>roughly even daily use</strong>. Real consumption varies with weather and travel, so read each month as a solid estimate, not an exact meter figure.</li>
      </ul>
 
      <h3>Forecasting your next recharge</h3>
      <p>Your most recent top-up still has balance left in the meter. To estimate when it runs out, the tool takes your <strong>recent average daily use</strong> — kWh per day over roughly the last two months of completed windows — and drains the remaining energy money forward one day at a time, pricing each day at its month's slab and resetting on the 1st, until the balance reaches zero. That date is shown as <em>Next recharge</em>: the latest you'd need to top up if your usual habits hold. It shifts with weather and travel, so treat it as a heads-up, not a deadline.</p>
+
+     <h3>When the balance outlives the forecast</h3>
+     <p>The recharge log records money going <em>in</em>. It never records what's left, so the tool cannot see your balance directly — and that's a real gap, because the last window is <strong>open-ended</strong>. Everything above quietly assumes the latest recharge is fully spent by today. Use less than usual and that assumption breaks: the forecast date slides into the past and the tool starts insisting a top-up is overdue while your meter still has taka on it.</p>
+     <p><strong>Without a meter reading, the missing recharge is itself evidence.</strong> You haven't topped up, so the balance is still alive — and that puts a hard <em>ceiling</em> on how fast you can have been using power. Any rate above the one that would have drained the balance exactly by today is ruled out, because at that rate you'd have run dry and recharged already. When your trailing average exceeds that ceiling it's provably stale, so the ceiling replaces it, and the card says <em>balance is outlasting the estimate</em>. This is a bound, not a prediction: it says <em>at most</em> this fast, and it tightens by itself with every further day you go without topping up.</p>
+     <div class="formula">ceiling kWh/day = kWh the balance buys over [last recharge, today) ÷ days elapsed</div>
+     <p><strong>With a meter reading, the guesswork disappears.</strong> Type in the taka balance your meter shows and the day you read it, and the open window stops being an assumption:</p>
+     <ul>
+       <li><strong>Taka spent</strong> = energy money the recharge put in − the balance you read. Run through the same slab pricing backwards, that gives the exact kWh you've consumed since the recharge, and so a <strong>measured</strong> kWh/day.</li>
+       <li>Only that consumed share is booked into the monthly cards, the chart and the recharge log — the log shows the pending row's kWh as <em>so far</em>, and the month's taka is scaled by the same fraction.</li>
+       <li>That window is no longer open-ended, so it counts as an ordinary measured window: it joins the kWh/day chart, and as long as it's at least a week long the <strong>forecast runs at the measured rate</strong> rather than the trailing average — the average deliberately mixes in the older habits the reading has just contradicted.</li>
+       <li>The forecast then drains the <em>known</em> balance forward from the day you read it, so <em>Next recharge</em> is grounded in the meter rather than an assumption. If the reading is a few days old, the days since are estimated at the measured rate.</li>
+       <li><em>Plan a recharge</em> can now credit what's really left, and prices the days ahead from your true month-to-date slab position instead of one inflated by kWh you never used.</li>
+     </ul>
+     <p>The reading is saved with your settings and travels in the CSV, paired with its date so a stale one is never mistaken for a fresh one. Clear it and the tool falls back to the ceiling argument.</p>
 
      <h3>Planning a recharge — the same maths, run backwards</h3>
      <p>The <strong>Plan a recharge</strong> panel answers the opposite question: <em>if I want my next top-up to fall on a particular date, what do I recharge today?</em> It assumes your current balance is about to run out, and works in two steps.</p>
@@ -673,7 +730,7 @@ button { font-family: inherit; cursor: pointer; }
      <div class="formula">R = (1 + v) × [ (E + demand charge) ÷ (1 + k) + meter rent ]</div>
      <p>The demand charge and meter rent are only in there if you <strong>haven't yet recharged this calendar month</strong> — top up again in a month you've already vended in and they drop out, so the whole recharge goes to energy. The result is rounded up to the nearest Tk 10.</p>
      <p><strong>One thing to watch.</strong> Those fixed charges are collected when you <em>vend</em>, not as you consume. So a recharge big enough to carry you past the end of the month doesn't pay next month's demand charge and rent — they pile up and are taken out of the <em>next</em> top-up. The panel warns you when that happens, and says how much is being deferred.</p>
-     <p>Leave the <em>daily use</em> box blank to plan at your recent average, or type a figure to plan around a heatwave or a trip away. Tick <em>count the balance still left in the meter</em> if you're topping up before the old balance is actually spent.</p>
+     <p>Leave the <em>daily use</em> box blank to plan at your recent average, or type a figure to plan around a heatwave or a trip away. Tick <em>count the balance still left in the meter</em> if you're topping up before the old balance is actually spent — that needs the tool to know there <em>is</em> a balance, so it only comes alive once a meter reading (or a live forecast) says how much.</p>
 
      <h3>Slab rates used</h3>
      <p>Rates are set by BERC and applied <strong>automatically by date of use</strong>: the <strong>Feb 2024</strong> schedule through 31 May 2026, and the <strong>Jun 2026</strong> hike from 1 Jun 2026 onward.</p>
@@ -681,7 +738,7 @@ button { font-family: inherit; cursor: pointer; }
 
      <h3>Assumptions &amp; limitations</h3>
      <ul>
-       <li>This is an <strong>estimate</strong> from recharge amounts and dates, not from meter readings.</li>
+       <li>This is an <strong>estimate</strong> from recharge amounts and dates. The one place a real meter reading is used is the still-draining latest recharge, and only if you enter one.</li>
        <li>It assumes roughly even daily use between recharges.</li>
        <li>Demand charge defaults to <strong>42 Tk/kW</strong> (a common bill figure); BPDB's published example uses 30 Tk/kW. Change it on the Tracker tab if yours differs.</li>
        <li>The <em>Lifeline</em> rate (≤ 50 kWh across a whole month) is not applied separately — it only matters for very low-usage months.</li>
@@ -714,6 +771,7 @@ const DEFAULT_DATA = [
 const DAY = 86400000;
 const STORAGE_KEY = "bpdb_recharges_v1";
 const CONFIG_KEY = "bpdb_config_v1";
+const METER_KEY = "bpdb_meter_v1";
 
 // BPDB residential slab rates (BDT/kWh). bands: [cumulativeUpperBound_kWh, rate].
 // lifeline applies to the WHOLE month only if total monthly use <= 50 kWh.
@@ -736,6 +794,14 @@ let rows = [];
 let planState = null;
 // User's inputs on that panel. rate = null -> fall back to the recent average.
 let plan = { target: "", rate: null, credit: false };
+
+// What the physical meter says is left, and the day it was read (DD/MM/YYYY). The recharge log
+// alone can never tell us this: it records money going IN, so the model has to assume the latest
+// balance is spent by today. A reading replaces that assumption with a measurement — see
+// meterSpend(). bal = null means no reading, and the model falls back to the ceiling argument.
+let meter = { bal: null, asOf: "" };
+// Set by calculate() so the panel can report what the reading did (or why it was ignored).
+let meterNote = { text: "", kind: "" };
 
 function save() {
   try {
@@ -761,6 +827,24 @@ function loadCfg() {
   } catch (e) { /* ignore */ }
 }
 
+function saveMeter() {
+  try {
+    if (meter.bal === null) localStorage.removeItem(METER_KEY);
+    else localStorage.setItem(METER_KEY, JSON.stringify(meter));
+  } catch (e) { /* ignore */ }
+}
+// A reading is only meaningful together with the day it was taken, so both are stored and both
+// are restored. A stale one stays usable: the model drains it forward from its own date.
+function loadMeter() {
+  try {
+    const raw = localStorage.getItem(METER_KEY);
+    if (!raw) return;
+    const m = JSON.parse(raw);
+    const bal = parseFloat(m && m.bal);
+    if (!isNaN(bal) && bal >= 0 && m.asOf && parseDate(m.asOf)) meter = { bal, asOf: m.asOf };
+  } catch (e) { /* ignore */ }
+}
+
 function parseDate(str) {
   const p = String(str).trim().split("/");
   if (p.length !== 3) return null;
@@ -772,6 +856,7 @@ function parseDate(str) {
   return dt;
 }
 
+function startOfToday() { const d = new Date(); d.setHours(0,0,0,0); return d; }
 function fmtDate(d) { return d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}); }
 function monthKey(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; }
 function monthLabel(k) {
@@ -925,6 +1010,42 @@ function syncCfg() {
   renderSectionMeta();
   calculate();
 }
+const DEFAULT_METER_HINT = "Your prepaid meter shows the taka balance still sitting on it. Type that in and the tool stops assuming your latest recharge is already spent — usage, the monthly figures and the next-recharge date are all worked back from the reading instead.";
+
+function renderMeter() {
+  const balEl = document.getElementById("mtr_bal");
+  const v = meter.bal === null ? "" : String(meter.bal);
+  if (balEl.value !== v) balEl.value = v;
+
+  const dateEl = document.getElementById("mtr_date");
+  const iso = meter.asOf ? toISO(meter.asOf) : "";
+  if (dateEl.value !== iso) dateEl.value = iso;
+  dateEl.max = isoOf(startOfToday());              // you cannot have read a meter in the future
+  const d = meter.asOf ? parseDate(meter.asOf) : null;
+  const disp = document.getElementById("mtr-date-display");
+  disp.textContent = d ? fmtDate(d) : "Select date";
+  disp.classList.toggle("placeholder", !d);
+
+  const meta = document.getElementById("mtr-meta");
+  if (meta) meta.textContent = meter.bal === null
+    ? "none" : `Tk ${Math.round(meter.bal).toLocaleString()}${d ? ` · ${fmtDate(d)}` : ""}`;
+
+  const hint = document.getElementById("mtr-hint");
+  hint.className = "set-hint" + (meterNote.kind ? " " + meterNote.kind : "");
+  hint.innerHTML = meterNote.text || DEFAULT_METER_HINT;
+
+  document.getElementById("mtr-actions").style.display = meter.bal === null ? "none" : "";
+}
+function syncMeterBal(v) {
+  const n = parseFloat(v);
+  meter.bal = (!isNaN(n) && n >= 0) ? n : null;
+  if (meter.bal !== null && !meter.asOf) meter.asOf = fromISO(isoOf(startOfToday()));
+  saveMeter(); calculate();
+}
+function syncMeterDate(iso) { meter.asOf = fromISO(iso); saveMeter(); calculate(); }
+function openMeterPicker() { openNativeDate(document.getElementById("mtr_date")); }
+function clearMeter() { meter = { bal: null, asOf: "" }; saveMeter(); calculate(); }
+
 function setMetric(m) {
   metric = m;
   ["kwh", "perday", "tk"].forEach(x => {
@@ -993,8 +1114,12 @@ function exportCsv() {
     `# meter_rent,${cfg.rent}`,
     `# vat_pct,${cfg.vat}`,
     `# rebate_pct,${cfg.rebate}`,
-    "date,amount"
   ];
+  // the reading is only meaningful with the day it was taken, so never write one without the other
+  if (meter.bal !== null && meter.asOf) {
+    lines.push(`# meter_balance,${meter.bal}`, `# meter_read,${meter.asOf}`);
+  }
+  lines.push("date,amount");
   rows.forEach(r => {
     const date = (r.date || "").trim();
     const amount = (getVal(r.id,"amount") || r.amount || "").toString().trim();
@@ -1018,6 +1143,7 @@ function importCsv(input) {
     const text = String(e.target.result).replace(/^﻿/, ""); // strip BOM
     const parsed = [];
     const cfgFromCsv = {};
+    const meterFromCsv = {};
     const CFG_MAP = { load_kw:"kw", demand_rate:"demand", meter_rent:"rent", vat_pct:"vat", rebate_pct:"rebate" };
     text.split(/\r\n|\r|\n/).forEach(line => {
       const t = line.trim();
@@ -1025,10 +1151,18 @@ function importCsv(input) {
       // config line, e.g. "# load_kw,2"
       if (t.startsWith("#")) {
         const kv = t.slice(1).split(",").map(c => c.trim());
-        const key = CFG_MAP[kv[0]], val = kv[1];
-        if (key && val !== undefined && val !== "") {
-          const n = parseFloat(val); if (!isNaN(n)) cfgFromCsv[key] = n;
+        const val = kv[1];
+        if (val === undefined || val === "") return;
+        if (kv[0] === "meter_balance") {
+          const n = parseFloat(val); if (!isNaN(n) && n >= 0) meterFromCsv.bal = n;
+          return;
         }
+        if (kv[0] === "meter_read") {
+          if (parseDate(val)) meterFromCsv.asOf = val;
+          return;
+        }
+        const key = CFG_MAP[kv[0]];
+        if (key) { const n = parseFloat(val); if (!isNaN(n)) cfgFromCsv[key] = n; }
         return;
       }
       const cells = t.split(",").map(c => c.trim().replace(/^"|"$/g, ""));
@@ -1051,6 +1185,10 @@ function importCsv(input) {
     renderRows();
     parsed.forEach(d => addRow(d.date, d.amount)); // addRow already calls save()
     if (Object.keys(cfgFromCsv).length) { cfg = { ...cfg, ...cfgFromCsv }; renderCfg(); saveCfg(); }
+    // an importing CSV owns the reading too: a half-written pair would silently strand a stale one
+    meter = (meterFromCsv.bal !== undefined && meterFromCsv.asOf)
+      ? { bal: meterFromCsv.bal, asOf: meterFromCsv.asOf } : { bal: null, asOf: "" };
+    saveMeter();
     document.getElementById("err").classList.remove("show");
     calculate();
     input.value = ""; // allow re-importing the same file
@@ -1138,34 +1276,101 @@ function monthsBetweenKeys(aKey, bDate) {
   return (bDate.getFullYear() - ay) * 12 + (bDate.getMonth() + 1 - am);
 }
 
+// Split the half-open window [start, end) into per-calendar-month slices, each carrying the
+// month-to-date consumption counter it starts from and its rate era, as a fraction of the whole
+// window. `cumOf(monthKey)` supplies that counter — the real booking pass also creates the month.
+function monthSegs(start, end, cumOf) {
+  const totalDays = Math.max(1, Math.round((end - start) / DAY));
+  const segs = [];
+  let cur = new Date(start);
+  while (cur < end) {
+    const firstOfNext = new Date(cur.getFullYear(), cur.getMonth()+1, 1);
+    const segEnd = firstOfNext < end ? firstOfNext : end;
+    const smk = monthKey(cur);
+    segs.push({ mk: smk, frac: Math.round((segEnd - cur) / DAY) / totalDays,
+                bands: slabSetForDate(cur).bands, cum: cumOf(smk) });
+    cur = segEnd;
+  }
+  return { segs, totalDays };
+}
+// Taka the meter eats consuming `K` kWh across those slices, at an even kWh/day.
+const segCost = (segs, K) => segs.reduce((s, g) => s + costKwh(K * g.frac, g.cum, g.bands), 0);
+// The inverse: window kWh whose priced cost is exactly `E`. cost is monotone in K, so bisect it.
+function segKwhFor(segs, E) {
+  if (!(E > 0) || !segs.length) return 0;
+  let lo = 0, hi = E / 4 + 1;                     // lowest band rate > 4, so /4 over-bounds K
+  while (segCost(segs, hi) < E) hi *= 2;
+  for (let it = 0; it < 60; it++) {
+    const mid = (lo + hi) / 2;
+    if (segCost(segs, mid) < E) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+// ---- meter reading: turning the censored pending window into a measured one ----
+// The recharge log records money going IN, never what is left, so the pending window is CENSORED —
+// the model can only assume the whole balance is gone by `end`. A meter reading fixes the taka
+// actually consumed up to the day it was taken; the kWh/day that implies is then carried on to
+// `end` (normally today), capped at the balance. Returns { spend, rate, ... } or a { why } refusal.
+// Never mutates `cum`.
+function meterSpend(start, end, energyMoney, cum) {
+  if (meter.bal === null) return null;
+  const asOf = meter.asOf ? parseDate(meter.asOf) : null;
+  if (!asOf) return { why: "Pick the day you read the meter." };
+  if (asOf <= start) return { why: `That reading is dated on or before your latest recharge (${fmtDate(start)}), so it says nothing about the balance now.` };
+  if (asOf > end) return { why: "That reading is dated in the future." };
+  if (meter.bal > energyMoney + 0.005) {
+    return { why: `Your meter shows more (Tk ${Math.round(meter.bal).toLocaleString()}) than the Tk ${energyMoney.toFixed(2)} that recharge put in. Check the sanctioned load and demand charge under Tariff &amp; connection, or add a recharge that's missing from the log.` };
+  }
+  const seen = Math.min(energyMoney, Math.max(0, energyMoney - meter.bal));
+  const read = monthSegs(start, asOf, k => cum[k] || 0);
+  const kRead = segKwhFor(read.segs, seen);
+  const rate = kRead / read.totalDays;
+
+  // counters as they stood on the reading day, so the forecast can carry on from there
+  const cumAtRead = { ...cum };
+  read.segs.forEach(g => { cumAtRead[g.mk] = (cumAtRead[g.mk] || 0) + kRead * g.frac; });
+
+  // extend the measured rate from the reading day to `end`; it can never eat more than is there
+  const whole = monthSegs(start, end, k => cum[k] || 0);
+  const spend = Math.min(energyMoney, segCost(whole.segs, rate * whole.totalDays));
+  return { spend, rate, seen, kRead, asOf, cumAtRead, days: read.totalDays };
+}
+
 // ---- next-recharge forecast ----
-// Recent average daily kWh, from COMPLETE windows only (weighted by days), within a trailing
-// lookback. Excludes the pending recharge (its window is open-ended and would bias the rate).
-function recentDailyKwh(deduped, today) {
+// Recent average daily kWh, from windows whose consumption is KNOWN (weighted by days), within a
+// trailing lookback. The pending recharge is normally excluded — its window is open-ended, so its
+// kWh is an assumption, not an observation. Pass `includePending` once a meter reading has pinned
+// how much of it is really gone: it is then an ordinary measured window and belongs in the average.
+function recentDailyKwh(deduped, today, includePending) {
   const LOOKBACK = 60, cutoff = new Date(today.getTime() - LOOKBACK * DAY);
+  const last = includePending ? deduped.length : deduped.length - 1;
   const tally = clip => {
     let k = 0, d = 0;
-    for (let i = 0; i < deduped.length - 1; i++) {        // exclude the pending (last) recharge
+    for (let i = 0; i < last; i++) {
       const r = deduped[i], next = deduped[i + 1];
-      const wDays = Math.max(1, Math.round((next.date - r.date) / DAY));
+      const stop = next ? next.date : today;               // the pending window runs up to today
+      if (stop <= r.date) continue;
+      const wDays = Math.max(1, Math.round((stop - r.date) / DAY));
       const start = clip && r.date < cutoff ? cutoff : r.date;
-      if (start >= next.date) continue;
-      const days = Math.max(0, Math.round((next.date - start) / DAY));
+      if (start >= stop) continue;
+      const days = Math.max(0, Math.round((stop - start) / DAY));
       if (!days) continue;
       k += r.kwh * (days / wDays); d += days;              // even daily kWh -> clip kWh by day-share
     }
     return { k, d };
   };
   let { k, d } = tally(true);
-  if (d < 7) ({ k, d } = tally(false));                   // too little recent data -> use all complete windows
+  if (d < 7) ({ k, d } = tally(false));                   // too little recent data -> use every window
   return d > 0 ? k / d : 0;
 }
 
-// Drain the pending balance forward at `dailyKwh`/day, pricing each day up the consumption slabs
-// (month-to-date counter continued from `cumSnap`, reset on the 1st) until it hits zero. Returns the
-// run-dry date, the balance still left as of `today`, and the slab counter `today` opens with —
-// which is the honest month-to-date consumption, and what the planner must carry on from. Mirrors
-// the consumption-time model exactly.
+// Drain the balance forward at `dailyKwh`/day from `start`, pricing each day up the consumption
+// slabs (month-to-date counter continued from `cumSnap`, reset on the 1st) until it hits zero.
+// Returns the run-dry date, the balance still left as of `today`, and the slab counter `today`
+// opens with — the honest month-to-date consumption, and what the planner must carry on from.
+// Mirrors the consumption-time model exactly. A balance that outlives the walk still comes back
+// with its snapshots, flagged `beyond` — dropping it would strand the caller with no balance at all.
 function forecastNextRecharge(start, energyMoney, cumSnap, dailyKwh, today) {
   if (!(dailyKwh > 0) || !(energyMoney > 0)) return null;
   const cum = { ...cumSnap };
@@ -1189,8 +1394,8 @@ function forecastNextRecharge(start, energyMoney, cumSnap, dailyKwh, today) {
     cum[mk] += dailyKwh;                                   // use continues at the same rate either way
     day = new Date(day.getTime() + DAY);
   }
-  if (depletion === null) return null;
-  return { depletion, balanceToday: balanceToday === null ? 0 : balanceToday,
+  return { depletion, beyond: depletion === null,
+           balanceToday: balanceToday === null ? 0 : balanceToday,
            cumToday: cumToday === null ? { ...cum } : cumToday };
 }
 
@@ -1257,17 +1462,22 @@ function renderPlanner() {
   disp.textContent = target ? fmtDate(target) : "Select date";
   disp.classList.toggle("placeholder", !target);
 
-  // there's only a balance to credit once the forecast can see one (needs two recharges); leaving
-  // the box live but inert would just silently do nothing when ticked
+  // there's only a balance to credit once the model can see one; leaving the box live but inert
+  // would just silently do nothing when ticked. Say WHICH reason applies — "the balance is spent"
+  // and "I can't tell what's left" look identical from here otherwise.
   const creditEl = document.getElementById("plan_credit");
-  const hasBalance = st.balanceToday > 0;
+  const hasBalance = st.balanceToday > 0.5;      // sub-taka residue is float noise, not a balance
   if (!hasBalance && plan.credit) plan.credit = false;
   creditEl.disabled = !hasBalance;
   creditEl.checked = plan.credit;
   creditEl.closest(".plan-check").classList.toggle("disabled", !hasBalance);
   creditEl.closest(".plan-check").title = hasBalance
-    ? `About Tk ${Math.round(st.balanceToday).toLocaleString()} is still in the meter`
-    : "Add a second recharge so the tool can work out what's left in the meter";
+    ? `About Tk ${Math.round(st.balanceToday).toLocaleString()} is still in the meter${st.measured ? " (from your meter reading)" : ""}`
+    : st.measured
+      ? "Your meter reading says there's nothing left to credit"
+      : st.capped
+        ? "Your balance has outlasted the estimate, so the tool can only assume it's spent — enter a meter reading to credit what's actually left"
+        : "Add a second recharge (or a meter reading) so the tool can work out what's left in the meter";
 
   const msg = (t, warn) => { out.innerHTML = `<p class="plan-msg${warn ? " warn" : ""}">${t}</p>`; };
   if (!(rate > 0)) return msg("Add at least two recharges (or type a daily figure above) so the tool knows how fast you use power.");
@@ -1340,13 +1550,13 @@ function renderPlanner() {
 
 const AXIS_W = 42;   // left gutter reserved for y-axis labels in both charts
 
-function renderChart(keys, monthly, windows) {
+function renderChart(keys, monthly, windows, measured) {
   const svg = document.getElementById("chart");
   const W = 720, H = 260;
 
   const legend = document.getElementById("chart-legend");
   if (legend) legend.innerHTML = metric === "perday"
-    ? `<span>Average <strong>kWh/day</strong> in each gap between recharges — hover a point for its dates. The still-draining latest recharge is excluded.</span>`
+    ? `<span>Average <strong>kWh/day</strong> in each gap between recharges — hover a point for its dates. The still-draining latest recharge is ${measured ? "included, measured against your meter reading" : "excluded"}.</span>`
     : `<span><i class="swatch solid"></i> Complete month</span><span><i class="swatch hatched"></i> Pending (not fully used)</span>`;
   svg.setAttribute("aria-label", metric === "perday"
     ? "Average kWh per day between recharges, line chart" : "Monthly usage bar chart");
@@ -1468,23 +1678,59 @@ function renderRateLine(svg, windows, W, H) {
   svg.innerHTML = g;
 }
 
-function renderForecast(fc, dailyKwh, today) {
+const FC_ICON = `<svg class="icon fc-ico" style="width:20px;height:20px" viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 10v4"/><path d="M9.5 9 7.5 12h3l-2 3"/></svg>`;
+
+function renderForecast(fc, dailyKwh, today, info) {
   const el = document.getElementById("forecast");
+  const paint = (cls, head, sub) => {
+    el.className = "forecast" + (cls ? " " + cls : "");
+    el.style.display = "";
+    el.innerHTML = FC_ICON + `<div><div class="fc-head">${head}</div><div class="fc-sub">${sub}</div></div>`;
+  };
+
+  // a meter reading of (near) zero needs no walk — it is the answer
+  if (info && info.dry) {
+    return paint("overdue", "Recharge now",
+      `Your meter read empty on ${fmtDate(info.readOn)}, so there is nothing left to draw on.`);
+  }
   if (!fc || !(dailyKwh > 0)) { el.style.display = "none"; el.innerHTML = ""; return; }
+  if (fc.beyond) {
+    return paint("", "No recharge due for a long while",
+      `At ≈ ${dailyKwh.toFixed(1)} kWh/day, the ≈ Tk ${Math.round(fc.balanceToday).toLocaleString()} left on your meter lasts years. Worth re-checking the reading if that looks wrong.`);
+  }
+
   const dep = fc.depletion;
   const daysLeft = Math.round((dep - today) / DAY);
-  const overdue = daysLeft < 0;
+  const capped = !!(info && info.capped);
+  const measured = !!(info && info.measured);
+  const overdue = daysLeft < 0 && !capped;
   const kwhLeft = Math.max(0, dailyKwh * (dep - today) / DAY);
   const when = dep.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
-  const head = overdue ? "Recharge likely due now" : `Next recharge ≈ ${when}`;
-  const sub = overdue
-    ? `Your last top-up's balance should have run out around ${fmtDate(dep)} — about ${-daysLeft} day${-daysLeft === 1 ? "" : "s"} ago, at a recent ≈ ${dailyKwh.toFixed(1)} kWh/day.`
-    : `~${daysLeft} day${daysLeft === 1 ? "" : "s"} from today · ≈ Tk ${Math.round(fc.balanceToday).toLocaleString()} (${Math.round(kwhLeft)} kWh) left · using ≈ ${dailyKwh.toFixed(1)} kWh/day recently`;
-  el.className = "forecast" + (overdue ? " overdue" : "");
-  el.style.display = "";
-  el.innerHTML =
-    `<svg class="icon fc-ico" style="width:20px;height:20px" viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 10v4"/><path d="M9.5 9 7.5 12h3l-2 3"/></svg>` +
-    `<div><div class="fc-head">${head}</div><div class="fc-sub">${sub}</div></div>`;
+
+  // The balance has outlived the trailing average, and no reading says by how much. All the tool
+  // can honestly report is the ceiling that the missing recharge implies — so it says so, rather
+  // than dressing a bound up as a prediction the way the old "overdue" card did.
+  if (capped) {
+    const wd = info.wouldDeplete ? ` around ${fmtDate(info.wouldDeplete)}` : "";
+    return paint("capped", "Balance is outlasting the estimate",
+      `At your usual ≈ ${info.raw.toFixed(1)} kWh/day this should have run dry${wd}, but you have not topped up — so you cannot be using more than <strong>≈ ${dailyKwh.toFixed(1)} kWh/day</strong>, and everything below is worked out at that ceiling. Enter your meter balance under <strong>Meter reading</strong> for the real figure.`);
+  }
+  if (overdue) {
+    return paint("overdue", "Recharge likely due now",
+      measured
+        ? `The Tk ${Math.round(meter.bal).toLocaleString()} you read on ${fmtDate(info.readOn)} should have run out around ${fmtDate(dep)} — about ${-daysLeft} day${-daysLeft === 1 ? "" : "s"} ago, at ≈ ${dailyKwh.toFixed(1)} kWh/day.`
+        : `Your last top-up's balance should have run out around ${fmtDate(dep)} — about ${-daysLeft} day${-daysLeft === 1 ? "" : "s"} ago, at a recent ≈ ${dailyKwh.toFixed(1)} kWh/day.`);
+  }
+  // where the rate came from matters here: "measured off your own meter" and "your average over
+  // the last two months" deserve very different amounts of trust, so never blur the two
+  const drift = info && info.usingMeasured && info.raw > 0
+    && Math.abs(info.raw - dailyKwh) / info.raw > 0.15;
+  paint("", `Next recharge ≈ ${when}`,
+    `~${daysLeft} day${daysLeft === 1 ? "" : "s"} from today · ≈ Tk ${Math.round(fc.balanceToday).toLocaleString()} (${Math.round(kwhLeft)} kWh) left · using ≈ ${dailyKwh.toFixed(1)} kWh/day` +
+    (info && info.usingMeasured
+      ? `, measured off your meter since ${fmtDate(info.readOn)}${drift ? ` — well ${dailyKwh < info.raw ? "below" : "above"} your ${info.raw.toFixed(1)} kWh/day average` : ""}`
+      : measured ? `, your recent average — the meter reading is too fresh to set a rate of its own`
+      : " recently"));
 }
 
 function calculate() {
@@ -1499,6 +1745,7 @@ function calculate() {
   if (raw.length === 0) {
     err.textContent = "Please add at least one valid recharge."; err.classList.add("show");
     planState = null; renderPlanner();   // never leave a recommendation standing on data that's gone
+    meterNote = { text: "", kind: "" }; renderMeter();
     return;
   }
 
@@ -1519,8 +1766,7 @@ function calculate() {
     deduped.push({ date: r.date, amount: r.amount });
   });
 
-  const today = new Date();
-  today.setHours(0,0,0,0);
+  const today = startOfToday();
 
   // ----- per-recharge energy money, then price kWh at CONSUMPTION time -----
   // BPDB inserts a taka "energy balance" into the meter at vending — it does NOT fix kWh then.
@@ -1563,44 +1809,40 @@ function calculate() {
     const end = next ? next.date : (today > r.date ? today : new Date(r.date.getTime() + DAY));
     const totalDays = Math.max(1, Math.round((end - r.date) / DAY));
 
-    // the last (pending) recharge still has balance draining: snapshot the month-to-date
-    // consumption BEFORE this recharge is spread, so the forecast can continue it forward.
-    if (!next) predCtx = { start: r.date, energyMoney, cumSnap: { ...monthCum } };
+    // How much of this recharge the meter has actually eaten by `end`. For a completed window
+    // that is the lot — the next recharge proves the balance ran out. The pending window has no
+    // such proof, so it defaults to the same assumption unless a meter reading overrides it.
+    let spend = energyMoney;
+    if (!next) {
+      const m = meterSpend(r.date, end, energyMoney, monthCum);
+      if (m && m.spend !== undefined) spend = m.spend;
+      // snapshot the month-to-date consumption BEFORE this recharge is spread, so the forecast
+      // can continue it forward from either the recharge date or the meter reading.
+      predCtx = { start: r.date, energyMoney, cumSnap: { ...monthCum }, read: m || null };
+    }
 
     // split the window into per-calendar-month slices (half-open), each priced at its own
     // month-to-date consumption and rate era.
-    const segs = [];
-    let cur = new Date(r.date);
-    while (cur < end) {
-      const firstOfNext = new Date(cur.getFullYear(), cur.getMonth()+1, 1);
-      const segEnd = firstOfNext < end ? firstOfNext : end;
-      const smk = monthKey(cur);
-      const segDays = Math.round((segEnd - cur) / DAY);
+    const { segs } = monthSegs(r.date, end, smk => {
       if (!(smk in monthCum)) monthCum[smk] = 0;
-      segs.push({ mk: smk, frac: segDays / totalDays,
-                  bands: slabSetForDate(cur).bands, cum: monthCum[smk] });
-      cur = segEnd;
-    }
+      return monthCum[smk];
+    });
 
-    // Even daily energy use: find total window kWh K such that the priced cost == energyMoney,
-    // where each month's slice (K·frac) is billed from that month's running consumption counter.
-    // cost(K) is monotonically increasing in K, so binary-search it.
-    const cost = K => segs.reduce((s, g) => s + costKwh(K * g.frac, g.cum, g.bands), 0);
-    let lo = 0, hi = energyMoney / 4 + 1;        // lowest band rate > 4, so /4 over-bounds K
-    while (cost(hi) < energyMoney) hi *= 2;
-    for (let it = 0; it < 60; it++) {
-      const mid = (lo + hi) / 2;
-      if (cost(mid) < energyMoney) lo = mid; else hi = mid;
-    }
-    const K = (lo + hi) / 2;
+    // Even daily energy use: find total window kWh K such that the priced cost == the taka
+    // consumed, where each month's slice (K·frac) is billed from that month's running counter.
+    const K = segKwhFor(segs, spend);
+    // Only the share of the recharge that has actually been burnt is booked against those months;
+    // for everything but a part-spent pending window that is the whole gross amount.
+    const cash = R * (energyMoney > 0 ? spend / energyMoney : 1);
 
     r.kwh = K;
-    r.rate = K > 0 ? R / K : 0;                   // all-in Tk/kWh for this recharge
+    r.rate = K > 0 ? cash / K : 0;                // all-in Tk/kWh for the energy actually used
+    r.partial = spend < energyMoney - 0.005;      // pending window measured against the meter
 
     // credit each month its kWh slice + cash share, and advance its consumption counter.
     let allocK = 0, allocT = 0, lastMk = mk;
     segs.forEach(g => {
-      const segK = K * g.frac, segT = R * g.frac;
+      const segK = K * g.frac, segT = cash * g.frac;
       if (!monthly[g.mk]) monthly[g.mk] = { kwh: 0, tk: 0, pending: false };
       monthly[g.mk].kwh += segK;
       monthly[g.mk].tk  += segT;
@@ -1610,9 +1852,10 @@ function calculate() {
     });
     // pin any rounding drift to the last month touched
     if (monthly[lastMk]) {
-      monthly[lastMk].kwh += K - allocK; monthly[lastMk].tk += R - allocT;
+      monthly[lastMk].kwh += K - allocK; monthly[lastMk].tk += cash - allocT;
       monthCum[lastMk]    += K - allocK;
     }
+    if (!next) { predCtx.kwh = K; predCtx.days = totalDays; predCtx.spend = spend; }
   });
 
   const sortedKeys = Object.keys(monthly).sort();
@@ -1627,30 +1870,82 @@ function calculate() {
     <div class="stat"><div class="stat-label">Avg usage / month <span>(complete)</span></div><div class="stat-val">${Math.round(avgK).toLocaleString()} <span>kWh</span></div></div>
     <div class="stat"><div class="stat-label">Avg spend / month <span>(complete)</span></div><div class="stat-val">Tk ${Math.round(avgT).toLocaleString()}</div></div>`;
 
-  // per-recharge-window daily rate (kWh ÷ days gap) for the granular kWh/day line chart;
-  // the pending (open-ended) window is excluded.
+  // Did a meter reading pin down how much of the pending balance is really gone?
+  const measured = !!(predCtx && predCtx.read && predCtx.read.spend !== undefined);
+
+  // per-recharge-window daily rate (kWh ÷ days gap) for the granular kWh/day line chart. The
+  // pending window sits out while its use is only assumed, and joins in once it is measured.
   const windows = [];
   deduped.forEach((r, i) => {
     const next = deduped[i+1];
-    if (!next) return;
-    const days = Math.max(1, Math.round((next.date - r.date) / DAY));
-    windows.push({ date: r.date, end: next.date, days, kwh: r.kwh, perday: r.kwh / days });
+    if (!next && !(measured && today > r.date)) return;
+    const end = next ? next.date : today;
+    const days = Math.max(1, Math.round((end - r.date) / DAY));
+    windows.push({ date: r.date, end, days, kwh: r.kwh, perday: r.kwh / days, open: !next });
   });
-  renderChart(sortedKeys, monthly, windows);
+  renderChart(sortedKeys, monthly, windows, measured);
 
-  const dailyKwh = recentDailyKwh(deduped, today);
-  const fc = predCtx ? forecastNextRecharge(predCtx.start, predCtx.energyMoney, predCtx.cumSnap, dailyKwh, today) : null;
-  renderForecast(fc, dailyKwh, today);
+  // ---- how fast power is really being used, and when the balance runs out ----
+  // Two quite different situations, and the meter reading is what separates them:
+  //
+  //  * MEASURED — a reading says how much of the pending balance is left, so that window is an
+  //    observation like any other: it counts towards the average, and the forecast drains the
+  //    KNOWN balance forward from the day it was read.
+  //  * CENSORED — no reading. All the log proves is that you have not topped up, i.e. the balance
+  //    is still alive. That is a CEILING, not a measurement: your use cannot have been faster than
+  //    the rate that would have drained the balance exactly by today, or you would have recharged.
+  //    When the trailing average exceeds that ceiling it is provably stale, so the ceiling replaces
+  //    it — which is what stops the tool calling a recharge overdue while the meter still has taka
+  //    on it. The ceiling tightens by itself every further day you go without topping up.
+  const dailyRaw = recentDailyKwh(deduped, today, measured);
+  // A measured pending window is a direct reading of how fast THIS balance is draining, so it is
+  // the right thing to forecast it with — the trailing average deliberately mixes in the older
+  // regime the reading has just contradicted. Under a week it is too short to trust, though, so
+  // that falls back to the average.
+  const MIN_MEASURED_DAYS = 7;
+  const usingMeasured = measured && predCtx.read.days >= MIN_MEASURED_DAYS && predCtx.read.rate > 0;
+  const ceiling = (!measured && predCtx && predCtx.days > 0 && today > predCtx.start)
+    ? predCtx.kwh / predCtx.days : null;
+  const capped = ceiling !== null && dailyRaw > ceiling + 1e-9;
+  const dailyKwh = usingMeasured ? predCtx.read.rate : capped ? ceiling : dailyRaw;
+
+  let fc = null, fcInfo = null;
+  if (predCtx) {
+    const rd = predCtx.read;
+    fc = measured
+      ? forecastNextRecharge(rd.asOf, meter.bal, rd.cumAtRead, dailyKwh, today)
+      : forecastNextRecharge(predCtx.start, predCtx.energyMoney, predCtx.cumSnap, dailyKwh, today);
+    fcInfo = { measured, usingMeasured, capped, raw: dailyRaw, readOn: measured ? rd.asOf : null,
+               dry: measured && meter.bal <= 0.005,
+               // where the stale average claimed the balance died, for the ceiling message
+               wouldDeplete: capped
+                 ? (forecastNextRecharge(predCtx.start, predCtx.energyMoney, predCtx.cumSnap, dailyRaw, today) || {}).depletion
+                 : null };
+  }
+  renderForecast(fc, dailyKwh, today, fcInfo);
 
   // Hand the model's end state to the "plan a recharge" panel. The slab counter comes from the
-  // FORECAST walk, not from monthCum: monthCum spreads the pending recharge's whole energy money
-  // across [recharge, today), i.e. it assumes the balance is already spent, so the current month's
-  // counter is inflated by exactly the kWh still sitting in the meter — which would price the days
-  // ahead several slabs too high. fc.cumToday is the same model's honest month-to-date figure.
+  // FORECAST walk, not from monthCum: monthCum spreads the pending recharge's energy money across
+  // [recharge, today), so where that is an assumption rather than a meter reading the current
+  // month's counter is inflated by exactly the kWh still sitting in the meter — which would price
+  // the days ahead several slabs too high. fc.cumToday is the same model's honest figure.
   // (No forecast means no balance to carry, so the spread counter is already the whole story.)
+  // a reading is a fact about the balance even when the walk can't run (no usable rate yet), so
+  // never let a missing forecast throw away what the meter already told us
   planState = { today, monthCum: fc ? fc.cumToday : monthCum, vended, lastChargedKey, dailyKwh,
-                balanceToday: fc ? fc.balanceToday : 0 };
+                balanceToday: fc ? fc.balanceToday : (measured ? Math.max(0, meter.bal) : 0),
+                measured, capped };
   renderPlanner();
+
+  // report back what the reading did, or why it could not be used
+  if (meter.bal === null) meterNote = { text: "", kind: "" };
+  else if (!predCtx) meterNote = { text: "Add a recharge first — a meter reading only means something measured against the balance a recharge put in.", kind: "warn" };
+  else if (predCtx.read && predCtx.read.why) meterNote = { text: predCtx.read.why, kind: "warn" };
+  else {
+    const rd = predCtx.read;
+    meterNote = { kind: "ok", text: `Measured: Tk ${Math.round(rd.seen).toLocaleString()} of that recharge's Tk ${Math.round(predCtx.energyMoney).toLocaleString()} energy balance went in the ${rd.days} day${rd.days === 1 ? "" : "s"} to ${fmtDate(rd.asOf)} — about ${rd.rate.toFixed(1)} kWh/day.` };
+  }
+  renderMeter();
 
   document.getElementById("month-grid").innerHTML = sortedKeys.map(k => {
     const v = monthly[k];
@@ -1668,7 +1963,7 @@ function calculate() {
     return `<tr>
       <td>${fmtDate(r.date)}</td>
       <td class="num">Tk ${r.amount.toLocaleString()}</td>
-      <td class="num">${r.kwh.toFixed(1)}</td>
+      <td class="num">${r.kwh.toFixed(1)}${r.partial ? '<span class="so-far">so far</span>' : ''}</td>
       <td class="num">${r.rate ? r.rate.toFixed(2) : '–'}</td>
       <td>${next ? fmtDate(next.date) : '<span class="tag-ongoing">ongoing</span>'}</td>
       <td class="num">${days}</td>
@@ -1682,6 +1977,8 @@ function calculate() {
 
 loadCfg();
 renderCfg();
+loadMeter();
+renderMeter();
 const saved = load();
 (saved || DEFAULT_DATA).forEach(d => addRow(d.date, d.amount));
 applyPanelSections();
