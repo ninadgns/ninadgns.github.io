@@ -369,6 +369,34 @@ button { font-family: inherit; cursor: pointer; }
 .set-hint.ok { color: var(--accent-strong); }
 .set-hint.warn { color: var(--caution); }
 
+/* ---- time travel (experimental): move the clock the model reads as "today" ---- */
+/* Deliberately loud when it is on. Every figure on the page is dated off startOfToday(),
+   so a forgotten slider would read as the tool being wrong rather than being asked a
+   hypothetical — hence the banner above the results, not just a control in the panel. */
+.sec-tag {
+  font-size: 9.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--caution); border: 1px solid var(--caution); border-radius: 20px;
+  padding: 1px 6px; opacity: .8; white-space: nowrap;
+}
+.tt-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.tt-date { font-size: 17px; font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.tt-off { font-size: 11.5px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.tt-slider { width: 100%; accent-color: var(--caution); cursor: grab; margin: 2px 0 4px; }
+.tt-slider:active { cursor: grabbing; }
+.tt-slider:disabled { accent-color: var(--text-secondary); opacity: .5; cursor: default; }
+.tt-ends { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.tt-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.tt-banner {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: color-mix(in srgb, var(--caution) 12%, transparent);
+  border: 1px solid var(--border); border-left: 3px solid var(--caution);
+  border-radius: var(--radius); padding: 10px 14px; margin-bottom: 18px; font-size: 12px;
+}
+.tt-banner .tt-ico { width: 17px; height: 17px; flex-shrink: 0; stroke: var(--caution); stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.tt-banner b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.tt-banner .tt-note { color: var(--text-secondary); }
+.tt-banner .btn-mini { margin-left: auto; }
+
 .toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
 .toggle button {
   font-family: inherit; font-size: 11.5px; font-weight: 500; color: var(--text-secondary);
@@ -477,6 +505,7 @@ button { font-family: inherit; cursor: pointer; }
        </button>
      </div>
      <div class="results" id="results">
+      <div class="tt-banner" id="tt-banner" style="display:none"></div>
       <p class="section-title">Summary</p>
       <div class="stat-grid" id="stat-grid"></div>
       <div class="forecast" id="forecast" style="display:none"></div>
@@ -614,6 +643,33 @@ button { font-family: inherit; cursor: pointer; }
               Clear reading
             </button>
           </div>
+        </div>
+      </details>
+
+      <details class="panel-sec" id="sec-timetravel">
+        <summary>
+          <span class="section-title">Time travel</span>
+          <span class="sec-tag">experimental</span>
+          <span class="sec-meta" id="tt-meta"></span>
+          <svg class="sec-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
+        <div class="sec-body">
+          <div class="tt-row">
+            <span class="tt-date" id="tt-date">—</span>
+            <span class="tt-off" id="tt-off"></span>
+          </div>
+          <input type="range" class="tt-slider" id="tt-range" min="0" max="0" step="1" value="0"
+                 list="tt-ticks" aria-label="Date the model treats as today" oninput="ttSet(+this.value)">
+          <datalist id="tt-ticks"></datalist>
+          <div class="tt-ends"><span id="tt-min"></span><span id="tt-max"></span></div>
+          <div class="tt-btns">
+            <button class="btn-mini" onclick="ttStep(-1)" title="Jump to the previous recharge date">◀ Recharge</button>
+            <button class="btn-mini" onclick="ttStep(1)" title="Jump to the next recharge date">Recharge ▶</button>
+            <button class="btn-mini" onclick="ttNudge(-1)">−1 day</button>
+            <button class="btn-mini" onclick="ttNudge(1)">+1 day</button>
+            <button class="btn-mini" onclick="ttReset()">Back to today</button>
+          </div>
+          <p class="set-hint" id="tt-hint"></p>
         </div>
       </details>
 
@@ -862,7 +918,12 @@ function parseDate(str) {
   return dt;
 }
 
-function startOfToday() { const d = new Date(); d.setHours(0,0,0,0); return d; }
+function realToday() { const d = new Date(); d.setHours(0,0,0,0); return d; }
+// Every dated figure on the page — the open window's end, the ceiling, the forecast walk, the
+// planner's horizon, the meter-date cap — reads the clock through here, so overriding this one
+// function is the whole of time travel. null means the real clock; deliberately never persisted.
+let simToday = null;
+function startOfToday() { return simToday ? new Date(simToday) : realToday(); }
 function fmtDate(d) { return d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}); }
 function monthKey(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; }
 function monthLabel(k) {
@@ -890,7 +951,8 @@ const scrollBehavior = () =>
 let panelTouched = false;
 function applyPanelSections() {
   if (panelTouched) return;
-  document.querySelectorAll(".panel-sec").forEach(d => { d.open = !NARROW.matches; });
+  // time travel stays shut until asked for — it is a debugging affordance, not part of the flow
+  document.querySelectorAll(".panel-sec:not(#sec-timetravel)").forEach(d => { d.open = !NARROW.matches; });
 }
 NARROW.addEventListener("change", applyPanelSections);
 document.querySelectorAll(".panel-sec > summary")
@@ -932,6 +994,85 @@ function runCalculate() {
   if (res.classList.contains("show")) res.scrollIntoView({ block: "start", behavior: scrollBehavior() });
 }
 function getVal(id, field) { const el = document.getElementById(`${field}_${id}`); return el ? el.value : ""; }
+
+// ---- time travel (experimental) ----
+// Every dated conclusion here hangs off one date: the open window runs [last recharge, today), the
+// ceiling divides by the days since, the forecast and the planner walk forward from it. Sliding
+// that date is the only honest way to watch those move — and replaying what the tool WOULD have
+// said last week also means hiding recharges dated after it, since on 19 Jul you had not yet made
+// the 20 Jul top-up. State is in memory only: a simulated date persisted to localStorage or the
+// CSV would come back next session as a silently wrong answer.
+let ttHidden = 0;             // recharges the simulated clock is holding back, for the readouts
+
+function ttDates() { return rows.map(r => parseDate(r.date)).filter(Boolean).sort((a,b) => a - b); }
+const ttDay = (t0, n) => new Date(t0.getTime() + n * DAY);
+
+// From the first recharge (before it there is nothing to model) to three months past the real
+// today — far enough to watch a balance drain and the forecast tip into overdue.
+function ttBounds() {
+  const ds = ttDates(), rt = realToday();
+  const t0 = ds.length ? ds[0] : new Date(rt.getTime() - 180 * DAY);
+  const last = ds.length ? ds[ds.length-1] : rt;
+  const t1 = new Date(Math.max(rt.getTime(), last.getTime()) + 90 * DAY);
+  return { t0, t1, span: Math.max(1, Math.round((t1 - t0) / DAY)) };
+}
+
+function ttSet(n) {
+  const { t0, span } = ttBounds();
+  simToday = ttDay(t0, Math.min(span, Math.max(0, Math.round(n))));
+  calculate();
+}
+function ttNudge(delta) {
+  const { t0 } = ttBounds();
+  ttSet(Math.round((startOfToday() - t0) / DAY) + delta);
+}
+// snap to the recharge either side — the quickest way to see a window flip pending -> complete
+function ttStep(dir) {
+  const { t0 } = ttBounds(), cur = startOfToday(), ds = ttDates();
+  const hit = dir < 0 ? ds.filter(d => d < cur).pop() : ds.find(d => d > cur);
+  if (hit) ttSet(Math.round((hit - t0) / DAY));
+}
+function ttReset() { simToday = null; calculate(); }
+
+// editing the rows can move the first recharge out from under a simulated date
+function ttClamp() {
+  if (!simToday) return;
+  const { t0, span } = ttBounds();
+  const n = Math.round((simToday - t0) / DAY);
+  if (n < 0 || n > span) simToday = ttDay(t0, Math.min(span, Math.max(0, n)));
+}
+
+function ttRender() {
+  const { t0, span } = ttBounds();
+  const rt = realToday(), cur = startOfToday();
+  const off = Math.round((cur - rt) / DAY);
+  const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+
+  const range = document.getElementById("tt-range");
+  range.max = span;
+  range.value = Math.min(span, Math.max(0, Math.round((cur - t0) / DAY)));
+  document.getElementById("tt-ticks").innerHTML =
+    ttDates().map(d => `<option value="${Math.round((d - t0) / DAY)}"></option>`).join("");
+
+  document.getElementById("tt-date").textContent = fmtDate(cur);
+  document.getElementById("tt-off").textContent = off === 0
+    ? "· the real today" : `· ${off > 0 ? "+" : "−"}${plural(Math.abs(off), "day")}`;
+  document.getElementById("tt-min").textContent = fmtDate(t0);
+  document.getElementById("tt-max").textContent = fmtDate(ttDay(t0, span));
+  document.getElementById("tt-meta").textContent = simToday ? fmtDate(cur) : "off";
+  document.getElementById("tt-hint").textContent = simToday
+    ? `The log is being read as it stood on ${fmtDate(cur)}${ttHidden ? `, with ${plural(ttHidden, "later recharge")} hidden` : ""}. Nothing here is saved — reload and the clock is back to real time.`
+    : "Move the date the model treats as today. Recharges dated after it are hidden, so you get the state you were actually in — the open window, the ceiling and the forecast as they stood that day.";
+
+  const banner = document.getElementById("tt-banner");
+  banner.style.display = simToday ? "" : "none";
+  if (!simToday) return;
+  banner.innerHTML =
+    `<svg class="tt-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M5 3 3 5m16-2 2 2"/></svg>`
+    + `<span>Simulated today: <b>${fmtDate(cur)}</b> <span class="tt-note">(${off === 0 ? "the real date" : `${off > 0 ? "+" : "−"}${plural(Math.abs(off), "day")}`}`
+    + `${ttHidden ? ` · ${plural(ttHidden, "recharge")} hidden` : ""})</span></span>`
+    + `<button class="btn-mini" onclick="ttReset()">Back to today</button>`;
+}
 
 // date helpers for the native date picker (recharge dates are stored internally as DD/MM/YYYY,
 // the format the CSV and parseDate use; the native <input type="date"> needs ISO YYYY-MM-DD).
@@ -1806,6 +1947,8 @@ function renderForecast(fc, dailyKwh, today, info) {
 function calculate() {
   const err = document.getElementById("err");
   err.classList.remove("show");
+  ttClamp();                          // rows may have moved out from under a simulated clock
+  ttHidden = 0;
 
   const raw = rows.map(r => ({
     date: parseDate(r.date),
@@ -1816,10 +1959,27 @@ function calculate() {
     err.textContent = "Please add at least one valid recharge."; err.classList.add("show");
     planState = null; renderPlanner();   // never leave a recommendation standing on data that's gone
     meterNote = { text: "", kind: "" }; renderMeter();
+    ttRender();
     return;
   }
 
   raw.sort((a,b) => a.date - b.date);
+
+  // Time travel: a recharge dated after the simulated today has not been made yet. Dropping it is
+  // what makes the rewind a replay rather than a hybrid — the last surviving recharge becomes the
+  // open, pending one again, exactly as it was on that day.
+  const today = startOfToday();
+  if (simToday) {
+    while (raw.length && raw[raw.length-1].date > today) { raw.pop(); ttHidden++; }
+    if (raw.length === 0) {
+      err.textContent = `No recharges on or before ${fmtDate(today)} — nothing to model that far back.`;
+      err.classList.add("show");
+      planState = null; renderPlanner();
+      meterNote = { text: "", kind: "" }; renderMeter();
+      ttRender();
+      return;
+    }
+  }
 
   // collapse same-date recharges. An exact (date + amount) repeat is treated as an accidental
   // double-entry and dropped; two DIFFERENT amounts on the same day are merged (summed) into one.
@@ -1835,8 +1995,6 @@ function calculate() {
     }
     deduped.push({ date: r.date, amount: r.amount });
   });
-
-  const today = startOfToday();
 
   // ----- per-recharge energy money, then price kWh at CONSUMPTION time -----
   // BPDB inserts a taka "energy balance" into the meter at vending — it does NOT fix kWh then.
@@ -2062,6 +2220,7 @@ function calculate() {
   }).join("");
 
   renderMethod();
+  ttRender();
   document.getElementById("results").classList.add("show");
   document.getElementById("placeholder").style.display = "none";
 }
