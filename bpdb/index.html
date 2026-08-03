@@ -89,44 +89,41 @@ body {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 18px 18px 0;
-  /* the panel is the scroll area when it outgrows the window; the action row below
-     stays pinned to its bottom edge, so Calculate is never scrolled out of reach */
+  /* No top padding: a heading pinned to top: 0 lands on the *content* edge, so padding here
+     would leave a strip above it for scrolled rows to show through. The first section carries
+     that opening gap as a margin instead, and it scrolls away with everything else.
+     The right side is short by the width of the scrollbar gutter below, which sits outside the
+     padding: 8 + a ~10px thin scrollbar lands the content the same 18px in as the left, instead
+     of a scrollbar's width further. Browsers without `scrollbar-width: thin` land a few px out. */
+  padding: 0 8px 0 18px;
+  /* the panel is the one scroll area on this side: it takes over when it outgrows the window,
+     and the recharge list below stays part of that same scroll rather than opening a second,
+     nested one. The footer sticks to its bottom edge, so Calculate is never scrolled out of reach. */
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;          /* no reflow the moment the list grows past the fold */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
+/* older Chrome/Safari, which predate scrollbar-width: thin */
+.col-right::-webkit-scrollbar { width: 11px; }
+.col-right::-webkit-scrollbar-track { background: transparent; }
+.col-right::-webkit-scrollbar-thumb {
+  background: var(--border); background-clip: content-box;
+  border: 3px solid transparent; border-radius: 10px;
+}
+.col-right::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); background-clip: content-box; }
 
-/* The recharge list can grow long; it scrolls inside the panel so the actions below it
-   (and the settings above) stay reachable. It caps its own height rather than flexing to
-   fill the panel: height does NOT propagate down through a <details>, whose content sits
-   in a ::details-content box, so a flexed list would just overflow its section. */
-.entry-scroll {
-  max-height: 40dvh;
-  overflow-y: auto;
-  scrollbar-gutter: stable;
-  margin: 0 -4px;
-  padding: 0 4px;
-}
-/* soften the cut-off row at the fold so it reads as "scrolls on". The mask is painted on the
-   border box, not the scrolled content, so it would dim the last row even with nothing left to
-   scroll — updateEntryFade() adds the class only while rows remain below the fold. */
-.entry-scroll.is-clipped {
-  mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
-}
-.entry-scroll .header-row {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--surface-2);
-  padding-bottom: 6px;
-}
-
-.col-right .btn-row {
+/* the footer travels with the panel scroll and parks on its bottom edge — the error message
+   rides along so it can't be reported somewhere above the fold */
+.col-right .panel-foot {
   position: sticky; bottom: 0; z-index: 2;
-  align-items: center; gap: 8px 10px; margin-top: 14px;
-  padding: 12px 0 18px; border-top: 1px solid var(--border);
+  padding-bottom: 18px; margin-top: 14px;
+  border-top: 1px solid var(--border);
   background: var(--surface-2);
 }
+.col-right .panel-foot .btn-row { align-items: center; gap: 8px 10px; margin-top: 12px; }
+.col-right .panel-foot .error { margin-top: 12px; }
 .col-right .btn-primary { flex: 1 1 100%; justify-content: center; }   /* full-width primary, CSV actions below */
 
 /* the panel itself is --surface-2, so its controls lift to --surface to stay legible
@@ -168,7 +165,9 @@ body {
 }
 .header-row { margin-bottom: 8px; }
 .header-row span { font-size: 11.5px; font-weight: 500; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; padding-left: 2px; }
-.entry-row { margin-bottom: 9px; }
+/* addRecharge() scrolls the new row into view, and scrollIntoView knows nothing about the
+   sticky heading above it or the action footer below — keep clear of both */
+.entry-row { margin-bottom: 9px; scroll-margin: 40px 0 114px; }
 
 input {
   width: 100%;
@@ -327,6 +326,23 @@ button { font-family: inherit; cursor: pointer; }
 .txn-table th:last-child, .txn-table td:last-child { padding-right: 0; }
 .txn-table tr:last-child td { border-bottom: none; }
 .txn-table td.num, .txn-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+/* the header button inherits the header's type so only the arrow marks it as sortable */
+.th-sort {
+  display: inline-flex; align-items: center; gap: 4px;
+  font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit;
+  background: none; border: 0; padding: 0; cursor: pointer;
+  transition: color .15s;
+}
+.th-sort:hover { color: var(--text-primary); }
+.txn-table th[aria-sort] .th-sort { color: var(--text-primary); }
+.sort-ind {
+  width: 13px; height: 13px; flex-shrink: 0;
+  stroke: currentColor; stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-linejoin: round;
+  opacity: 0; transition: opacity .15s, transform .15s;
+}
+.th-sort:hover .sort-ind { opacity: .4; }             /* a hint of where the click would take you */
+.txn-table th[aria-sort] .sort-ind { opacity: 1; }
+.txn-table th[aria-sort="ascending"] .sort-ind { transform: rotate(180deg); }
 .tag-ongoing { font-size: 11px; color: var(--accent); background: var(--accent-soft); padding: 2px 8px; border-radius: 20px; }
 /* a pending recharge measured against the meter is only part-spent — say so next to the figure */
 .so-far { font-size: 10.5px; color: var(--text-secondary); margin-left: 4px; }
@@ -335,14 +351,27 @@ button { font-family: inherit; cursor: pointer; }
 
 /* collapsible panel sections (tariff, recharges) */
 /* flex: none matters — a <details> squeezed below its content height does not clip, it
-   spills over the section beneath it. Only the recharge list may flex, and it absorbs
-   the pressure through .entry-scroll. */
-.panel-sec { flex: none; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--border); }
+   spills over the section beneath it. Every section keeps its natural height and the
+   panel scrolls instead. */
+/* 18px all round, so the summary's hover box — which reaches 8px past the text on every side —
+   ends up an even 10px off the panel's edges and the rules between sections */
+.panel-sec { flex: none; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid var(--border); }
+.col-right > .panel-sec:first-of-type { margin-top: 18px; }
 .panel-sec:last-child { padding-bottom: 0; margin-bottom: 0; border-bottom: none; }
+/* Closing gap, to match that opening 18px. Open, the sticky footer carries it in its own
+   padding-bottom; collapsed there is no footer, so the section carries it. */
+.col-right > .panel-sec:last-of-type:not([open]) { padding-bottom: 18px; }
 .panel-sec > summary {
   display: flex; align-items: center; gap: 10px; cursor: pointer; list-style: none;
-  padding: 6px 6px; margin: -6px -6px 0; border-radius: 8px;
+  /* the negative margin cancels the padding on all four sides, so the heading text lines up with
+     the section content and only the hover box is bigger than the words */
+  padding: 8px; margin: -8px; border-radius: 8px;
   transition: background .15s;
+  /* with the panel scrolling as one, each heading parks at the top while its own section is
+     in view, so a long recharge list still says what you are looking at (and its running
+     total). Each is boxed in by its <details>, so only ever one is pinned at a time. */
+  position: sticky; top: 0; z-index: 1;
+  background: var(--surface-2);
 }
 .panel-sec > summary::-webkit-details-marker { display: none; }
 .panel-sec > summary:hover { background: var(--surface); }
@@ -350,7 +379,7 @@ button { font-family: inherit; cursor: pointer; }
 .sec-meta { font-size: 11.5px; color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sec-chev { width: 15px; height: 15px; flex-shrink: 0; stroke: var(--text-secondary); stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s ease-out; }
 .panel-sec[open] > summary .sec-chev { transform: rotate(180deg); }
-.sec-body { padding-top: 12px; }
+.sec-body { padding-top: 20px; }   /* 20, not 12: the summary's -8px bottom margin sits above it */
 .sec-actions { display: flex; justify-content: flex-end; margin-bottom: 10px; }
 
 .set-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -411,10 +440,33 @@ button { font-family: inherit; cursor: pointer; }
 
 @media (max-width: 860px) {
   .layout { grid-template-columns: 1fr; gap: 20px; }
-  .col-right { position: static; order: -1; max-height: none; }
+  /* no scroll port here means no gutter to make room for — pad both sides alike again */
+  .col-right { position: static; order: -1; max-height: none; overflow: visible; scrollbar-gutter: auto; padding: 0 18px; }
   /* Stacked, the panel sits above the results. Its sections start collapsed (see
      applyPanelSections), so it stays a compact header rather than a wall of rows —
      and an expanded list scrolls in place instead of pushing the insights offscreen. */
+  /* the panel is no longer a scroll port here, so both stickies would latch onto the window
+     and follow you down the whole page — hand the scrolling back to the list itself */
+  .panel-sec > summary { position: static; background: none; }
+  .col-right .panel-foot { position: static; }
+  .entry-scroll {
+    max-height: 50dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    margin: 0 -4px;
+    padding: 0 4px;
+  }
+  /* soften the cut-off row at the fold so it reads as "scrolls on". The mask is painted on the
+     border box, not the scrolled content, so it would dim the last row even with nothing left to
+     scroll — updateEntryFade() adds the class only while rows remain below the fold. */
+  .entry-scroll.is-clipped { mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent); }
+  .entry-scroll .header-row {
+    position: sticky; top: 0; z-index: 1;
+    background: var(--surface-2);
+    padding-bottom: 6px;
+  }
+  .entry-row { scroll-margin: 30px 0 0; }   /* only that header row is sticky here */
   /* lead with the answer people open the page for: when is the next recharge due */
   .results.show { display: flex; flex-direction: column; }
   .results > .forecast { order: -1; }
@@ -447,7 +499,7 @@ button { font-family: inherit; cursor: pointer; }
 @media (max-width: 360px) {
   body { padding: 16px 10px 48px; }
   .body { padding: 18px 12px 22px; }
-  .col-right { padding: 14px; }
+  .col-right { padding: 0 14px; }
   .stat { padding: 10px 12px; }
   .header-row, .entry-row { grid-template-columns: 1.7fr 1fr 32px; gap: 6px; }
   .del-btn { width: 32px; }
@@ -549,7 +601,22 @@ button { font-family: inherit; cursor: pointer; }
       <p class="section-title">Recharge log</p>
       <div class="table-wrap">
         <table class="txn-table">
-          <thead><tr><th>Date</th><th class="num">Amount</th><th class="num">Est. kWh</th><th class="num">Tk/kWh</th><th>Next recharge</th><th class="num">Days gap</th></tr></thead>
+          <!-- every column sorts; the button inside each header is what takes focus and the
+               click, so the sort is reachable from the keyboard without any extra wiring -->
+          <thead><tr id="txn-head">
+            <th scope="col" data-sort="date" aria-sort="ascending">
+              <button type="button" class="th-sort" onclick="sortTxn('date')">Date<svg class="sort-ind" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></th>
+            <th scope="col" class="num" data-sort="amount">
+              <button type="button" class="th-sort" onclick="sortTxn('amount')">Amount<svg class="sort-ind" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></th>
+            <th scope="col" class="num" data-sort="kwh">
+              <button type="button" class="th-sort" onclick="sortTxn('kwh')">Est. kWh<svg class="sort-ind" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></th>
+            <th scope="col" class="num" data-sort="rate">
+              <button type="button" class="th-sort" onclick="sortTxn('rate')">Tk/kWh<svg class="sort-ind" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></th>
+            <th scope="col" data-sort="next">
+              <button type="button" class="th-sort" onclick="sortTxn('next')">Next recharge<svg class="sort-ind" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></th>
+            <th scope="col" class="num" data-sort="days">
+              <button type="button" class="th-sort" onclick="sortTxn('days')">Days gap<svg class="sort-ind" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></th>
+          </tr></thead>
           <tbody id="txn-body"></tbody>
         </table>
       </div>
@@ -641,21 +708,23 @@ button { font-family: inherit; cursor: pointer; }
 
           <!-- the actions live with the rows they act on: collapsed on a phone, the whole
                panel is then just two summary lines and the insights start near the top -->
-          <p class="error" id="err"></p>
-          <div class="btn-row">
-            <button class="btn-primary" onclick="runCalculate()">
-              <svg class="icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l3-4 3 3 4-6"/></svg>
-              Calculate
-            </button>
-            <button class="btn-mini" onclick="exportCsv()">
-              <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-              Export CSV
-            </button>
-            <button class="btn-mini" onclick="document.getElementById('csv-file').click()">
-              <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>
-              Import CSV
-            </button>
-            <input type="file" id="csv-file" accept=".csv,text/csv" style="display:none" onchange="importCsv(this)">
+          <div class="panel-foot">
+            <p class="error" id="err"></p>
+            <div class="btn-row">
+              <button class="btn-primary" onclick="runCalculate()">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l3-4 3 3 4-6"/></svg>
+                Calculate
+              </button>
+              <button class="btn-mini" onclick="exportCsv()">
+                <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+                Export CSV
+              </button>
+              <button class="btn-mini" onclick="document.getElementById('csv-file').click()">
+                <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>
+                Import CSV
+              </button>
+              <input type="file" id="csv-file" accept=".csv,text/csv" style="display:none" onchange="importCsv(this)">
+            </div>
           </div>
         </div>
       </details>
@@ -1803,6 +1872,44 @@ function renderForecast(fc, dailyKwh, today, info) {
       : " recently"));
 }
 
+// One display row per recharge, in the order they happened — which is also the order the
+// windows chain, so "next recharge" and the day gap are worked out once here rather than from
+// wherever a row happens to land after a sort.
+let txnLog = [];
+let txnSort = { key: "date", dir: "asc" };
+
+// Clicking the column already doing the sorting flips it; a new column starts the way that
+// column is usually read — oldest first for the dates, biggest first for the figures.
+function sortTxn(key) {
+  txnSort = txnSort.key === key
+    ? { key, dir: txnSort.dir === "asc" ? "desc" : "asc" }
+    : { key, dir: key === "date" || key === "next" ? "asc" : "desc" };
+  renderTxnLog();
+}
+
+function renderTxnLog() {
+  const dir = txnSort.dir === "asc" ? 1 : -1;
+  const sorted = txnLog.slice().sort((a, b) => {
+    const x = a[txnSort.key], y = b[txnSort.key];
+    // "–" and "ongoing" are missing values, not small ones: park them last whichever way round
+    if (x === null) return y === null ? 0 : 1;
+    if (y === null) return -1;
+    return (x - y) * dir;   // Dates subtract like numbers; sort is stable, so ties stay in date order
+  });
+  document.querySelectorAll("#txn-head th").forEach(th => {
+    if (th.dataset.sort === txnSort.key) th.setAttribute("aria-sort", dir === 1 ? "ascending" : "descending");
+    else th.removeAttribute("aria-sort");
+  });
+  document.getElementById("txn-body").innerHTML = sorted.map(r => `<tr>
+      <td>${fmtDate(r.date)}</td>
+      <td class="num">Tk ${r.amount.toLocaleString()}</td>
+      <td class="num">${r.kwh.toFixed(1)}${r.partial ? '<span class="so-far">so far</span>' : ''}</td>
+      <td class="num">${r.rate ? r.rate.toFixed(2) : '–'}</td>
+      <td>${r.next ? fmtDate(r.next) : '<span class="tag-ongoing">ongoing</span>'}</td>
+      <td class="num">${r.days}</td>
+    </tr>`).join("");
+}
+
 function calculate() {
   const err = document.getElementById("err");
   err.classList.remove("show");
@@ -2046,20 +2153,15 @@ function calculate() {
     </div>`;
   }).join("");
 
-  document.getElementById("txn-body").innerHTML = deduped.map((r,i) => {
+  txnLog = deduped.map((r, i) => {
     const next = deduped[i+1];
     // the booked window, so the gap is the denominator that actually produced the kWh beside it
     const end = r.end || (next ? next.date : today);
-    const days = Math.max(0, Math.round((end - r.date) / DAY));
-    return `<tr>
-      <td>${fmtDate(r.date)}</td>
-      <td class="num">Tk ${r.amount.toLocaleString()}</td>
-      <td class="num">${r.kwh.toFixed(1)}${r.partial ? '<span class="so-far">so far</span>' : ''}</td>
-      <td class="num">${r.rate ? r.rate.toFixed(2) : '–'}</td>
-      <td>${next ? fmtDate(next.date) : '<span class="tag-ongoing">ongoing</span>'}</td>
-      <td class="num">${days}</td>
-    </tr>`;
-  }).join("");
+    return { date: r.date, amount: r.amount, kwh: r.kwh, partial: r.partial,
+             rate: r.rate || null, next: next ? next.date : null,
+             days: Math.max(0, Math.round((end - r.date) / DAY)) };
+  });
+  renderTxnLog();
 
   renderMethod();
   document.getElementById("results").classList.add("show");
