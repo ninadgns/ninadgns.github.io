@@ -319,8 +319,11 @@ button { font-family: inherit; cursor: pointer; }
 .grid-lbl { font-size: 10px; fill: var(--text-secondary); font-variant-numeric: tabular-nums; }
 /* one gap between recharges = one hover target, the whole column, since the whole span shares
    a single measured figure however the curve is drawn across it */
-.win-hit { fill: transparent; transition: fill-opacity .15s; }
-.win-hit:hover { fill: var(--accent); fill-opacity: .07; }
+/* the accent is set in the base rule, not on :hover. Introducing the colour on hover would snap it
+   in at full strength while only fill-opacity animated down from its initial 1, flashing an opaque
+   slab over the column for the length of the transition. */
+.win-hit { fill: var(--accent); fill-opacity: 0; transition: fill-opacity .15s; }
+.win-hit:hover { fill-opacity: .07; }
 
 .note { font-size: 12px; color: var(--text-secondary); margin-bottom: 26px; line-height: 1.55; }
 
@@ -1337,7 +1340,12 @@ function buildStandaloneSvg() {
     `.grid-line{stroke:${v('--border-soft','#eef1ef')};stroke-width:1}` +
     `.grid-lbl{font-size:10px;fill:${v('--text-secondary','#6a7d74')}}`;
 
-  const inner = src.innerHTML.replace(/var\(--accent\)/g, v('--accent', '#1f9d63'));
+  // the hover columns are interactive furniture with nothing to draw, and they are most of the
+  // byte count of a step-mode export. Left in, they also land in a vector editor as a row of
+  // invisible selectable boxes over the chart.
+  const inner = src.innerHTML
+    .replace(/<rect class="win-hit"[\s\S]*?<\/rect>/g, "")
+    .replace(/var\(--accent\)/g, v('--accent', '#1f9d63'));
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W + pad*2}" height="${H + pad*2}" viewBox="${-pad} ${-pad} ${W + pad*2} ${H + pad*2}">`
     + `<style>${css}</style>`
@@ -1846,6 +1854,17 @@ function rateMax(q) {
   return (tv > 0 && tv < 1) ? Math.max(hi, rateAt(q, tv)) : hi;
 }
 
+// Axis ceiling, chosen so the MIDDLE gridline lands on a round number: the chart labels 0, half and
+// max, so half is what has to read well. Rounding the max itself up to a whole multiple of its
+// leading power of ten cannot do better than that power, so a peak barely into a new decade jumps
+// the whole of it (110 to 200, 510 to 1000) and squashes the plot into its bottom half.
+function niceCeil(v) {
+  const half = v / 2, pow = Math.pow(10, Math.floor(Math.log10(half))), m = half / pow;
+  const step = pow * (m <= 1 ? 1 : m <= 1.5 ? 1.5 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 3 ? 3
+                    : m <= 4 ? 4 : m <= 5 ? 5 : m <= 6 ? 6 : m <= 8 ? 8 : 10);
+  return step * 2;
+}
+
 function renderRateLine(svg, windows, W, H) {
   const padR = 8, padT = 22, padB = 34;
   const x0 = AXIS_W + 6, x1 = W - padR;         // x0 clears the y-axis label gutter
@@ -1863,13 +1882,15 @@ function renderRateLine(svg, windows, W, H) {
   // are contiguous by construction (each one ends exactly where the next begins).
   const kx = [0], ky = [0];
   windows.forEach(w => { kx.push(dayOf(w.end)); ky.push(ky[ky.length-1] + w.kwh); });
-  const quads = (rateMode === "smooth" && kx.every((v, i) => i === 0 || v > kx[i-1]))
-    ? rateQuads(kx, ky, pchipSlopes(kx, ky))
-    : null;
+  // the fit is computed in BOTH modes, because the axis has to come out the same in both: smooth
+  // mode draws the stairs underneath the curve, so a mode-dependent axis would move the very same
+  // stairs between the two views. The curve legitimately peaks above the tallest step, so it is
+  // the curve that sets the ceiling either way.
+  const fit = kx.every((v, i) => i === 0 || v > kx[i-1]) ? rateQuads(kx, ky, pchipSlopes(kx, ky)) : null;
+  const quads = rateMode === "smooth" ? fit : null;
 
-  const max = Math.max(...windows.map(w => w.perday), ...(quads ? quads.map(rateMax) : []), 1);
-  const pow = Math.pow(10, Math.floor(Math.log10(max)));
-  const niceMax = Math.ceil(max / pow) * pow;
+  const max = Math.max(...windows.map(w => w.perday), ...(fit ? fit.map(rateMax) : []), 1);
+  const niceMax = niceCeil(max);
   const y = v => padT + plotH - (v / niceMax) * plotH;
   const f1 = v => Number.isInteger(v) ? String(v) : v.toFixed(1);
 
@@ -1880,22 +1901,27 @@ function renderRateLine(svg, windows, W, H) {
     g += `<text class="grid-lbl" x="${AXIS_W-8}" y="${yy.toFixed(1)}" text-anchor="end" dominant-baseline="middle">${f1(v)}</text>`;
   });
 
-  // month rules along the date axis, so the shape can be placed in real time
-  const ticks = [];
+  // rules along the date axis, so the shape can be placed in real time. Month starts are the
+  // natural grid, but a whole history sitting inside one calendar month contains none of them,
+  // and an axis sold as a real date axis cannot be left carrying no dates: fall back there to the
+  // gap boundaries, dated day and month.
+  let ticks = [], dayLevel = false;
   for (let mo = new Date(windows[0].date.getFullYear(), windows[0].date.getMonth(), 1);
        dayOf(mo) <= spanD; mo = new Date(mo.getFullYear(), mo.getMonth() + 1, 1)) {
     if (dayOf(mo) >= 0) ticks.push(mo);
   }
-  const skip = Math.max(1, Math.ceil(ticks.length / 10));
+  if (ticks.length < 2) { ticks = [windows[0].date, ...windows.map(w => w.end)]; dayLevel = true; }
+  // day labels are the wider of the two, so they need thinning sooner
+  const skip = Math.max(1, Math.ceil(ticks.length / (dayLevel ? 6 : 10)));
   // the year rides under the first label drawn and under every one that opens a new year. Keying
   // it to January instead would lose it entirely once thinning skips the January ticks, leaving a
   // multi-year axis reading as identical repeats of the same few months.
   let shownYear = null;
   ticks.forEach((mo, i) => {
+    if (i % skip) return;          // an unlabelled rule every month is a picket fence, not a grid
     const cx = X(dayOf(mo));
     g += `<line class="grid-line" x1="${cx.toFixed(1)}" y1="${padT}" x2="${cx.toFixed(1)}" y2="${padT + plotH}"/>`;
-    if (i % skip) return;
-    g += `<text class="bar-lbl" x="${cx.toFixed(1)}" y="${(H-padB+15).toFixed(1)}" text-anchor="middle">${mo.toLocaleDateString("en-GB", { month: "short" })}</text>`;
+    g += `<text class="bar-lbl" x="${cx.toFixed(1)}" y="${(H-padB+15).toFixed(1)}" text-anchor="middle">${mo.toLocaleDateString("en-GB", dayLevel ? { day: "2-digit", month: "short" } : { month: "short" })}</text>`;
     if (mo.getFullYear() !== shownYear) {
       shownYear = mo.getFullYear();
       g += `<text class="bar-lbl" x="${cx.toFixed(1)}" y="${(H-padB+27).toFixed(1)}" text-anchor="middle">${shownYear}</text>`;
