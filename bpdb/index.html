@@ -105,14 +105,19 @@ body {
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
-/* older Chrome/Safari, which predate scrollbar-width: thin */
-.col-right::-webkit-scrollbar { width: 11px; }
-.col-right::-webkit-scrollbar-track { background: transparent; }
-.col-right::-webkit-scrollbar-thumb {
+/* older Chrome/Safari, which predate scrollbar-width: thin. The chart rides along: its bar is
+   horizontal, so it takes its thickness from `height` where the panel's takes it from `width`. */
+.col-right::-webkit-scrollbar,
+.chart-wrap::-webkit-scrollbar { width: 11px; height: 11px; }
+.col-right::-webkit-scrollbar-track,
+.chart-wrap::-webkit-scrollbar-track { background: transparent; }
+.col-right::-webkit-scrollbar-thumb,
+.chart-wrap::-webkit-scrollbar-thumb {
   background: var(--border); background-clip: content-box;
   border: 3px solid transparent; border-radius: 10px;
 }
-.col-right::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); background-clip: content-box; }
+.col-right::-webkit-scrollbar-thumb:hover,
+.chart-wrap::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); background-clip: content-box; }
 
 /* the footer travels with the panel scroll and parks on its bottom edge — the error message
    rides along so it can't be reported somewhere above the fold */
@@ -301,7 +306,14 @@ button { font-family: inherit; cursor: pointer; }
 .btn-mini:hover { border-color: var(--accent); color: var(--accent-strong); }
 /* the chart keeps a legible minimum width and scrolls inside its own box rather than
    shrinking its labels to nothing on a phone */
-.chart-wrap { width: 100%; margin-bottom: 10px; overflow-x: auto; overscroll-behavior-x: contain; }
+.chart-wrap {
+  width: 100%; margin-bottom: 10px; overflow-x: auto; overscroll-behavior-x: contain;
+  /* same thin, track-less bar as the panel. No `scrollbar-gutter` though: the panel reserves one
+     because its content grows past the fold as rows are added, whereas the chart only overflows
+     when the viewport is too narrow, so a permanent strip would sit empty on every desktop. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
 #chart { width: 100%; min-width: 480px; height: auto; display: block; overflow: visible; }
 .chart-legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 11.5px; color: var(--text-secondary); margin-bottom: 26px; }
 .chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
