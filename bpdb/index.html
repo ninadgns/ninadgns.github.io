@@ -305,6 +305,9 @@ button { font-family: inherit; cursor: pointer; }
 #chart { width: 100%; min-width: 480px; height: auto; display: block; overflow: visible; }
 .chart-legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 11.5px; color: var(--text-secondary); margin-bottom: 26px; }
 .chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+/* a prose caption is a sentence, not a swatch-and-label pair: let it wrap as running text
+   instead of laying its <strong> out as a separate flex item beside the rest */
+.chart-legend span.legend-note { display: block; flex: 1 1 100%; line-height: 1.5; }
 .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
 .swatch.solid { background: var(--accent); }
 .swatch.hatched { background: var(--accent); opacity: .45; }
@@ -314,6 +317,10 @@ button { font-family: inherit; cursor: pointer; }
 .bar-lbl { font-size: 10.5px; fill: var(--text-secondary); }
 .grid-line { stroke: var(--border-soft); stroke-width: 1; }
 .grid-lbl { font-size: 10px; fill: var(--text-secondary); font-variant-numeric: tabular-nums; }
+/* one gap between recharges = one hover target, the whole column, since the whole span shares
+   a single measured figure however the curve is drawn across it */
+.win-hit { fill: transparent; transition: fill-opacity .15s; }
+.win-hit:hover { fill: var(--accent); fill-opacity: .07; }
 
 .note { font-size: 12px; color: var(--text-secondary); margin-bottom: 26px; line-height: 1.55; }
 
@@ -567,6 +574,10 @@ button { font-family: inherit; cursor: pointer; }
           <button id="m-kwh" class="active" aria-pressed="true" onclick="setMetric('kwh')">kWh</button>
           <button id="m-perday" aria-pressed="false" onclick="setMetric('perday')">kWh/day</button>
           <button id="m-tk" aria-pressed="false" onclick="setMetric('tk')">Tk</button>
+        </div>
+        <div class="toggle" id="rate-toggle" role="group" aria-label="kWh/day shape" hidden>
+          <button id="r-smooth" class="active" aria-pressed="true" onclick="setRateMode('smooth')">Smooth</button>
+          <button id="r-step" aria-pressed="false" onclick="setRateMode('step')">Steps</button>
         </div>
         <button class="btn-mini" onclick="exportChart('png')" aria-label="Download chart as PNG">
           <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
@@ -858,7 +869,8 @@ const RATE_CUTOVER = new Date(2026, 5, 1); // 1 Jun 2026
 
 const DEFAULT_CFG = { kw:2, demand:42, rent:40, vat:5, rebate:1 };
 let cfg = { ...DEFAULT_CFG };
-let metric = "kwh"; // chart metric: "kwh" | "tk"
+let metric = "kwh"; // chart metric: "kwh" | "tk" | "perday"
+let rateMode = "smooth"; // how the kWh/day chart draws a gap: "smooth" | "step"
 
 let rows = [];
 
@@ -1138,6 +1150,18 @@ function setMetric(m) {
   metric = m;
   ["kwh", "perday", "tk"].forEach(x => {
     const b = document.getElementById("m-" + x);
+    b.classList.toggle("active", m === x);
+    b.setAttribute("aria-pressed", String(m === x));
+  });
+  // the smooth/steps choice only means anything for the kWh/day line
+  document.getElementById("rate-toggle").hidden = m !== "perday";
+  calculate();
+}
+
+function setRateMode(m) {
+  rateMode = m;
+  ["smooth", "step"].forEach(x => {
+    const b = document.getElementById("r-" + x);
     b.classList.toggle("active", m === x);
     b.setAttribute("aria-pressed", String(m === x));
   });
@@ -1691,11 +1715,15 @@ function renderChart(keys, monthly, windows, measured) {
   const W = 720, H = 260;
 
   const legend = document.getElementById("chart-legend");
-  if (legend) legend.innerHTML = metric === "perday"
-    ? `<span>Average <strong>kWh/day</strong> in each gap between recharges — hover a point for its dates. The still-draining latest recharge is ${measured ? "included, measured against your meter reading" : "excluded"}.</span>`
-    : `<span><i class="swatch solid"></i> Complete month</span><span><i class="swatch hatched"></i> Pending (not fully used)</span>`;
-  svg.setAttribute("aria-label", metric === "perday"
-    ? "Average kWh per day between recharges, line chart" : "Monthly usage bar chart");
+  const pendNote = `The still-draining latest recharge is ${measured ? "included, measured against your meter reading" : "excluded"}.`;
+  if (legend) legend.innerHTML = metric !== "perday"
+    ? `<span><i class="swatch solid"></i> Complete month</span><span><i class="swatch hatched"></i> Pending (not fully used)</span>`
+    : rateMode === "smooth"
+      ? `<span class="legend-note"><strong>kWh/day</strong> read as a continuous curve, drawn on a real date axis. Each gap's total is preserved exactly: the curve's average across a gap is that gap's measured figure, shown as the faint steps behind. ${pendNote}</span>`
+      : `<span class="legend-note">Average <strong>kWh/day</strong> in each gap between recharges, flat across the gap, since nothing in a recharge log says how use varied inside one. Hover a gap for its dates. ${pendNote}</span>`;
+  svg.setAttribute("aria-label", metric !== "perday" ? "Monthly usage bar chart"
+    : rateMode === "smooth" ? "Kilowatt-hours per day over time, smoothed line chart"
+    : "Average kilowatt-hours per day in each gap between recharges, step chart");
 
   // kWh/day is drawn as a per-recharge-window line chart — more granular than the monthly bars.
   if (metric === "perday") return renderRateLine(svg, windows, W, H);
@@ -1752,30 +1780,62 @@ function renderChart(keys, monthly, windows, measured) {
   svg.innerHTML = g;
 }
 
-// Smooth interpolating curve (Catmull-Rom -> cubic Bezier) through evenly-spaced points. Tangents
-// are zeroed at local extrema so the curve passes through every real point without overshooting a
-// peak or dipping below a trough.
-function smoothPath(P) {
-  const n = P.length;
-  if (n < 2) return n ? `M ${P[0].x.toFixed(2)} ${P[0].y.toFixed(2)}` : "";
-  const m = P.map((p, i) =>
-    i === 0 ? P[1].y - P[0].y : i === n-1 ? P[n-1].y - P[n-2].y : (P[i+1].y - P[i-1].y) / 2);
-  for (let i = 1; i < n-1; i++) {
-    if ((P[i].y - P[i-1].y) * (P[i+1].y - P[i].y) < 0) m[i] = 0;   // local peak/trough -> flat tangent
+// ---- kWh/day over time ----------------------------------------------------------------------
+// The evidence is interval totals: K kWh burnt between two recharge dates, with nothing at all
+// said about how use varied inside that span. Two readings of it, both on a real date axis so a
+// three-day gap cannot occupy the same width as a month-long one.
+//
+//  * STEPS: flat within each gap. The bare-minimum reading, but it parks every discontinuity on
+//    a recharge date, and a recharge date records when someone walked to a vending point, not a
+//    change in how the house draws power.
+//  * SMOOTH: a monotone cubic (PCHIP) fitted to the CUMULATIVE kWh curve, then differentiated.
+//    The cumulative totals are the interpolation knots, so every gap's total survives untouched:
+//    the mean of the curve across a gap IS that gap's measured kWh/day. Shape preservation earns
+//    its keep twice here. It holds the rate at or above zero (consumption cannot run backwards)
+//    and stops the fit inventing a peak taller than the data supports.
+//
+// Display only, deliberately. Pricing a kWh needs a month-to-date counter, so a curved daily
+// profile would feed back into the slab solve in segKwhFor(); the booked K values, the month
+// allocations, the log and the forecast all stay on the flat model.
+function pchipSlopes(x, y) {
+  const n = x.length, h = [], d = [];
+  for (let i = 0; i < n - 1; i++) { h.push(x[i+1] - x[i]); d.push((y[i+1] - y[i]) / h[i]); }
+  if (n === 2) return [d[0], d[0]];
+  // one-sided three-point slope at an end, clamped so it can neither double back nor overshoot
+  const endSlope = (h0, h1, d0, d1) => {
+    const m = ((2*h0 + h1) * d0 - h0 * d1) / (h0 + h1);
+    if (m * d0 <= 0) return 0;
+    if (d0 * d1 <= 0 && Math.abs(m) > Math.abs(3 * d0)) return 3 * d0;
+    return m;
+  };
+  const m = new Array(n);
+  for (let i = 1; i < n - 1; i++) {
+    // secants disagreeing in sign (or either one flat) make this knot a local extreme: pin it
+    if (d[i-1] * d[i] <= 0) { m[i] = 0; continue; }
+    const w1 = 2*h[i] + h[i-1], w2 = h[i] + 2*h[i-1];
+    m[i] = (w1 + w2) / (w1 / d[i-1] + w2 / d[i]);     // weighted harmonic mean of the two secants
   }
-  let d = `M ${P[0].x.toFixed(2)} ${P[0].y.toFixed(2)}`;
-  for (let i = 0; i < n-1; i++) {
-    const dx = P[i+1].x - P[i].x;
-    d += ` C ${(P[i].x + dx/3).toFixed(2)} ${(P[i].y + m[i]/3).toFixed(2)},`
-       + ` ${(P[i+1].x - dx/3).toFixed(2)} ${(P[i+1].y - m[i+1]/3).toFixed(2)},`
-       + ` ${P[i+1].x.toFixed(2)} ${P[i+1].y.toFixed(2)}`;
-  }
-  return d;
+  m[0]     = endSlope(h[0], h[1], d[0], d[1]);
+  m[n - 1] = endSlope(h[n-2], h[n-3], d[n-2], d[n-3]);
+  return m;
 }
 
-// Line chart of average kWh/day for each gap between consecutive recharges (one point per
-// completed window). The pending window is excluded — its short, still-draining span gives a
-// meaningless rate. Points are evenly spaced and labelled by the recharge date.
+// Derivative of that cubic, sampled evenly across the span: the daily rate itself.
+function sampleRate(x, y, m, count) {
+  const last = x.length - 1, out = [];
+  let k = 0;
+  for (let i = 0; i <= count; i++) {
+    const q = x[0] + (x[last] - x[0]) * i / count;
+    while (k < last - 1 && q > x[k+1]) k++;
+    const h = x[k+1] - x[k], t = Math.min(1, Math.max(0, (q - x[k]) / h));
+    const d = (y[k+1] - y[k]) / h;
+    // d/dx of the Hermite cubic, written in its local parameter t
+    const r = m[k]*(3*t*t - 4*t + 1) + m[k+1]*(3*t*t - 2*t) + d*(6*t - 6*t*t);
+    out.push({ x: q, r: Math.max(0, r) });
+  }
+  return out;
+}
+
 function renderRateLine(svg, windows, W, H) {
   const padR = 8, padT = 22, padB = 34;
   const x0 = AXIS_W + 6, x1 = W - padR;         // x0 clears the y-axis label gutter
@@ -1783,11 +1843,24 @@ function renderRateLine(svg, windows, W, H) {
   const n = windows.length;
   if (n === 0) { svg.innerHTML = ""; svg.setAttribute("viewBox", `0 0 ${W} ${H}`); return; }
 
-  const max = Math.max(...windows.map(w => w.perday), 1);
+  // x is real elapsed days from the first recharge, never the window index
+  const t0 = windows[0].date.getTime();
+  const dayOf = dt => (dt.getTime() - t0) / DAY;
+  const spanD = Math.max(1, dayOf(windows[n-1].end));
+  const X = dd => x0 + (x1 - x0) * (dd / spanD);
+
+  // cumulative kWh knots: one per recharge date plus the close of the last gap. Completed windows
+  // are contiguous by construction (each one ends exactly where the next begins).
+  const kx = [0], ky = [0];
+  windows.forEach(w => { kx.push(dayOf(w.end)); ky.push(ky[ky.length-1] + w.kwh); });
+  const curve = (rateMode === "smooth" && kx.every((v, i) => i === 0 || v > kx[i-1]))
+    ? sampleRate(kx, ky, pchipSlopes(kx, ky), Math.min(600, Math.round(x1 - x0)))
+    : null;
+
+  const max = Math.max(...windows.map(w => w.perday), ...(curve ? curve.map(p => p.r) : []), 1);
   const pow = Math.pow(10, Math.floor(Math.log10(max)));
   const niceMax = Math.ceil(max / pow) * pow;
   const y = v => padT + plotH - (v / niceMax) * plotH;
-  const X = i => n === 1 ? (x0 + x1) / 2 : x0 + (x1 - x0) * i / (n - 1);
   const f1 = v => Number.isInteger(v) ? String(v) : v.toFixed(1);
 
   let g = "";
@@ -1797,17 +1870,49 @@ function renderRateLine(svg, windows, W, H) {
     g += `<text class="grid-lbl" x="${AXIS_W-8}" y="${yy.toFixed(1)}" text-anchor="end" dominant-baseline="middle">${f1(v)}</text>`;
   });
 
-  const P = windows.map((w, i) => ({ x: X(i), y: y(w.perday) }));
-  g += `<path fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" d="${smoothPath(P)}"/>`;
-
-  windows.forEach((w, i) => {
-    const cx = X(i), cy = y(w.perday);
-    g += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3" fill="var(--accent)"><title>${fmtDate(w.date)} → ${fmtDate(w.end)} · ${w.days} day${w.days === 1 ? "" : "s"} · ${w.perday.toFixed(2)} kWh/day</title></circle>`;
-    g += `<text class="bar-val" x="${cx.toFixed(1)}" y="${(cy-8).toFixed(1)}" text-anchor="middle">${w.perday.toFixed(1)}</text>`;
-    if (n <= 12 || i % 2 === 0 || i === n - 1) {
-      const dl = w.date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
-      g += `<text class="bar-lbl" x="${cx.toFixed(1)}" y="${(H-padB+15).toFixed(1)}" text-anchor="middle">${dl}</text>`;
+  // month rules along the date axis, so the shape can be placed in real time
+  const ticks = [];
+  for (let mo = new Date(windows[0].date.getFullYear(), windows[0].date.getMonth(), 1);
+       dayOf(mo) <= spanD; mo = new Date(mo.getFullYear(), mo.getMonth() + 1, 1)) {
+    if (dayOf(mo) >= 0) ticks.push(mo);
+  }
+  const skip = Math.max(1, Math.ceil(ticks.length / 10));
+  ticks.forEach((mo, i) => {
+    const cx = X(dayOf(mo));
+    g += `<line class="grid-line" x1="${cx.toFixed(1)}" y1="${padT}" x2="${cx.toFixed(1)}" y2="${padT + plotH}"/>`;
+    if (i % skip) return;
+    g += `<text class="bar-lbl" x="${cx.toFixed(1)}" y="${(H-padB+15).toFixed(1)}" text-anchor="middle">${mo.toLocaleDateString("en-GB", { month: "short" })}</text>`;
+    if (mo.getMonth() === 0 || i === 0) {
+      g += `<text class="bar-lbl" x="${cx.toFixed(1)}" y="${(H-padB+27).toFixed(1)}" text-anchor="middle">${mo.getFullYear()}</text>`;
     }
+  });
+
+  // the per-gap averages as stairs: the raw evidence, kept as a ghost beneath the smooth curve
+  let stairs = "";
+  windows.forEach((w, i) => {
+    const yy = y(w.perday).toFixed(1);
+    stairs += (i === 0 ? `M ${X(dayOf(w.date)).toFixed(1)} ${yy}` : ` V ${yy}`)
+            + ` H ${X(dayOf(w.end)).toFixed(1)}`;
+  });
+  g += `<path fill="none" stroke="var(--accent)" stroke-linejoin="round" stroke-linecap="round" d="${stairs}"`
+     + (curve ? ` stroke-width="1.25" stroke-opacity="0.32" stroke-dasharray="3 3"/>` : ` stroke-width="2"/>`);
+
+  if (curve) {
+    const cd = curve.map((p, i) => `${i ? "L" : "M"} ${X(p.x).toFixed(1)} ${y(p.r).toFixed(1)}`).join(" ");
+    g += `<path fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" d="${cd}"/>`;
+  }
+
+  // steps carry their figure inline wherever the gap is wide enough to hold it
+  if (!curve) windows.forEach(w => {
+    const a = X(dayOf(w.date)), b = X(dayOf(w.end));
+    if (b - a >= 26) g += `<text class="bar-val" x="${((a+b)/2).toFixed(1)}" y="${(y(w.perday)-7).toFixed(1)}" text-anchor="middle">${w.perday.toFixed(1)}</text>`;
+  });
+
+  // one hover column per gap, drawn last so it sits above the strokes and catches the pointer
+  windows.forEach(w => {
+    const a = X(dayOf(w.date)), b = X(dayOf(w.end));
+    g += `<rect class="win-hit" x="${a.toFixed(1)}" y="${padT}" width="${Math.max(1, b-a).toFixed(1)}" height="${plotH}" fill="transparent">`
+       + `<title>${fmtDate(w.date)} → ${fmtDate(w.end)} · ${w.days} day${w.days === 1 ? "" : "s"} · ${w.perday.toFixed(2)} kWh/day</title></rect>`;
   });
 
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
