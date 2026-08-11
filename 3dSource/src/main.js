@@ -20,6 +20,21 @@ const smoothstep = (a, b, x) => {
 };
 const smoother = (t) => t * t * t * (t * (t * 6 - 15) + 10);
 
+/**
+ * Segment easing with independent control of each end, so a leg can leave a
+ * standstill without lurching and arrive at one without snapping.
+ * `a` eases the start, `b` the end; 0 is linear, 1 is zero velocity. A convex
+ * blend of four monotonic curves, so the result is always monotonic too.
+ */
+function shape(t, a, b) {
+  const easeIn = t * t;
+  const easeOut = 1 - (1 - t) * (1 - t);
+  return (1 - a) * (1 - b) * t
+    + a * (1 - b) * easeIn
+    + (1 - a) * b * easeOut
+    + a * b * smoother(t);
+}
+
 // Framing. A three.js camera holds *vertical* FOV fixed, so on a phone held
 // upright the horizontal view collapses to a slot and the diorama falls out of
 // frame. The film is composed for a wide viewport, so narrow ones widen the lens
@@ -122,6 +137,8 @@ function start(ui) {
   scene.add(fill);
 
   const { waypoints, tickables, billboards } = buildWorld(scene);
+  const holds = waypoints.holds;
+  const totalHold = holds.reduce((sum, h) => sum + h.width, 0);
   const motes = scene.userData.motes;
   const moteSeeds = motes.userData.seeds;
   const moteM = new THREE.Matrix4();
@@ -143,8 +160,8 @@ function start(ui) {
     };
   });
 
-  ui.mount(bands, (stop) => {
-    scrollTo({ top: stop * maxScroll(), behavior: 'smooth' });
+  ui.mount(bands, (i) => {
+    scrollTo({ top: holdCentre(i) * maxScroll(), behavior: 'smooth' });
   });
 
   let progress = 0;
@@ -168,7 +185,7 @@ function start(ui) {
 
   applyFraming();
   sizeScroller();
-  sample(0);
+  sample(toBase(0));
   camera.position.subVectors(camPos, camLook).multiplyScalar(pull).add(camLook);
   smoothLook.copy(camLook);
   camera.lookAt(smoothLook);
@@ -198,7 +215,8 @@ function start(ui) {
     progress += (target - progress) * (1 - Math.exp(-7.5 * dt));
     if (Math.abs(target - progress) < 1e-5) progress = target;
 
-    sample(progress);
+    const base = toBase(progress);
+    sample(base);
     camera.position.subVectors(camPos, camLook).multiplyScalar(pull).add(camLook);
     smoothLook.lerp(camLook, 1 - Math.exp(-9 * dt));
     camera.lookAt(smoothLook);
@@ -220,7 +238,7 @@ function start(ui) {
     }
     motes.instanceMatrix.needsUpdate = true;
 
-    ui.update(progress);
+    ui.update(base);
     renderer.render(scene, camera);
   });
 
@@ -281,12 +299,36 @@ function start(ui) {
 
   function sizeScroller() {
     const per = innerWidth < 760 ? 2.0 : 2.35;
-    const h = Math.round(innerHeight * per * SECTIONS.length);
+    const h = Math.round(innerHeight * per * SECTIONS.length * (1 + totalHold));
     ui.scroller.style.height = `${h}px`;
     setScrollSpan(h);
   }
 
-  /** progress → a point on the flight, with per-beat easing. */
+  /**
+   * Extended scroll → the base flight timeline. The stretches of scroll spent
+   * held in front of a subject are flat here: the camera parameter stops
+   * changing entirely, so the shot is genuinely still rather than merely slow.
+   */
+  function toBase(p) {
+    const q = p * (1 + totalHold);
+    let acc = 0;
+    for (const h of holds) {
+      const start = h.at + acc;
+      if (q < start) break;
+      if (q <= start + h.width) return h.at;
+      acc += h.width;
+    }
+    return clamp(q - acc, 0, 1);
+  }
+
+  /** Where a subject's hold sits in scroll, used by the rail to land on it. */
+  function holdCentre(i) {
+    let acc = 0;
+    for (let k = 0; k < i; k++) acc += holds[k].width;
+    return (holds[i].at + acc + holds[i].width / 2) / (1 + totalHold);
+  }
+
+  /** base timeline → a point on the flight, with per-beat easing. */
   function sample(p) {
     const list = waypoints.list;
     let k = 0;
@@ -295,11 +337,13 @@ function start(ui) {
     const b = list[k + 1].stop;
     const local = clamp((p - a) / (b - a || 1e-6), 0, 1);
 
-    // Ease into the beats that matter and stay near-linear elsewhere, so the
-    // camera settles while the copy is up without stalling at every waypoint.
-    const kind = list[k + 1].kind;
-    const amt = kind === 'inside' ? 0.55 : kind === 'reveal' ? 0.45 : 0.22;
-    const eased = local * (1 - amt) + smoother(local) * amt;
+    // A leg that touches a held shot must start or finish at a standstill,
+    // otherwise the camera jumps from moving to parked in a single frame.
+    const from = list[k].kind;
+    const to = list[k + 1].kind;
+    const easeStart = from === 'inside' ? 1 : 0.25;
+    const easeEnd = to === 'inside' ? 1 : to === 'reveal' ? 0.5 : 0.25;
+    const eased = shape(local, easeStart, easeEnd);
 
     const u = (k + eased) / (list.length - 1);
     waypoints.curve.getPoint(u, camPos);
@@ -384,7 +428,7 @@ function buildUI() {
 
   rail.addEventListener('click', (e) => {
     const dot = e.target.closest('.sw-dot');
-    if (dot) onJump(bands[Number(dot.dataset.index)].peak);
+    if (dot) onJump(Number(dot.dataset.index));
   });
 
   return {

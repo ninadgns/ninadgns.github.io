@@ -36,6 +36,9 @@ export const ISLANDS = [
 
 const WEIGHTS = { approach: 1.05, descend: 0.85, inside: 1.5, through: 0.85, transit: 1.35 };
 
+/** Scroll spent parked in front of a subject, in the same units as WEIGHTS. */
+const HOLD_WEIGHT = 1.4;
+
 /** The angle the film opens on, before there is a previous island to come from. */
 const OPENING = new THREE.Vector3(0.42, 0, 1).normalize();
 
@@ -184,9 +187,20 @@ function buildPath(focusWorld) {
     wp[i].stop = acc / total;
   }
 
+  // Each subject gets a stretch of scroll where the camera holds completely
+  // still, rather than easing past it. The hold is scroll the flight does not
+  // spend moving, so it is added to the timeline rather than taken out of it.
+  const holds = wp
+    .filter((w) => w.kind === 'inside')
+    .map((w) => ({ at: w.stop, width: HOLD_WEIGHT / total }));
+
   const spline = (key) => new THREE.CatmullRomCurve3(wp.map((w) => w[key]), false, 'centripetal', 0.5);
 
-  return { list: wp, curve: spline('pos'), gaze: spline('look'), gazePlain: spline('plain'), count: wp.length };
+  return {
+    list: wp, holds,
+    curve: spline('pos'), gaze: spline('look'), gazePlain: spline('plain'),
+    count: wp.length,
+  };
 }
 
 function flat(v) {
