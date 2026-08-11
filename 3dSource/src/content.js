@@ -1,0 +1,65 @@
+/**
+ * content.js — the words. Kept apart from the geometry so the copy can be
+ * rewritten without opening a single 3D file.
+ */
+export const SECTIONS = [
+  {
+    id: 'desk',
+    eyebrow: 'ninadgns.github.io',
+    title: 'Everything starts at a desk.',
+    body: 'A handful of tools built mostly for CSEDU students, plus a few personal experiments that got out of hand. All of it runs in your browser.',
+    tags: ['Client-side', 'No accounts', 'No trackers'],
+    accent: '#1f9d63',
+  },
+  {
+    id: 'cgpa',
+    eyebrow: 'CGPA Calculator',
+    title: 'Grades, added up properly.',
+    body: 'Theory and lab subjects, previous-CGPA carry-over, and a result that recalculates as you type.',
+    tags: ['React', 'CSEDU', 'Responsive'],
+    href: '/cgpa/',
+    linkLabel: 'Open the calculator',
+    accent: '#1f9d63',
+  },
+  {
+    id: 'bpdb',
+    eyebrow: 'BPDB Prepaid Tracker',
+    title: 'Where the electricity money went.',
+    body: 'Log each recharge and it splits across calendar months proportionally by days, then charts the trend. Everything stays in localStorage.',
+    tags: ['localStorage', 'CSV in / out', 'SVG charts'],
+    href: '/bpdb/',
+    linkLabel: 'Open the tracker',
+    accent: '#c16e4a',
+  },
+  {
+    id: 'gov',
+    eyebrow: 'Government Org Chart',
+    title: 'Who reports to whom.',
+    body: 'An interactive chart of the Government of Bangladesh: ministries, divisions, and the structure that ties them together.',
+    tags: ['Interactive', 'Static page'],
+    href: '/bangladesh-government/',
+    linkLabel: 'Open the chart',
+    accent: '#1f9d63',
+  },
+  {
+    id: 'routine',
+    eyebrow: 'CSEDU28 Class Routine',
+    title: 'The week, at a glance.',
+    body: 'The 28th batch routine rendered with FullCalendar and synced from a Google Calendar. Not actively maintained any more.',
+    tags: ['FullCalendar', 'Archived'],
+    href: '/routine/',
+    linkLabel: 'Open the routine',
+    accent: '#d98f63',
+  },
+  {
+    id: 'overlook',
+    eyebrow: "That's the tour",
+    title: 'Have a look around.',
+    body: 'Every tool here is a static page you can read, fork and change. Source-available under PolyForm Noncommercial.',
+    tags: [],
+    href: '/',
+    linkLabel: 'Back to the index',
+    accent: '#1f9d63',
+    isFinale: true,
+  },
+];

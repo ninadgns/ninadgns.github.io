@@ -10,7 +10,10 @@ My personal website and utility collection — mostly for CSEDU students, plus a
 A CGPA calculator built with React + Vite for CSEDU students. Supports theory and lab subjects, previous-CGPA carry-over, real-time calculation, and a mobile-responsive layout.
 
 ### ⚡ [BPDB Prepaid Recharge Tracker](/bpdb/)
-Log your BPDB prepaid electricity recharges and estimate how much you spent each month. Splits each recharge across calendar months proportionally by days, shows a summary, an SVG trend chart (exportable as PNG/SVG), and a recharge log. Data persists in `localStorage`, with CSV import/export.
+Log your BPDB prepaid electricity recharges and estimate how much you spent each month. Splits each recharge across calendar months proportionally by days, then prices each day's use at that month's slab rate. Shows a monthly summary, an SVG chart (exportable as PNG/SVG) that plots taka, kWh, or kWh/day on a real date axis, and a sortable recharge log. Also forecasts when the next recharge is due, and spells out the tariff parameters and assumptions it used. Data persists in `localStorage`, with CSV import/export.
+
+### 🌍 [3D Scroll Tour](/3d/)
+A scroll-scrubbed WebGL flythrough of the site: one continuous camera flight over a miniature world where each island is one of the tools above. Built with Three.js and bundled by esbuild. Scroll position drives the camera, so stopping the scroll stops the flight; only small idle details (the clock, the power lines, the floating cards) move on their own. Falls back to a plain document when WebGL is unavailable or `prefers-reduced-motion` is set.
 
 ### 🏛️ [Government of Bangladesh Org Chart](/bangladesh-government/)
 An interactive organizational chart of the Government of Bangladesh — ministries, divisions, and their structure.
@@ -35,6 +38,8 @@ Generates standardized lab report covers. Currently redirects to a Python (Flask
 │   ├── index.html
 │   └── assets/
 ├── CGPASource/                # CGPA calculator source (React + Vite)
+├── 3d/                        # Built 3D scroll tour (bundle.js / bundle.css)
+├── 3dSource/                  # 3D scroll tour source (Three.js + esbuild)
 ├── bangladesh-government/     # Government org chart
 ├── routine/                   # Built class routine (Next.js export)
 ├── RoutineSource/             # Class routine source
@@ -48,6 +53,14 @@ Generates standardized lab report covers. Currently redirects to a Python (Flask
 cd CGPASource
 npm install
 npm run dev
+```
+
+### 3D Scroll Tour
+```bash
+cd 3dSource
+pnpm install
+pnpm dev     # esbuild watch + dev server
+pnpm build   # bundles into ../3d/
 ```
 
 ### Lab Cover Generator
