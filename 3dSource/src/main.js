@@ -80,10 +80,15 @@ function start(ui) {
   let theme = dark.matches ? THEMES.dusk : THEMES.day;
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
   renderer.setSize(innerWidth, innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // The shadow pass is the most expensive thing in the frame, but it cannot be
+  // throttled here: the sun below follows the camera's gaze, so its shadow
+  // matrix is stale the moment the camera moves and every receiver samples the
+  // wrong space. The saving came from cutting casters instead (see kit/world) —
+  // if this ever needs more, pin the sun to a fixed direction first.
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = theme.exposure;
   renderer.domElement.className = 'sw-canvas';
@@ -101,7 +106,7 @@ function start(ui) {
   // A frustum big enough for the whole world would smear every contact shadow.
   const sun = new THREE.DirectionalLight(theme.sun, theme.sunI);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(1536, 1536);
   sun.shadow.camera.near = 1;
   sun.shadow.camera.far = 90;
   sun.shadow.camera.left = -26;
@@ -118,7 +123,11 @@ function start(ui) {
 
   const { waypoints, tickables, billboards } = buildWorld(scene);
   const motes = scene.userData.motes;
-  const moteBase = motes.children.map((m) => m.position.y);
+  const moteSeeds = motes.userData.seeds;
+  const moteM = new THREE.Matrix4();
+  const moteP = new THREE.Vector3();
+  const moteQ = new THREE.Quaternion();
+  const moteS = new THREE.Vector3();
 
   // Copy is up for as long as the camera is near its scene — from halfway
   // through the approach to halfway out again — so it reads at a normal pace
@@ -141,6 +150,10 @@ function start(ui) {
   let progress = 0;
   let target = 0;
   let lastW = innerWidth;
+  let hinted = false;
+  // Cached because reading scrollHeight forces layout, and the scroll handler
+  // runs far more often than the scroller's height ever changes.
+  let scrollSpan = 1;
   const camPos = new THREE.Vector3();
   const camLook = new THREE.Vector3();
   const plainLook = new THREE.Vector3();
@@ -151,7 +164,7 @@ function start(ui) {
   const sunOffset = new THREE.Vector3(18, 30, 14);
 
   // Read-only handle for tuning the flight from the console.
-  window.__scrollWorld = { camera, waypoints, get progress() { return progress; } };
+  window.__scrollWorld = { camera, renderer, scene, waypoints, get progress() { return progress; } };
 
   applyFraming();
   sizeScroller();
@@ -199,9 +212,13 @@ function start(ui) {
     }
 
     for (const tick of tickables) tick(t);
-    motes.children.forEach((m, i) => {
-      m.position.y = moteBase[i] + Math.sin(t * 0.25 + m.userData.phase) * 1.4;
-    });
+    for (let i = 0; i < moteSeeds.length; i++) {
+      const seed = moteSeeds[i];
+      moteP.set(seed.pos.x, seed.pos.y + Math.sin(t * 0.25 + seed.phase) * 1.4, seed.pos.z);
+      moteS.setScalar(seed.scale);
+      motes.setMatrixAt(i, moteM.compose(moteP, moteQ, moteS));
+    }
+    motes.instanceMatrix.needsUpdate = true;
 
     ui.update(progress);
     renderer.render(scene, camera);
@@ -215,13 +232,26 @@ function start(ui) {
     document.documentElement.style.setProperty('--sw-sky', theme.bottom);
   }
 
+  /**
+   * Derived, never measured. Everything except the scroller is position:fixed,
+   * so the document's scrollable span is just the height this code already set
+   * minus the viewport. Reading scrollHeight here instead would both force a
+   * layout and, at startup, risk sampling the page before its stylesheet has
+   * applied — which silently rescales the whole flight.
+   */
+  function setScrollSpan(scrollerHeight) {
+    scrollSpan = Math.max(1, scrollerHeight - innerHeight);
+  }
   function maxScroll() {
-    return Math.max(1, document.body.scrollHeight - innerHeight);
+    return scrollSpan;
   }
 
   function onScroll() {
-    target = clamp(scrollY / maxScroll(), 0, 1);
-    if (scrollY > 40) document.documentElement.classList.add('sw-scrolled');
+    target = clamp(scrollY / scrollSpan, 0, 1);
+    if (scrollY > 40 && !hinted) {
+      hinted = true;
+      document.documentElement.classList.add('sw-scrolled');
+    }
   }
 
   function onResize() {
@@ -251,7 +281,9 @@ function start(ui) {
 
   function sizeScroller() {
     const per = innerWidth < 760 ? 2.0 : 2.35;
-    ui.scroller.style.height = `${Math.round(innerHeight * per * SECTIONS.length)}px`;
+    const h = Math.round(innerHeight * per * SECTIONS.length);
+    ui.scroller.style.height = `${h}px`;
+    setScrollSpan(h);
   }
 
   /** progress → a point on the flight, with per-beat easing. */
@@ -346,6 +378,9 @@ function buildUI() {
 
   let bands = [];
   let onJump = () => {};
+  const shown = SECTIONS.map(() => -1);
+  const live = SECTIONS.map(() => null);
+  let activeDot = -1;
 
   rail.addEventListener('click', (e) => {
     const dot = e.target.closest('.sw-dot');
@@ -355,22 +390,45 @@ function buildUI() {
   return {
     scroller, enable3d,
     mount(b, jump) { bands = b; onJump = jump; },
+    /**
+     * Called every frame, so it writes nothing unless a value actually moved.
+     * Unconditional writes here meant ~30 style invalidations per frame on the
+     * main thread, competing with the scroll it is supposed to be following.
+     */
     update(p) {
       let active = 0;
       let best = Infinity;
-      bands.forEach((b, i) => {
+
+      for (let i = 0; i < bands.length; i++) {
+        const b = bands[i];
         const fade = 0.03;
         const o = smoothstep(b.enter - fade, b.enter + fade, p) * (1 - smoothstep(b.leave, b.leave + fade, p));
         const card = cards[i];
-        card.style.opacity = o.toFixed(3);
-        card.style.transform = `translateY(${((1 - o) * 22).toFixed(2)}px)`;
-        card.style.pointerEvents = o > 0.55 ? 'auto' : 'none';
-        card.setAttribute('aria-hidden', o > 0.55 ? 'false' : 'true');
+        const prev = shown[i];
+
+        // A hundredth of opacity is below the eye's threshold at these sizes.
+        if (Math.abs(o - prev) > 0.005 || (o === 0) !== (prev === 0)) {
+          card.style.opacity = o.toFixed(3);
+          card.style.transform = o > 0.999 ? '' : `translateY(${((1 - o) * 22).toFixed(2)}px)`;
+          shown[i] = o;
+
+          const interactive = o > 0.55;
+          if (interactive !== live[i]) {
+            card.style.pointerEvents = interactive ? 'auto' : 'none';
+            card.setAttribute('aria-hidden', interactive ? 'false' : 'true');
+            live[i] = interactive;
+          }
+        }
+
         const d = Math.abs(p - b.peak);
         if (d < best) { best = d; active = i; }
-      });
-      rail.children[active].classList.add('is-active');
-      [...rail.children].forEach((d, i) => d.classList.toggle('is-active', i === active));
+      }
+
+      if (active !== activeDot) {
+        rail.children[activeDot]?.classList.remove('is-active');
+        rail.children[active].classList.add('is-active');
+        activeDot = active;
+      }
     },
   };
 }

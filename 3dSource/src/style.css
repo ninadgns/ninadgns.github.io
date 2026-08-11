@@ -81,8 +81,6 @@ body {
   grid-area: 1 / 1;
   align-self: end;
   opacity: 0;
-  will-change: opacity, transform;
-  transition: opacity 120ms linear;
 }
 
 .sw-eyebrow {
@@ -126,7 +124,6 @@ body {
   border-radius: 999px;
   background: var(--chip);
   border: 1px solid var(--chip-line);
-  backdrop-filter: blur(6px);
   color: var(--ink-soft);
 }
 
@@ -208,7 +205,6 @@ body {
   border-radius: 999px;
   background: var(--chip);
   border: 1px solid var(--chip-line);
-  backdrop-filter: blur(6px);
   color: var(--ink);
   opacity: 0;
   transform: translateX(4px);
@@ -238,7 +234,6 @@ body {
   border-radius: 999px;
   background: var(--chip);
   border: 1px solid var(--chip-line);
-  backdrop-filter: blur(8px);
   transition: transform 180ms ease;
 }
 

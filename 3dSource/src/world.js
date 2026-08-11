@@ -20,7 +20,7 @@
  */
 import * as THREE from 'three';
 import { SCENES } from './scenes.js';
-import { P, cloud, tree, island, rand, at, group, sphere } from './kit.js';
+import { P, mat, cloud, tree, island, rand, at, group } from './kit.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -246,6 +246,9 @@ function scatter(scene, curve) {
     if (rand(i * 19) > 0.6) g.add(at(tree(i * 4 + 2, 0.7), s * 0.24, 0, -s * 0.18));
     g.position.copy(p);
     g.rotation.y = rand(i * 23) * Math.PI;
+    // Background scenery: too far for its shadows to be legible, so it stays
+    // out of the shadow pass entirely.
+    g.traverse((o) => { o.castShadow = false; });
     scene.add(g);
     placed++;
   }
@@ -270,19 +273,29 @@ function scatter(scene, curve) {
   }
 
   // A few motes drifting in the light. Cheap, and they sell the sense of scale.
-  const motes = group();
-  for (let i = 0; i < 140 && motes.children.length < 70; i++) {
+  // One instanced mesh rather than seventy objects: identical on screen, but a
+  // single draw call and no per-object matrix bookkeeping each frame.
+  const seeds = [];
+  for (let i = 0; i < 200 && seeds.length < 70; i++) {
     const p = new THREE.Vector3(
       centre.x + (rand(i * 5) - 0.5) * 180,
       centre.y + rand(i * 9) * 48 - 8,
       centre.z + (rand(i * 13) - 0.5) * 180,
     );
     if (clearance(p) < 9) continue;
-    const m = sphere(0.09 + rand(i * 3) * 0.08, P.paper, { segments: 5, cast: false, receive: false });
-    m.position.copy(p);
-    m.userData.phase = rand(i * 17) * Math.PI * 2;
-    motes.add(m);
+    seeds.push({ pos: p, scale: 0.09 + rand(i * 3) * 0.08, phase: rand(i * 17) * Math.PI * 2 });
   }
+
+  const motes = new THREE.InstancedMesh(
+    new THREE.SphereGeometry(1, 5, 3),
+    mat(P.paper, { rough: 1 }),
+    seeds.length,
+  );
+  motes.castShadow = false;
+  motes.receiveShadow = false;
+  motes.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  motes.frustumCulled = false;
+  motes.userData.seeds = seeds;
   scene.add(motes);
   scene.userData.motes = motes;
 }

@@ -273,17 +273,20 @@ export function island(w, d, opts = {}) {
   const soil = opts.soil ?? P.sand;
   const seed = opts.seed ?? 1;
 
-  g.add(at(rbox(w, 1.0, d, top, { radius: 0.34, segments: 3 }), 0, -0.5, 0));
-  g.add(at(tapered(w - 0.5, 2.6, d - 0.5, soil, 0.55), 0, -2.3, 0));
-  g.add(at(tapered(w - 3.4, 3.2, d - 3.4, P.dune, 0.25), 0, -4.9, 0));
+  // The slab receives (props sit on it) but casts nothing: an island floats
+  // alone, so its own shadow falls into empty sky. Keeping the ground out of
+  // the shadow pass is most of the saving, since it is the biggest mesh here.
+  g.add(at(rbox(w, 1.0, d, top, { radius: 0.34, segments: 3, cast: false }), 0, -0.5, 0));
+  g.add(at(tapered(w - 0.5, 2.6, d - 0.5, soil, 0.55, { cast: false }), 0, -2.3, 0));
+  g.add(at(tapered(w - 3.4, 3.2, d - 3.4, P.dune, 0.25, { cast: false }), 0, -4.9, 0));
 
   const rocks = opts.rocks ?? 3;
   for (let i = 0; i < rocks; i++) {
     const r = 0.4 + rand(seed + i * 13) * 0.5;
-    at(g.add(sphere(r, P.dune, { segments: 7, flat: true })) && g.children[g.children.length - 1],
+    g.add(at(sphere(r, P.dune, { segments: 7, flat: true, cast: false }),
       (rand(seed + i) - 0.5) * w * 0.7,
       -5.5 - rand(seed + i * 3) * 2.6,
-      (rand(seed + i * 5) - 0.5) * d * 0.7);
+      (rand(seed + i * 5) - 0.5) * d * 0.7));
   }
   return g;
 }
