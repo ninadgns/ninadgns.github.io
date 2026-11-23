@@ -126,7 +126,7 @@ ol.q b{font:500 12px var(--mono);color:var(--assumed);padding-top:1px}
 <div class="wrap">
   <header>
     <div>
-      <div class="eyebrow">Rental flat &middot; redrawn from hand sketch &middot; rev. 5, 23 Nov 2026</div>
+      <div class="eyebrow">Rental flat &middot; redrawn from hand sketch &middot; rev. 6, 23 Nov 2026</div>
       <h1>New Flat Plan</h1>
       <p class="lede">Every room to scale in centimetres. Drag any piece of furniture to rearrange it. It snaps to walls and warns you if it blocks a door swing or sits on another piece.</p>
     </div>
@@ -380,13 +380,13 @@ const catalog = [
   { id:'chair',  kind:'chair', name:'Chair',           w:46,     d:50 },
 ];
 const layoutDefault = {
-  // everything in Bedroom 2: bed headboard on the bottom wall, 4'x2' desk under the window,
-  // 3'x2' desk against the bath wall
-  bed:   { x:915.8-174, y:482.6-229, rot:'S' },
-  desk4: { x:785,       y:0,         rot:'N' },
-  chair: { x:822.9,     y:45,        rot:'S' },
-  desk3: { x:640,       y:207.5,     rot:'N' },
-  exec:  { x:652.7,     y:255,       rot:'S' },
+  // everything in Bedroom 1, arranged by the user: bed headboard on the bottom wall,
+  // 3'x2' desk + executive chair on the balcony wall, 4'x2' desk + chair on the door-side wall
+  bed:   { x:0,     y:142.1, rot:'S' },
+  desk3: { x:156,   y:73.5,  rot:'N' },
+  exec:  { x:181.6, y:138,   rot:'S' },
+  desk4: { x:271.6, y:152.6, rot:'E' },
+  chair: { x:214,   y:216,   rot:'W' },
 };
 const KEY = 'flat-furn-v2';
 let layout = JSON.parse(JSON.stringify(layoutDefault));

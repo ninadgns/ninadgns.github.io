@@ -61,7 +61,7 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--muted)}
     <div class="row" id="views">
       <button data-v="overview" aria-pressed="true">Overview</button>
       <button data-v="top">Top</button>
-      <button data-v="bed2">Bedroom 2</button>
+      <button data-v="bed1">Bedroom 1</button>
       <button data-v="living">Living room</button>
     </div>
   </div>
@@ -117,11 +117,13 @@ const catalog = [
   { id:'chair', kind:'chair', name:'Chair',           w:46,   d:50 },
 ];
 const layoutDefault = {
-  bed:   { x:915.8-174, y:482.6-229, rot:'S' },
-  desk4: { x:785,       y:0,         rot:'N' },
-  chair: { x:822.9,     y:45,        rot:'S' },
-  desk3: { x:640,       y:207.5,     rot:'N' },
-  exec:  { x:652.7,     y:255,       rot:'S' },
+  // everything in Bedroom 1, arranged by the user: bed headboard on the bottom wall,
+  // 3'x2' desk + executive chair on the balcony wall, 4'x2' desk + chair on the door-side wall
+  bed:   { x:0,     y:142.1, rot:'S' },
+  desk3: { x:156,   y:73.5,  rot:'N' },
+  exec:  { x:181.6, y:138,   rot:'S' },
+  desk4: { x:271.6, y:152.6, rot:'E' },
+  chair: { x:214,   y:216,   rot:'W' },
 };
 const KEY = 'flat-furn-v2';
 let layout = JSON.parse(JSON.stringify(layoutDefault));
@@ -329,7 +331,7 @@ addEventListener('storage', e => { if (e.key !== KEY) return; try { const s = JS
 const views = {
   overview: { pos:[CX - 300, 1650, CZ + 700], target:[CX, 0, CZ - 30] },
   top:      { pos:[CX, 1700, CZ + 1], target:[CX, 0, CZ] },
-  bed2:     { pos:[688, 235, 478], target:[815, 40, 130] },
+  bed1:     { pos:[322, 285, 365], target:[95, 15, 165] },
   living:   { pos:[400, 160, 750], target:[560, 90, 300] },
 };
 let anim = null;
@@ -345,7 +347,7 @@ for (const b of document.querySelectorAll('#walls button')) b.onclick = () => {
   for (const x of document.querySelectorAll('#walls button')) x.setAttribute('aria-pressed', x === b);
   buildArch(+b.dataset.h);
 };
-// optional start state from the link, e.g. #bed2 or #overview,full
+// optional start state from the link, e.g. #bed1 or #overview,full
 const opts = location.hash.slice(1).split(',');
 const startView = opts.find(o => views[o]) || 'overview';
 if (opts.includes('full')) document.querySelector('#walls button[data-h="300"]').click();
