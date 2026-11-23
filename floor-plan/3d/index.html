@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>New Flat 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: full-window 3D model, one floating control card top-left, room tags pinned in the scene. Same palette as the 2D plan. */
+:root{
+  --paper:#e9edeb; --sheet:#fafbfa; --ink:#1c2420; --muted:#5d6a64; --rule:#d3dad6;
+  --accent:#2747c9;
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root{
+  --paper:#0f1412; --sheet:#151b18; --ink:#e3e9e5; --muted:#93a19a; --rule:#2a332f; --accent:#8ea4ff; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--paper);color:var(--ink);font:14px/1.45 var(--display);overflow:hidden}
+#stage{position:fixed;inset:0}
+#stage canvas{display:block;touch-action:none}
+.card{position:fixed;top:max(16px,env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));
+  width:min(300px,calc(100vw - 32px));background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:14px 16px;
+  display:flex;flex-direction:column;gap:10px;box-shadow:0 6px 24px rgba(0,0,0,.08)}
+.eyebrow{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-size:22px;line-height:1.1;margin:2px 0 0;font-weight:700}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+.lbl{font:500 10.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+button{font:500 12.5px var(--display);border:1px solid var(--rule);background:var(--sheet);color:var(--ink);border-radius:999px;padding:4px 10px;cursor:pointer}
+button:hover{border-color:var(--accent);color:var(--accent)}
+button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--sheet)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sel{font:500 12px var(--mono);color:var(--accent);min-height:1.4em}
+.hint{font-size:12px;color:var(--muted);margin:0}
+a{color:var(--accent)}
+details summary{cursor:pointer;font-size:12.5px;color:var(--muted)}
+.tag{font:600 12px var(--display);color:#1c2420;background:rgba(255,255,255,.86);border-radius:4px;padding:2px 6px;white-space:nowrap;pointer-events:none}
+.tag small{display:block;font:500 10px var(--mono);color:#5d6a64;text-align:center}
+@media (max-width:520px){.card{padding:12px}.hint.long{display:none}}
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="stage"></div>
+
+<div class="card">
+  <div>
+    <div class="eyebrow">New flat &middot; 3D model</div>
+    <h1>New Flat 3D</h1>
+  </div>
+  <div>
+    <div class="lbl">View</div>
+    <div class="row" id="views">
+      <button data-v="overview" aria-pressed="true">Overview</button>
+      <button data-v="top">Top</button>
+      <button data-v="bed2">Bedroom 2</button>
+      <button data-v="living">Living room</button>
+    </div>
+  </div>
+  <div>
+    <div class="lbl">Walls</div>
+    <div class="row" id="walls">
+      <button data-h="300">Full height</button>
+      <button data-h="110" aria-pressed="true">Cut away</button>
+    </div>
+  </div>
+  <div class="sel" id="sel">Click a piece of furniture to select it</div>
+  <div class="row"><button id="rot">Rotate selected</button><button id="reset">Reset layout</button></div>
+  <p class="hint long">Drag to orbit, scroll or pinch to zoom, right-drag to pan. Drag furniture to move it; R rotates. Layout is shared with the <a href="../">2D plan</a> in this browser.</p>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+// ---------- plan data (cm), copied from the 2D plan: x = east, y = south ----------
+const T = 12.5, E = 25, P = 7.5;
+const rooms = [
+  { id:'bal',  name:'Balcony',         x:0,     y:0,     w:332.6, h:61,    walls:[10,T,T,E], kind:'out' },
+  { id:'a',    name:'Bedroom 1',       x:0,     y:73.5,  w:332.6, h:297.6, walls:[T,T,E,E],  kind:'dry' },
+  { id:'b1',   name:'Bath 1',          x:345.1, y:0,     w:133.6, h:264.6, walls:[E,P,T,T],  kind:'wet' },
+  { id:'k',    name:'Kitchen',         x:486.2, y:0,     w:136.5, h:264.6, walls:[E,T,T,P],  kind:'kit' },
+  { id:'hall', name:'Living / Dining', x:345.1, y:277.1, w:277.6, h:219,   walls:[T,T,0,E],  kind:'dry' },
+  { id:'b',    name:'Bedroom 2',       x:635.2, y:0,     w:280.6, h:482.6, walls:[E,E,E,T],  kind:'dry' },
+  { id:'hall2',name:'Living / Dining', x:345.1, y:495.1, w:338.6, h:264.6, walls:[0,E,E,E],  kind:'dry' },
+];
+const bath2 = { x:635.2, y:0, w:133.6, h:200, kind:'wet' };
+const bath2Block = { x:635.2, y:0, w:133.6+P, h:200+P };
+const basin = { x:582.7, y:277.1, w:40, h:50 };
+const doors = [
+  { o:[252,61,75,12.5],      h:[327,73.5],    p:[327,148.5] },
+  { o:[332.6,277.1,12.5,92], h:[332.6,369.1], p:[240.6,369.1] },
+  { o:[355,264.6,70,12.5],   h:[425,264.6],   p:[425,194.6] },
+  { o:[622.7,392,12.5,80],   h:[635.2,472],   p:[715.2,472] },
+  { o:[768.8,115,7.5,65],    h:[768.8,180],   p:[703.8,180] },
+  { o:[352,759.7,94,25],     h:[352,759.7],   p:[352,665.7] },
+];
+const windows = [ [50,61,120,12.5], [505,-25,100,25], [800,-25,90,25] ];
+const kitchenOpening = [486.2,264.6,81.9,12.5];
+const railing = [0,-10,332.6,10];
+
+const FT = 30.48;
+const catalog = [
+  { id:'bed',   kind:'bed',   name:'Bed',             w:174,  d:229 },
+  { id:'desk3', kind:'desk',  name:'3′ × 2′ desk', w:3*FT, d:2*FT },
+  { id:'exec',  kind:'exec',  name:'Executive chair', w:66,   d:66 },
+  { id:'desk4', kind:'desk',  name:'4′ × 2′ desk', w:4*FT, d:2*FT },
+  { id:'chair', kind:'chair', name:'Chair',           w:46,   d:50 },
+];
+const layoutDefault = {
+  bed:   { x:915.8-174, y:482.6-229, rot:'S' },
+  desk4: { x:785,       y:0,         rot:'N' },
+  chair: { x:822.9,     y:45,        rot:'S' },
+  desk3: { x:640,       y:207.5,     rot:'N' },
+  exec:  { x:652.7,     y:255,       rot:'S' },
+};
+const KEY = 'flat-furn-v2';
+let layout = JSON.parse(JSON.stringify(layoutDefault));
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) for (const k in layout) if (s[k] && typeof s[k].x === 'number' && 'NESW'.includes(s[k].rot)) layout[k] = s[k]; } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(layout)); } catch (e) {} };
+
+// ---------- scene ----------
+const stage = document.getElementById('stage');
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+stage.appendChild(renderer.domElement);
+const labelR = new CSS2DRenderer(); labelR.domElement.style.cssText = 'position:absolute;inset:0;pointer-events:none';
+stage.appendChild(labelR.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(dark ? 0x0f1412 : 0xe9edeb);
+const CX = 470, CZ = 380; // model centre
+const camera = new THREE.PerspectiveCamera(40, 1, 5, 20000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.495;
+
+scene.add(new THREE.HemisphereLight(0xffffff, dark ? 0x30343a : 0xb8b2a6, dark ? 1.1 : 1.35));
+const sun = new THREE.DirectionalLight(0xfff4e6, dark ? 1.4 : 1.9);
+sun.position.set(CX - 650, 1300, CZ + 450); sun.target.position.set(CX, 0, CZ);
+sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left:-800, right:800, top:800, bottom:-800, near:100, far:3000 });
+sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.5;
+scene.add(sun, sun.target);
+
+// ground
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), new THREE.MeshStandardMaterial({ color: dark ? 0x161c19 : 0xdfe4e1, roughness:1 }));
+ground.rotation.x = -Math.PI/2; ground.position.y = -1; ground.receiveShadow = true; scene.add(ground);
+
+const mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness:.85, ...o });
+const M = {
+  wall: mat(0xf3f0ea), cap: mat(0x9aa39f),
+  dry: mat(0xd8d2c6, { roughness:.6 }), wet: mat(0xbfd0d4, { roughness:.4 }), kit: mat(0xd5d1bd, { roughness:.6 }), out: mat(0xb9b3a5),
+  door: mat(0x9c7653, { roughness:.6 }), glass: new THREE.MeshStandardMaterial({ color:0xa9d3ea, roughness:.05, metalness:.1, transparent:true, opacity:.35 }),
+  frame: mat(0x55606a, { roughness:.5, metalness:.3 }), porcelain: mat(0xfbfbfa, { roughness:.25 }),
+};
+function box(x, z, w, d, y0, y1, material, parent, shadow = true) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, y1 - y0, d), material);
+  m.position.set(x + w/2, (y0 + y1)/2, z + d/2);
+  m.castShadow = shadow; m.receiveShadow = true; parent.add(m); return m;
+}
+
+// floors
+const floorG = new THREE.Group(); scene.add(floorG);
+for (const r of [...rooms, bath2]) box(r.x, r.y, r.w, r.h, r.kind === 'wet' && r === bath2 ? 0 : -0.5, r === bath2 ? 0.6 : 0.3, M[r.kind], floorG, false);
+
+// walls: rasterise the 2D wall poché at 0.5 cm, merge cells into boxes
+const RES = 0.5, X0 = -30, Y0 = -30, NX = Math.ceil(1000 / RES), NY = Math.ceil(830 / RES);
+const grid = new Uint8Array(NX * NY);
+const fill = (r, v) => {
+  const i0 = Math.max(0, Math.round((r[0] - X0) / RES)), i1 = Math.min(NX, Math.round((r[0] + r[2] - X0) / RES));
+  const j0 = Math.max(0, Math.round((r[1] - Y0) / RES)), j1 = Math.min(NY, Math.round((r[1] + r[3] - Y0) / RES));
+  for (let j = j0; j < j1; j++) grid.fill(v, j*NX + i0, j*NX + i1);
+};
+for (const r of rooms) { const [t, rr, b, l] = r.walls; fill([r.x-l, r.y-t, r.w+l+rr, r.h+t+b], 1); }
+for (const r of rooms) fill([r.x, r.y, r.w, r.h], 0);
+fill([bath2Block.x, bath2Block.y, bath2Block.w, bath2Block.h], 1);
+fill([bath2.x, bath2.y, bath2.w, bath2.h], 0);
+for (const d of doors) fill(d.o, 0);
+for (const w of windows) fill(w, 0);
+fill(kitchenOpening, 0); fill(railing, 0);
+const wallRects = [];
+{ let open = new Map();
+  for (let j = 0; j <= NY; j++) {
+    const runs = new Map();
+    if (j < NY) { let i = 0; while (i < NX) { if (grid[j*NX+i]) { const s = i; while (i < NX && grid[j*NX+i]) i++; runs.set(s + ',' + i, [s, i]); } else i++; } }
+    const next = new Map();
+    for (const [k, r] of runs) next.set(k, open.has(k) ? open.get(k) : { i0:r[0], i1:r[1], j0:j });
+    for (const [k, b] of open) if (!runs.has(k)) wallRects.push([X0 + b.i0*RES, Y0 + b.j0*RES, (b.i1 - b.i0)*RES, (j - b.j0)*RES]);
+    open = next;
+  } }
+
+const archG = new THREE.Group(); scene.add(archG);
+function buildArch(H) {
+  archG.clear();
+  for (const [x, y, w, d] of wallRects) box(x, y, w, d, 0, H, M.wall, archG);
+  const lintel = (r, from) => { if (H > from) box(r[0], r[1], r[2], r[3], from, H, M.wall, archG); };
+  for (const d of doors) {
+    lintel(d.o, 210);
+    // door leaf, shown open at 90 degrees
+    const [hx, hy] = d.h, [px, py] = d.p, len = Math.hypot(px-hx, py-hy);
+    const leaf = new THREE.Mesh(new THREE.BoxGeometry(len, 205, 3.5), M.door);
+    leaf.position.set((hx+px)/2, 102.5, (hy+py)/2); leaf.rotation.y = -Math.atan2(py-hy, px-hx);
+    leaf.castShadow = true; archG.add(leaf);
+  }
+  lintel(kitchenOpening, 210);
+  for (const w of windows) {
+    box(w[0], w[1], w[2], w[3], 0, 90, M.wall, archG);
+    lintel(w, 210);
+    const top = Math.min(H, 210); if (top <= 90) continue;
+    const thin = w[3] > 20 ? [w[0], w[1] + w[3]/2 - 1, w[2], 2] : [w[0], w[1] + w[3]/2 - 1, w[2], 2];
+    box(thin[0], thin[1], thin[2], thin[3], 90, top, M.glass, archG, false);
+    box(w[0], w[1], w[2], w[3], 90, 92, M.frame, archG);
+  }
+  // balcony railing: low parapet, bars, handrail
+  box(railing[0], railing[1], railing[2], railing[3], 0, 15, M.wall, archG);
+  for (let x = 6; x < railing[2]; x += 12) box(x, -6, 1.6, 1.6, 15, 100, M.frame, archG);
+  box(railing[0], -8, railing[2], 6, 100, 105, M.frame, archG);
+  // wash basin on Bedroom 2's wall
+  box(basin.x, basin.y + 2, basin.w, basin.h - 4, 72, 85, M.porcelain, archG);
+  box(basin.x + 25, basin.y + 18, 8, 14, 0, 72, M.porcelain, archG);
+}
+buildArch(110);
+
+// room tags (hidden at eye level, where they would show through walls)
+const tags = [];
+for (const [name, x, z, sub] of [['Bedroom 1',166,222,'332.6 × 297.6'],['Bedroom 2',845,330,'280.6 × 482.6'],['Living / Dining',470,600,'338.6 × 482.6'],
+  ['Kitchen',554,130,''],['Bath 1',412,130,''],['Bath 2',702,100,''],['Balcony',166,30,''],['Entry',399,800,'']]) {
+  const d = document.createElement('div'); d.className = 'tag'; d.innerHTML = name + (sub ? `<small>${sub}</small>` : '');
+  const o = new CSS2DObject(d); o.position.set(x, 5, z); scene.add(o); tags.push(o);
+}
+
+// ---------- furniture ----------
+const FM = {
+  wood: mat(0x8a6646, { roughness:.55 }), oak: mat(0xb48a5e, { roughness:.5 }), linen: mat(0xf1efe9),
+  duvet: mat(0x4560c8, { roughness:.9 }), pillow: mat(0xffffff), black: mat(0x24272d, { roughness:.6 }),
+  metal: mat(0x8d949c, { roughness:.35, metalness:.6 }), fabric: mat(0x50607a, { roughness:.95 }),
+};
+function piece(c) {
+  // built facing "N": back edge toward -z, centred on the origin
+  const g = new THREE.Group(), W = c.w, D = c.d, X = -W/2, Z = -D/2;
+  const add = (x, z, w, d, y0, y1, m) => box(x, z, w, d, y0, y1, m, g);
+  if (c.kind === 'bed') {
+    add(X, Z, W, D, 8, 30, FM.wood);
+    add(X, Z, W, 7, 0, 105, FM.wood);
+    add(X+3, Z+8, W-6, D-11, 30, 54, FM.linen);
+    add(X+1, Z+D*0.36, W-2, D*0.64-1, 50, 57, FM.duvet);
+    for (const px of [X+14, X+W/2+7]) add(px, Z+14, W/2-21, 44, 54, 66, FM.pillow);
+    for (const [lx, lz] of [[X+4, Z+D-10], [X+W-10, Z+D-10]]) add(lx, lz, 6, 6, 0, 8, FM.wood);
+  } else if (c.kind === 'desk') {
+    add(X, Z, W, D, 72, 75, FM.oak);
+    for (const [lx, lz] of [[X+3, Z+3], [X+W-7, Z+3], [X+3, Z+D-7], [X+W-7, Z+D-7]]) add(lx, lz, 4, 4, 0, 72, FM.black);
+    add(X+3, Z+3, W-6, 2, 40, 70, FM.black);
+  } else {
+    const exec = c.kind === 'exec', seatY = 46, backTop = exec ? 120 : 88;
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, seatY - 8, 12), FM.metal); pole.position.y = (seatY - 8)/2 + 6; pole.castShadow = true; g.add(pole);
+    for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5, leg = new THREE.Mesh(new THREE.BoxGeometry(W*0.42, 3, 4), FM.black);
+      leg.position.set(Math.cos(a)*W*0.2, 4, Math.sin(a)*W*0.2); leg.rotation.y = -a; leg.castShadow = true; g.add(leg); }
+    const sw = exec ? W - 14 : W - 4;
+    add(-sw/2, Z+10, sw, D-12, seatY - 8, seatY, exec ? FM.black : FM.fabric);
+    add(-sw/2, Z+2, sw, exec ? 10 : 6, seatY, backTop, exec ? FM.black : FM.fabric);
+    if (exec) for (const ax of [X, X+W-7]) { add(ax, Z+14, 7, D-24, seatY+16, seatY+20, FM.black); add(ax+2, Z+D-16, 3, 3, seatY, seatY+16, FM.metal); }
+  }
+  g.traverse(o => { if (o.isMesh) o.material = o.material.clone(); });
+  return g;
+}
+const ANG = { N:0, E:90, S:180, W:270 };
+const footprint = id => { const c = catalog.find(c => c.id === id), L = layout[id], side = L.rot === 'E' || L.rot === 'W'; return { w: side ? c.d : c.w, h: side ? c.w : c.d }; };
+const furnG = new THREE.Group(); scene.add(furnG);
+const objs = {};
+for (const c of catalog) { const g = piece(c); g.userData.id = c.id; objs[c.id] = g; furnG.add(g); }
+function place(id) {
+  const L = layout[id], f = footprint(id), g = objs[id];
+  g.position.set(L.x + f.w/2, 0, L.y + f.h/2); g.rotation.y = -ANG[L.rot] * Math.PI / 180;
+}
+catalog.forEach(c => place(c.id));
+
+let selected = null;
+const selEl = document.getElementById('sel');
+function select(id) {
+  selected = id;
+  for (const c of catalog) objs[c.id].traverse(o => { if (o.isMesh) o.material.emissive.setHex(c.id === id ? 0x1d3bb0 : 0x000000); o.isMesh && (o.material.emissiveIntensity = .35); });
+  selEl.textContent = id ? 'Selected: ' + catalog.find(c => c.id === id).name : 'Click a piece of furniture to select it';
+}
+function rotateSel() {
+  if (!selected) return; const L = layout[selected], f = footprint(selected), cx = L.x + f.w/2, cy = L.y + f.h/2;
+  L.rot = { W:'N', N:'E', E:'S', S:'W' }[L.rot];
+  const f2 = footprint(selected); L.x = Math.round(cx - f2.w/2); L.y = Math.round(cy - f2.h/2); place(selected); save();
+}
+
+// drag on the floor plane
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(), floorPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0), hit = new THREE.Vector3();
+let drag = null;
+function setPtr(ev) { const r = renderer.domElement.getBoundingClientRect(); ptr.set((ev.clientX - r.left)/r.width*2 - 1, -(ev.clientY - r.top)/r.height*2 + 1); ray.setFromCamera(ptr, camera); }
+renderer.domElement.addEventListener('pointerdown', ev => {
+  if (ev.button !== 0) return; setPtr(ev);
+  const h = ray.intersectObjects(furnG.children, true)[0];
+  if (!h) return;
+  let o = h.object; while (!o.userData.id) o = o.parent;
+  select(o.userData.id);
+  ray.ray.intersectPlane(floorPlane, hit);
+  const L = layout[selected]; drag = { dx: hit.x - L.x, dz: hit.z - L.y, moved:false };
+  controls.enabled = false; renderer.domElement.setPointerCapture(ev.pointerId);
+});
+renderer.domElement.addEventListener('pointermove', ev => {
+  if (!drag) return; setPtr(ev); if (!ray.ray.intersectPlane(floorPlane, hit)) return;
+  const L = layout[selected]; L.x = Math.round(hit.x - drag.dx); L.y = Math.round(hit.z - drag.dz); place(selected); drag.moved = true;
+});
+const endDrag = () => { if (!drag) return; drag = null; controls.enabled = true; save(); };
+renderer.domElement.addEventListener('pointerup', endDrag); renderer.domElement.addEventListener('pointercancel', endDrag);
+addEventListener('keydown', ev => { if ((ev.key === 'r' || ev.key === 'R') && !ev.metaKey && !ev.ctrlKey) rotateSel(); });
+document.getElementById('rot').onclick = rotateSel;
+document.getElementById('reset').onclick = () => { layout = JSON.parse(JSON.stringify(layoutDefault)); catalog.forEach(c => place(c.id)); save(); };
+addEventListener('storage', e => { if (e.key !== KEY) return; try { const s = JSON.parse(e.newValue); for (const k in layout) if (s[k]) layout[k] = s[k]; catalog.forEach(c => place(c.id)); } catch (er) {} });
+
+// ---------- views ----------
+const views = {
+  overview: { pos:[CX - 300, 1650, CZ + 700], target:[CX, 0, CZ - 30] },
+  top:      { pos:[CX, 1700, CZ + 1], target:[CX, 0, CZ] },
+  bed2:     { pos:[688, 235, 478], target:[815, 40, 130] },
+  living:   { pos:[400, 160, 750], target:[560, 90, 300] },
+};
+let anim = null;
+function goView(name, instant) {
+  const v = views[name];
+  for (const b of document.querySelectorAll('#views button')) b.setAttribute('aria-pressed', b.dataset.v === name);
+  const from = { p:camera.position.clone(), t:controls.target.clone() }, to = { p:new THREE.Vector3(...v.pos), t:new THREE.Vector3(...v.target) };
+  if (instant || matchMedia('(prefers-reduced-motion: reduce)').matches) { camera.position.copy(to.p); controls.target.copy(to.t); return; }
+  anim = { from, to, t0:performance.now() };
+}
+for (const b of document.querySelectorAll('#views button')) b.onclick = () => goView(b.dataset.v);
+for (const b of document.querySelectorAll('#walls button')) b.onclick = () => {
+  for (const x of document.querySelectorAll('#walls button')) x.setAttribute('aria-pressed', x === b);
+  buildArch(+b.dataset.h);
+};
+// optional start state from the link, e.g. #bed2 or #overview,full
+const opts = location.hash.slice(1).split(',');
+const startView = opts.find(o => views[o]) || 'overview';
+if (opts.includes('full')) document.querySelector('#walls button[data-h="300"]').click();
+goView(startView, true);
+
+function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h); labelR.setSize(w, h); camera.aspect = w/h; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+renderer.setAnimationLoop(now => {
+  if (anim) {
+    const k = Math.min(1, (now - anim.t0) / 700), e = k < .5 ? 2*k*k : 1 - Math.pow(-2*k + 2, 2)/2;
+    camera.position.lerpVectors(anim.from.p, anim.to.p, e); controls.target.lerpVectors(anim.from.t, anim.to.t, e);
+    if (k === 1) anim = null;
+  }
+  controls.update();
+  const showTags = camera.position.y > 450; for (const t of tags) t.visible = showTags;
+  renderer.render(scene, camera); labelR.render(scene, camera);
+});
+</script>
+</body>
+</html>
