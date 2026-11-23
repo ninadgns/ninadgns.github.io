@@ -139,7 +139,7 @@ const catalog = [
   { id:'bed',   kind:'bed',   name:'Bed',             w:174,  d:229 },
   { id:'desk3', kind:'desk',  name:'3′ × 2′ desk', w:3*FT, d:2*FT },
   { id:'exec',  kind:'exec',  name:'Executive chair', w:66,   d:66 },
-  { id:'desk4', kind:'desk',  name:'4′ × 2′ desk', w:4*FT, d:2*FT },
+  { id:'desk4', kind:'shelfdesk', name:'4′ × 2′ study table', w:4*FT, d:2*FT },
   { id:'chair', kind:'chair', name:'Chair',           w:46,   d:50 },
 ];
 const layoutDefault = {
@@ -275,6 +275,8 @@ const FM = {
   wood: mat(0x8a6646, { roughness:.55 }), oak: mat(0xb48a5e, { roughness:.5 }), linen: mat(0xf1efe9),
   duvet: mat(0x4560c8, { roughness:.9 }), pillow: mat(0xffffff), black: mat(0x24272d, { roughness:.6 }),
   metal: mat(0x8d949c, { roughness:.35, metalness:.6 }), fabric: mat(0x50607a, { roughness:.95 }),
+  char: mat(0x2b2c2f, { roughness:.6 }), ash: mat(0xcfc6b6, { roughness:.55 }), steel: mat(0x1f2023, { roughness:.4, metalness:.5 }),
+  book: [0xe9e6df, 0x9ac94f, 0x3a3d44, 0xb5532f, 0xf2f2ee, 0x6f8fb8].map(c => mat(c, { roughness:.8 })),
 };
 function piece(c) {
   // built facing "N": back edge toward -z, centred on the origin
@@ -287,6 +289,33 @@ function piece(c) {
     add(X+1, Z+D*0.36, W-2, D*0.64-1, 50, 57, FM.duvet);
     for (const px of [X+14, X+W/2+7]) add(px, Z+14, W/2-21, 44, 54, 66, FM.pillow);
     for (const [lx, lz] of [[X+4, Z+D-10], [X+W-10, Z+D-10]]) add(lx, lz, 6, 6, 0, 8, FM.wood);
+  } else if (c.kind === 'shelfdesk') {
+    // study table with a shelf tower on the user's left, inside the same 4 ft width
+    // (built facing N: user sits at +z looking toward -z, so their left is -x)
+    const S = 45, TD = 40, TH = 150, t = 1.8, xs = X + S;
+    // tower carcass
+    add(X, Z, t, TD, 0, TH, FM.char); add(xs - t, Z, t, TD, 0, TH, FM.char);
+    add(X, Z, S, TD, TH - t, TH, FM.char); add(X, Z, S, 1, 0, TH, FM.ash);
+    add(X, Z + 2, S, TD - 4, 0, 6, FM.char);                                    // plinth
+    add(X + t, Z + 1, S - 2*t, TD - 1, 6, 50, FM.ash);                          // drawer cabinet
+    add(X + t + .5, Z + TD - .5, S - 2*t - 1, 1.5, 7, 27, FM.ash);              // lower drawer front
+    add(X + t + .5, Z + TD - .5, S - 2*t - 1, 1.5, 29, 49, FM.ash);             // upper drawer front
+    add(X + t, Z + TD - .4, S - 2*t, 1.2, 27, 29, FM.char);                     // reveal between drawers
+    add(X + t, Z, S - 2*t, TD, 50, 50 + t, FM.char);                            // shelf over cabinet
+    add(X + t, Z, S - 2*t, TD, 110, 110 + t, FM.char);                          // upper shelf
+    add(X + S/2 - t/2, Z, t, TD, 50, TH, FM.char);                              // middle divider
+    add(X + t, Z, S/2 - t, TD, 75, 75 + t, FM.char);                            // outer cubby shelf at desk height
+    // books in the outer cubbies
+    for (const [y0, n] of [[110 + t, 6], [75 + t, 5]]) for (let i = 0; i < n; i++)
+      add(X + t + 1 + i*3.4, Z + 6, 3, 22, y0, y0 + 26 + (i % 3) * 3, FM.book[(i + y0) % FM.book.length]);
+    // desktop: runs into the tower's open inner bay
+    add(X + S/2 + t/2, Z, W - S/2 - t/2, D - 1.2, 72, 75, FM.ash);
+    add(X + S/2 + t/2, Z + D - 1.2, W - S/2 - t/2, 1.2, 72, 75, FM.char);       // dark front edge
+    // sled leg on the user's right, modesty panel at the back
+    const lx = X + W - 5;
+    add(lx, Z + 3, 4, 4, 0, 72, FM.steel); add(lx, Z + D - 7, 4, 4, 0, 72, FM.steel);
+    add(lx, Z + 3, 4, D - 6, 0, 4, FM.steel); add(lx, Z + 3, 4, D - 6, 68, 72, FM.steel);
+    add(xs, Z + 2, lx - xs, 2, 34, 72, FM.char);
   } else if (c.kind === 'desk') {
     add(X, Z, W, D, 72, 75, FM.oak);
     for (const [lx, lz] of [[X+3, Z+3], [X+W-7, Z+3], [X+3, Z+D-7], [X+W-7, Z+D-7]]) add(lx, lz, 4, 4, 0, 72, FM.black);
