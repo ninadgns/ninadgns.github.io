@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>New Flat Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: drafting sheet. Large to-scale plan on the left, a narrow "title block" column on the right with the furniture tool, room schedule and open questions. */
+:root{
+  --paper:#eef1ef; --sheet:#fafbfa; --ink:#1c2420; --muted:#5d6a64; --rule:#d3dad6;
+  --wall:#27302c; --floor:#fdfdfc; --wet:#e7eff1; --kit:#f1f0e6; --out:#e9ece4; --grid:#cad7da;
+  --accent:#2747c9; --accent-soft:rgba(39,71,201,.10); --bedfill:#e4e9fa; --assumed:#a8650b;
+  --good:#1f7a4d; --warn:#b26a00; --bad:#c0362c;
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0f1412; --sheet:#151b18; --ink:#e3e9e5; --muted:#93a19a; --rule:#2a332f;
+  --wall:#b9c4be; --floor:#1b221f; --wet:#1a2629; --kit:#22231b; --out:#1e231c; --grid:#2c3b3f;
+  --accent:#8ea4ff; --accent-soft:rgba(142,164,255,.14); --bedfill:#242c47; --assumed:#e0a24a;
+  --good:#5fc58f; --warn:#e7a443; --bad:#f07a6f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0f1412; --sheet:#151b18; --ink:#e3e9e5; --muted:#93a19a; --rule:#2a332f;
+  --wall:#b9c4be; --floor:#1b221f; --wet:#1a2629; --kit:#22231b; --out:#1e231c; --grid:#2c3b3f;
+  --accent:#8ea4ff; --accent-soft:rgba(142,164,255,.14); --bedfill:#242c47; --assumed:#e0a24a;
+  --good:#5fc58f; --warn:#e7a443; --bad:#f07a6f; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--display);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 48px}
+.wrap{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 32px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-size:clamp(28px,4vw,40px);line-height:1.05;margin:4px 0 0;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.lede{margin:8px 0 0;color:var(--muted);max-width:62ch}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--sheet)}
+.seg button{font:500 13px var(--mono);border:0;background:transparent;color:var(--muted);padding:7px 12px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--sheet)}
+.seg button:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start}
+@media (max-width:960px){.grid{grid-template-columns:minmax(0,1fr)}}
+.sheet{background:var(--sheet);border:1px solid var(--rule);border-radius:4px;min-width:0}
+.plan-box{overflow-x:auto;padding:8px}
+#plan{display:block;width:100%;min-width:640px;height:auto;touch-action:none;user-select:none}
+.plan-foot{display:flex;flex-wrap:wrap;gap:8px 20px;padding:10px 16px;border-top:1px solid var(--rule);font-size:12.5px;color:var(--muted)}
+.key{display:inline-flex;align-items:center;gap:7px}
+.sw{width:18px;height:10px;border-radius:2px;display:inline-block}
+aside{display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel{padding:16px}
+.panel h2{font-size:12px;font-family:var(--mono);font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.status{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.status-msg{color:var(--muted);font-size:13px;margin:4px 0 12px}
+.clear{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+.clear div{border:1px solid var(--rule);border-radius:6px;padding:6px 4px;text-align:center}
+.clear span{display:block;font:500 10.5px var(--mono);color:var(--muted);letter-spacing:.06em}
+.clear b{font:500 14px var(--mono);font-variant-numeric:tabular-nums}
+.btns{display:flex;flex-wrap:wrap;gap:6px}
+.btn{font:500 13px var(--display);border:1px solid var(--rule);background:var(--sheet);color:var(--ink);border-radius:6px;padding:6px 10px;cursor:pointer}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--sheet)}
+.btn.primary:hover{color:var(--sheet);filter:brightness(1.08)}
+.hint{font-size:12px;color:var(--muted);margin:10px 0 0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font:500 10.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:0 0 6px;border-bottom:1px solid var(--rule)}
+td{padding:6px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+th.n{text-align:right}
+tr:last-child td{border-bottom:0}
+.asm{color:var(--assumed)}
+ol.q{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px;font-size:13.5px}
+ol.q li{display:grid;grid-template-columns:30px 1fr;gap:4px}
+ol.q b{font:500 12px var(--mono);color:var(--assumed);padding-top:1px}
+/* SVG */
+.wall{fill:var(--wall)}
+.f-dry{fill:var(--floor)} .f-wet{fill:url(#tile)} .f-kit{fill:var(--kit)} .f-out{fill:url(#deck)}
+.tile-bg{fill:var(--wet)} .tile-ln{stroke:var(--grid);stroke-width:1;fill:none}
+.deck-bg{fill:var(--out)} .deck-ln{stroke:var(--grid);stroke-width:1}
+.opening{fill:var(--floor)}
+.leaf{stroke:var(--ink);stroke-width:3;fill:none;stroke-linecap:round}
+.swing{stroke:var(--muted);stroke-width:1;fill:none;stroke-dasharray:5 4}
+.win{fill:var(--sheet);stroke:var(--ink);stroke-width:1.2}
+.win-ln{stroke:var(--ink);stroke-width:1}
+.rail{fill:var(--sheet);stroke:var(--ink);stroke-width:1.2}
+.fx{fill:var(--sheet);stroke:var(--ink);stroke-width:1.2}
+.lintel{stroke:var(--muted);stroke-width:1.2;stroke-dasharray:6 4}
+.dim{stroke:var(--ink);stroke-width:1;fill:none}
+.dim.a{stroke:var(--assumed)}
+.dim-t{font:500 13px var(--mono);fill:var(--ink);text-anchor:middle}
+.dim-t.a{fill:var(--assumed)}
+.ext{stroke:var(--muted);stroke-width:.7}
+.room-n{font:600 17px var(--display);fill:var(--ink);text-anchor:middle}
+.room-d{font:500 12px var(--mono);fill:var(--muted);text-anchor:middle}
+.small-t{font:500 11px var(--mono);fill:var(--muted);text-anchor:middle}
+.entry{font:600 12px var(--mono);fill:var(--ink);text-anchor:middle;letter-spacing:.12em}
+.furn{cursor:grab;outline:none}
+#g-furn.drag .furn{cursor:grabbing}
+.fu-body{fill:var(--bedfill);stroke:var(--accent);stroke-width:1.6}
+.fu-solid{fill:var(--accent)}
+.fu-pillow{fill:var(--sheet);stroke:var(--accent);stroke-width:1.2}
+.fu-fold{stroke:var(--accent);stroke-width:1;stroke-dasharray:4 3}
+.fu-t{font:600 12px var(--mono);fill:var(--accent);text-anchor:middle;pointer-events:none}
+.furn.sel .fu-body{stroke-width:3}
+.furn:focus-visible .fu-body{stroke-dasharray:6 3}
+.furn.bad .fu-body{stroke:var(--bad)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chip{font:500 12.5px var(--display);border:1px solid var(--rule);background:var(--sheet);color:var(--ink);border-radius:999px;padding:4px 10px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--sheet)}
+.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sel-name{font:500 12px var(--mono);color:var(--muted);margin-bottom:6px}
+.cl{stroke:var(--accent);stroke-width:1.2;stroke-dasharray:3 3}
+.cl-t{font:600 12px var(--mono);fill:var(--accent);text-anchor:middle;paint-order:stroke;stroke:var(--sheet);stroke-width:4px}
+.scale-t{font:500 11px var(--mono);fill:var(--muted)}
+.scale-b{fill:var(--ink)} .scale-w{fill:var(--sheet);stroke:var(--ink);stroke-width:1}
+</style>
+<style>[hidden]{display:none!important} img{max-width:100%}</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">Rental flat &middot; redrawn from hand sketch &middot; rev. 5, 23 Nov 2026</div>
+      <h1>New Flat Plan</h1>
+      <p class="lede">Every room to scale in centimetres. Drag any piece of furniture to rearrange it. It snaps to walls and warns you if it blocks a door swing or sits on another piece.</p>
+    </div>
+    <div class="seg" role="group" aria-label="Units">
+      <button id="u-cm" aria-pressed="true">cm</button>
+      <button id="u-ft" aria-pressed="false">ft-in</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="sheet">
+      <div class="plan-box">
+        <svg id="plan" viewBox="-130 -140 1250 1030" role="img" aria-label="Floor plan of the flat with movable furniture">
+          <defs>
+            <pattern id="tile" width="30" height="30" patternUnits="userSpaceOnUse">
+              <rect class="tile-bg" width="30" height="30"/><path class="tile-ln" d="M30 0V30M0 30H30"/>
+            </pattern>
+            <pattern id="deck" width="12" height="12" patternUnits="userSpaceOnUse">
+              <rect class="deck-bg" width="12" height="12"/><path class="deck-ln" d="M0 12H12"/>
+            </pattern>
+          </defs>
+          <g id="g-walls"></g><g id="g-floors"></g><g id="g-inner"></g><g id="g-open"></g>
+          <g id="g-dims"></g><g id="g-labels"></g>
+          <g id="g-furn"></g><g id="g-cl"></g>
+        </svg>
+      </div>
+      <div class="plan-foot">
+        <span class="key"><span class="sw" style="background:var(--wall)"></span>Walls (thickness assumed)</span>
+        <span class="key"><span class="sw" style="background:var(--ink);height:2px"></span>Measured dimension</span>
+        <span class="key"><span class="sw" style="background:var(--assumed);height:2px"></span>&asymp; Assumed, please confirm</span>
+        <span class="key"><span class="sw" style="background:var(--bedfill);border:1.5px solid var(--accent)"></span>Your furniture (drag to move)</span>
+      </div>
+    </section>
+
+    <aside>
+      <section class="sheet panel" aria-live="polite">
+        <h2>Furniture</h2>
+        <div class="chips" id="pick" role="group" aria-label="Choose a piece"></div>
+        <div class="sel-name" id="sel-name"></div>
+        <div class="status"><span class="dot" id="st-dot"></span><span id="st-title"></span></div>
+        <p class="status-msg" id="st-msg"></p>
+        <div class="clear">
+          <div><span>N</span><b id="c-n"></b></div><div><span>E</span><b id="c-e"></b></div>
+          <div><span>S</span><b id="c-s"></b></div><div><span>W</span><b id="c-w"></b></div>
+        </div>
+        <div class="btns">
+          <button class="btn primary" id="b-rot">Rotate</button>
+          <button class="btn" id="b-reset">Reset layout</button>
+        </div>
+        <p class="hint">Gaps are free floor between the selected piece and the nearest wall or furniture on each side (top of the plan is N). Arrow keys move 5 cm, Shift for 1 cm, R rotates.</p>
+      </section>
+
+      <section class="sheet panel">
+        <h2>Rooms</h2>
+        <table>
+          <thead><tr><th>Room</th><th class="n">Size</th><th class="n">Area</th></tr></thead>
+          <tbody id="sched"></tbody>
+        </table>
+      </section>
+
+      <section class="sheet panel">
+        <h2>Questions on the measurements</h2>
+        <ol class="q">
+          <li><b>Q1</b><span>Bath 1 and the kitchen are worked out backwards: balcony (~2 ft) + Bedroom 1's wall down to its door gives about 265 cm deep. A tape measurement of either would firm this up.</span></li>
+          <li><b>Q2</b><span>Bedroom 2 juts about 2 ft (61 cm) into the living room by your estimate, which leaves the kitchen about 136 cm wide. The "144" in the sketch is still unexplained and ignored.</span></li>
+          <li><b>Q3</b><span>Bath 2 depth isn't marked (drew 200). Bath 2 + the rest of Bedroom 2 (133.6 + 148.6) is about 2 cm more than the room, so I trimmed the rest to 139.5.</span></li>
+          <li><b>Q4</b><span>Widths of the bath, balcony and Bedroom 2 doors aren't marked (drew 65 to 80 cm). Window positions are eyeballed. Walls assumed 5&Prime; inside, 10&Prime; outside.</span></li>
+        </ol>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+const NS = 'http://www.w3.org/2000/svg';
+const $ = id => document.getElementById(id);
+const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+
+let unit = 'cm';
+try { unit = localStorage.getItem('flat-unit') || 'cm'; } catch (e) {}
+const r1 = v => Math.round(v * 10) / 10;
+const fmt = cm => {
+  if (unit === 'cm') return String(r1(cm));
+  const inch = Math.round(cm / 2.54); return Math.floor(inch / 12) + '′' + (inch % 12) + '″';
+};
+
+// ---------- geometry (cm, origin = inside face of the front wall, top-left) ----------
+const T = 12.5, E = 25, P = 7.5;
+const rooms = [
+  { id:'bal', name:'Balcony',        x:0,     y:0,     w:332.6, h:61,    walls:[10,T,T,E], kind:'out', asm:'h' },
+  { id:'a',   name:'Bedroom 1',      x:0,     y:73.5,  w:332.6, h:297.6, walls:[T,T,E,E],  kind:'dry' },
+  { id:'b1',  name:'Bath 1',         x:345.1, y:0,     w:133.6, h:264.6, walls:[E,P,T,T],  kind:'wet', asm:'h' },
+  { id:'k',   name:'Kitchen',        x:486.2, y:0,     w:136.5, h:264.6, walls:[E,T,T,P],  kind:'kit', asm:'wh' },
+  { id:'hall',name:'Living / Dining',x:345.1, y:277.1, w:277.6, h:219,   walls:[T,T,0,E],  kind:'dry' },
+  { id:'b',   name:'Bedroom 2',      x:635.2, y:0,     w:280.6, h:482.6, walls:[E,E,E,T],  kind:'dry' },
+  { id:'hall2',name:'Living / Dining',x:345.1,y:495.1, w:338.6, h:264.6, walls:[0,E,E,E],  kind:'dry' },
+];
+// Bedroom 2 juts ~61 cm (2 ft) into the living room, so the upper living room and the kitchen are narrower
+const bath2 = { id:'b2', name:'Bath 2', x:635.2, y:0, w:133.6, h:200, kind:'wet', asm:'h' };
+const basin = { x:582.7, y:277.1, w:40, h:50 };
+const bath2Block = { x:635.2, y:0, w:133.6+P, h:200+P };
+
+// doors: opening rect in the wall + hinge / closed / open points
+const doors = [
+  { name:'balcony',   o:[252,61,75,12.5],      h:[327,73.5],    c:[252,73.5],    p:[327,148.5] },
+  { name:'Bedroom 1', o:[332.6,277.1,12.5,92], h:[332.6,369.1], c:[332.6,277.1], p:[240.6,369.1], w:'92' },
+  { name:'Bath 1',    o:[355,264.6,70,12.5],   h:[425,264.6],   c:[355,264.6],   p:[425,194.6] },
+  { name:'Bedroom 2', o:[622.7,392,12.5,80],   h:[635.2,472],   c:[635.2,392],   p:[715.2,472] },
+  { name:'Bath 2',    o:[768.8,115,7.5,65],    h:[768.8,180],   c:[768.8,115],   p:[703.8,180] },
+  { name:'main',      o:[352,759.7,94,25],     h:[352,759.7],   c:[446,759.7],   p:[352,665.7], w:'94' },
+];
+const windows = [ [50,61,120,12.5,'h'], [505,-25,100,25,'h'], [800,-25,90,25,'h'] ];
+
+// ---------- static drawing ----------
+const gW = $('g-walls'), gF = $('g-floors'), gI = $('g-inner'), gO = $('g-open'), gD = $('g-dims'), gL = $('g-labels');
+for (const r of rooms) { const [t, rr, b, l] = r.walls; el('rect', { class:'wall', x:r.x-l, y:r.y-t, width:r.w+l+rr, height:r.h+t+b }, gW); }
+for (const r of rooms) el('rect', { class:'f-'+r.kind, x:r.x, y:r.y, width:r.w, height:r.h }, gF);
+el('rect', { class:'wall', ...xywh(bath2Block) }, gI);
+el('rect', { class:'f-wet', ...xywh(bath2) }, gI);
+function xywh(r){ return { x:r.x, y:r.y, width:r.w, height:r.h }; }
+
+// balcony railing (open front)
+el('rect', { class:'rail', x:-25, y:-10, width:357.6, height:10 }, gO);
+for (let x = -15; x < 332; x += 12) el('line', { class:'win-ln', x1:x, y1:-10, x2:x, y2:0 }, gO);
+// windows
+for (const [x, y, w, h] of windows) {
+  el('rect', { class:'opening', x, y, width:w, height:h }, gO);
+  el('rect', { class:'win', x, y, width:w, height:h }, gO);
+  el('line', { class:'win-ln', x1:x, y1:y+h/2, x2:x+w, y2:y+h/2 }, gO);
+}
+// kitchen opening
+el('rect', { class:'opening', x:486.2, y:264.6, width:81.9, height:12.5 }, gO);
+el('line', { class:'lintel', x1:486.2, y1:264.6, x2:568.1, y2:264.6 }, gO);
+el('line', { class:'lintel', x1:486.2, y1:277.1, x2:568.1, y2:277.1 }, gO);
+// wash basin in the living room's top-right corner (size assumed ~50 wide x 40 deep)
+// mounted on Bedroom 2's wall, facing left into the living room
+el('path', { class:'fx', d:`M${basin.x+basin.w} ${basin.y} H${basin.x+10} Q${basin.x} ${basin.y} ${basin.x} ${basin.y+10} V${basin.y+basin.h-10} Q${basin.x} ${basin.y+basin.h} ${basin.x+10} ${basin.y+basin.h} H${basin.x+basin.w} Z` }, gO);
+el('ellipse', { class:'fx', cx:basin.x+basin.w/2-3, cy:basin.y+basin.h/2, rx:12, ry:17 }, gO);
+el('circle', { class:'fx', cx:basin.x+basin.w-6, cy:basin.y+basin.h/2, r:2.5 }, gO);
+// doors
+for (const d of doors) {
+  const [x, y, w, h] = d.o;
+  el('rect', { class:'opening', x, y, width:w, height:h }, gO);
+  const r = Math.hypot(d.c[0]-d.h[0], d.c[1]-d.h[1]);
+  const cross = (d.c[0]-d.h[0])*(d.p[1]-d.h[1]) - (d.c[1]-d.h[1])*(d.p[0]-d.h[0]);
+  el('path', { class:'swing', d:`M${d.c[0]} ${d.c[1]} A${r} ${r} 0 0 ${cross > 0 ? 1 : 0} ${d.p[0]} ${d.p[1]}` }, gO);
+  el('line', { class:'leaf', x1:d.h[0], y1:d.h[1], x2:d.p[0], y2:d.p[1] }, gO);
+  d.r = r;
+}
+
+// ---------- dimensions + labels (redrawn on unit change) ----------
+function tick(x, y, cls) { el('line', { class:cls, x1:x-5, y1:y+5, x2:x+5, y2:y-5 }, gD); }
+function dimH(x1, x2, y, v, asm, ext) {
+  const c = 'dim' + (asm ? ' a' : '');
+  el('line', { class:c, x1, y1:y, x2, y2:y }, gD); tick(x1, y, c); tick(x2, y, c);
+  if (ext != null) { el('line', { class:'ext', x1, y1:ext, x2:x1, y2:y+8 }, gD); el('line', { class:'ext', x1:x2, y1:ext, x2, y2:y+8 }, gD); }
+  const t = el('text', { class:'dim-t' + (asm ? ' a' : ''), x:(x1+x2)/2, y:y-7 }, gD); t.textContent = (asm ? '≈' : '') + fmt(v);
+}
+function dimV(y1, y2, x, v, asm, ext) {
+  const c = 'dim' + (asm ? ' a' : '');
+  el('line', { class:c, x1:x, y1, x2:x, y2 }, gD); tick(x, y1, c); tick(x, y2, c);
+  if (ext != null) { el('line', { class:'ext', x1:ext, y1, x2:x+8*Math.sign(x-ext), y2:y1 }, gD); el('line', { class:'ext', x1:ext, y1:y2, x2:x+8*Math.sign(x-ext), y2 }, gD); }
+  const cy = (y1+y2)/2, t = el('text', { class:'dim-t' + (asm ? ' a' : ''), x:x-7, y:cy, transform:`rotate(-90 ${x-7} ${cy})` }, gD);
+  t.textContent = (asm ? '≈' : '') + fmt(v);
+}
+const area = r => r.w * r.h / 1e4;
+const hallArea = (277.6*218 + 338.6*264.6) / 1e4;
+const roomBArea = (280.6*482.6 - bath2Block.w*bath2Block.h) / 1e4;
+
+function drawAnnotations() {
+  gD.replaceChildren(); gL.replaceChildren();
+  // outside chains
+  dimH(0, 332.6, -70, 332.6, false, -30); dimH(345.1, 622.7, -70, 277.6, true, -30); dimH(635.2, 915.8, -70, 280.6, false, -30);
+  dimV(0, 61, -70, 61, true, -30); dimV(73.5, 371.1, -70, 297.6, false, -30);
+  dimV(0, 482.6, 990, 482.6, false, 945);
+  dimH(345.1, 683.7, 850, 338.6, false, 790);
+  // inside
+  dimV(277.1, 759.7, 545, 482.6, false);
+  dimH(622.7, 683.7, 545, 61, true);
+  dimH(345.1, 478.7, 32, 133.6, false); dimV(0, 264.6, 462, 264.6, true);
+  dimH(486.2, 622.7, 32, 136.5, true); dimV(0, 264.6, 605, 264.6, true);
+  dimH(635.2, 768.8, 32, 133.6, false); dimV(0, 200, 657, 200, true);
+  dimH(776.3, 915.8, 150, 139.5, true);
+  dimH(486.2, 568.1, 255, 81.9, true);
+  // door widths
+  let t = el('text', { class:'small-t', x:305, y:323, transform:'rotate(-90 305 323)' }, gD); t.textContent = fmt(92);
+  t = el('text', { class:'small-t', x:399, y:752 }, gD); t.textContent = fmt(94);
+  t = el('text', { class:'small-t', x:602.7, y:343 }, gL); t.textContent = 'basin';
+  t = el('text', { class:'entry', x:399, y:812 }, gL); t.textContent = 'ENTRY';
+
+  const lab = (name, x, y, w, h, asm, a) => {
+    let n = el('text', { class:'room-n', x, y }, gL); n.textContent = name;
+    if (w) { n = el('text', { class:'room-d', x, y:y+18 }, gL); n.textContent = (asm ? '≈' : '') + fmt(w) + ' × ' + fmt(h); }
+    if (a) { n = el('text', { class:'room-d', x, y:y+34 }, gL); n.textContent = sqft(a) + ' sq ft'; }
+  };
+  lab('Balcony', 166, 30, 332.6, 61, true);
+  lab('Bedroom 1', 166, 215, 332.6, 297.6, false, area(rooms[1]));
+  lab('Bath 1', 400, 120);
+  lab('Kitchen', 546, 130, 0, 0, true, area(rooms[3]));
+  lab('Living / Dining', 450, 560, 338.6, 482.6, false, hallArea);
+  lab('Bedroom 2', 800, 330, 280.6, 482.6, false, roomBArea);
+  lab('Bath 2', 709, 85);
+
+  // scale bar
+  const sb = el('g', { transform:'translate(760 840)' }, gL);
+  [0,1,2,3].forEach(i => el('rect', { class: i % 2 ? 'scale-w' : 'scale-b', x:i*50, y:0, width:50, height:8 }, sb));
+  [0,100,200].forEach(v => { const s = el('text', { class:'scale-t', x:v, y:26, 'text-anchor':'middle' }, sb); s.textContent = unit === 'cm' ? (v === 200 ? '200 cm' : v) : (v === 200 ? fmt(200) : v === 0 ? '0' : fmt(v)); });
+
+  renderSchedule();
+}
+const sqft = m2 => Math.round(m2 * 10.7639);
+
+function renderSchedule() {
+  const rows = [
+    ['Living / Dining', 338.6, 482.6, hallArea, false, '277.6 wide beside Bedroom 2'],
+    ['Bedroom 2', 280.6, 482.6, roomBArea, false, 'excl. bath'],
+    ['Bedroom 1', 332.6, 297.6, area(rooms[1]), false],
+    ['Kitchen', 136.5, 264.6, area(rooms[3]), true],
+    ['Bath 1', 133.6, 264.6, area(rooms[2]), true],
+    ['Bath 2', 133.6, 200, area(bath2), true],
+    ['Balcony', 332.6, 61, area(rooms[0]), true],
+  ];
+  const tb = $('sched'); tb.replaceChildren();
+  let total = 0;
+  for (const [n, w, h, a, asm, note] of rows) {
+    total += a;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${n}${note ? `<br><span style="color:var(--muted);font-size:11.5px">${note}</span>` : ''}</td>` +
+      `<td class="n${asm ? ' asm' : ''}">${asm ? '≈' : ''}${fmt(w)} × ${fmt(h)}</td>` +
+      `<td class="n${asm ? ' asm' : ''}">${sqft(a)} ft²<br><span style="color:var(--muted);font-size:11.5px">${a.toFixed(1)} m²</span></td>`;
+    tb.appendChild(tr);
+  }
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><b>Total carpet</b></td><td class="n"></td><td class="n asm"><b>≈${sqft(total)} ft²</b></td>`;
+  tb.appendChild(tr);
+}
+
+// ---------- furniture ----------
+// Each piece is drawn facing "N" (its back to the top) at width w x depth d, then rotated.
+// rot = which side its back faces: bed headboard, desk back edge, chair backrest.
+const FT = 30.48;
+const catalog = [
+  { id:'bed',    kind:'bed',   name:'Bed',             w:174,    d:229 },
+  { id:'desk3',  kind:'desk',  name:'3′ × 2′ desk', w:3*FT, d:2*FT },
+  { id:'exec',   kind:'exec',  name:'Executive chair', w:66,     d:66 },
+  { id:'desk4',  kind:'desk',  name:'4′ × 2′ desk', w:4*FT, d:2*FT },
+  { id:'chair',  kind:'chair', name:'Chair',           w:46,     d:50 },
+];
+const layoutDefault = {
+  // everything in Bedroom 2: bed headboard on the bottom wall, 4'x2' desk under the window,
+  // 3'x2' desk against the bath wall
+  bed:   { x:915.8-174, y:482.6-229, rot:'S' },
+  desk4: { x:785,       y:0,         rot:'N' },
+  chair: { x:822.9,     y:45,        rot:'S' },
+  desk3: { x:640,       y:207.5,     rot:'N' },
+  exec:  { x:652.7,     y:255,       rot:'S' },
+};
+const KEY = 'flat-furn-v2';
+let layout = JSON.parse(JSON.stringify(layoutDefault));
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) for (const k in layout) if (s[k] && typeof s[k].x === 'number' && 'NESW'.includes(s[k].rot)) layout[k] = s[k]; } catch (e) {}
+let selected = 'bed';
+
+const floorRooms = [rooms[1], rooms[5], rooms[4], rooms[6], rooms[3], rooms[0]];
+const gFurn = $('g-furn'), gCl = $('g-cl');
+const ANG = { N:0, E:90, S:180, W:270 };
+const rotPt = (rot, x, y) => ({ N:[x, y], E:[-y, x], S:[-x, -y], W:[y, -x] }[rot]);
+const box = id => { const c = catalog.find(c => c.id === id), L = layout[id], side = L.rot === 'E' || L.rot === 'W';
+  return { x:L.x, y:L.y, w: side ? c.d : c.w, h: side ? c.w : c.d }; };
+
+function overlap(a, b) { return a.x < b.x + b.w - .01 && a.x + a.w > b.x + .01 && a.y < b.y + b.h - .01 && a.y + a.h > b.y + .01; }
+function inside(a, r) { return a.x >= r.x - .01 && a.y >= r.y - .01 && a.x + a.w <= r.x + r.w + .01 && a.y + a.h <= r.y + r.h + .01; }
+function hitsSwing(b, d) {
+  const qx = [Math.min(d.h[0], d.c[0], d.p[0]), Math.max(d.h[0], d.c[0], d.p[0])];
+  const qy = [Math.min(d.h[1], d.c[1], d.p[1]), Math.max(d.h[1], d.c[1], d.p[1])];
+  const ix0 = Math.max(b.x, qx[0]), ix1 = Math.min(b.x + b.w, qx[1]), iy0 = Math.max(b.y, qy[0]), iy1 = Math.min(b.y + b.h, qy[1]);
+  if (ix0 >= ix1 - .01 || iy0 >= iy1 - .01) return false;
+  const cx = Math.min(Math.max(d.h[0], ix0), ix1), cy = Math.min(Math.max(d.h[1], iy0), iy1);
+  return Math.hypot(cx - d.h[0], cy - d.h[1]) < d.r - .5;
+}
+function roomOf(b) { const cx = b.x + b.w/2, cy = b.y + b.h/2; return floorRooms.find(r => cx >= r.x && cx <= r.x + r.w && cy >= r.y && cy <= r.y + r.h); }
+function obstaclesFor(r) { return !r ? [] : r.id === 'b' ? [bath2Block] : r.id === 'hall' ? [basin] : []; }
+const isChair = k => k === 'exec' || k === 'chair';
+// furniture that blocks the selected piece (chairs may tuck under desks)
+function furnitureObstacles(id) {
+  const me = catalog.find(c => c.id === id);
+  return catalog.filter(c => c.id !== id && !(isChair(me.kind) && c.kind === 'desk') && !(me.kind === 'desk' && isChair(c.kind)));
+}
+
+function gaps(b, r, id) {
+  const obs = obstaclesFor(r).concat(furnitureObstacles(id).map(c => box(c.id)).filter(o => roomOf(o) === r));
+  let n = r.y, s = r.y + r.h, w = r.x, e = r.x + r.w;
+  for (const o of obs) {
+    const xo = b.x < o.x + o.w && b.x + b.w > o.x, yo = b.y < o.y + o.h && b.y + b.h > o.y;
+    if (xo && o.y + o.h <= b.y + .01) n = Math.max(n, o.y + o.h);
+    if (xo && o.y >= b.y + b.h - .01) s = Math.min(s, o.y);
+    if (yo && o.x + o.w <= b.x + .01) w = Math.max(w, o.x + o.w);
+    if (yo && o.x >= b.x + b.w - .01) e = Math.min(e, o.x);
+  }
+  return { n:[n, b.y - n], s:[s, s - b.y - b.h], w:[w, b.x - w], e:[e, e - b.x - b.w] };
+}
+function snap(b) {
+  const r = roomOf(b); if (!r) return b;
+  const xs = [r.x, r.x + r.w], ys = [r.y, r.y + r.h];
+  for (const o of obstaclesFor(r)) { xs.push(o.x + o.w); ys.push(o.y + o.h); }
+  for (const x of xs) { if (Math.abs(b.x - x) < 8) b.x = x; else if (Math.abs(b.x + b.w - x) < 8) b.x = x - b.w; }
+  for (const y of ys) { if (Math.abs(b.y - y) < 8) b.y = y; else if (Math.abs(b.y + b.h - y) < 8) b.y = y - b.h; }
+  return b;
+}
+
+function drawPiece(c) {
+  const L = layout[c.id], b = box(c.id), W = c.w, D = c.d;
+  const g = el('g', { class:'furn' + (c.id === selected ? ' sel' : ''), tabindex:0, role:'button', 'data-id':c.id,
+    'aria-label':`${c.name}. Drag or use arrow keys to move, R to rotate.` }, gFurn);
+  const cx = b.x + b.w/2, cy = b.y + b.h/2;
+  const p = el('g', { transform:`translate(${cx} ${cy}) rotate(${ANG[L.rot]})` }, g);
+  const X = -W/2, Y = -D/2;
+  let label = null, lp = [0, 0];
+  if (c.kind === 'bed') {
+    el('rect', { class:'fu-body', x:X, y:Y, width:W, height:D, rx:5 }, p);
+    const H = 7, pw = 70, pd = 42, gap = (W - 2*pw) / 3;
+    el('rect', { class:'fu-solid', x:X, y:Y, width:W, height:H, rx:2 }, p);
+    for (let i = 0; i < 2; i++) el('rect', { class:'fu-pillow', x:X + gap + i*(pw+gap), y:Y+H+6, width:pw, height:pd, rx:8 }, p);
+    const f = H + pd + 26;
+    el('line', { class:'fu-fold', x1:X, y1:Y+f, x2:X+W, y2:Y+f }, p);
+    label = fmt(c.w) + ' × ' + fmt(c.d); lp = [0, f/2];
+  } else if (c.kind === 'desk') {
+    el('rect', { class:'fu-body', x:X, y:Y, width:W, height:D, rx:2 }, p);
+    el('line', { class:'fu-fold', x1:X+4, y1:Y+6, x2:X+W-4, y2:Y+6 }, p);
+    label = fmt(c.w) + ' × ' + fmt(c.d);
+  } else {
+    const exec = c.kind === 'exec', back = exec ? 14 : 9, arm = exec ? 7 : 0;
+    el('rect', { class:'fu-body', x:X+arm+2, y:Y+back-2, width:W-2*arm-4, height:D-back-2, rx:8 }, p);
+    el('rect', { class:'fu-solid', x:X+(exec?0:4), y:Y, width:W-(exec?0:8), height:back, rx:5 }, p);
+    if (exec) { el('rect', { class:'fu-solid', x:X, y:Y+back+4, width:arm, height:D-back-14, rx:3 }, p);
+                el('rect', { class:'fu-solid', x:X+W-arm, y:Y+back+4, width:arm, height:D-back-14, rx:3 }, p); }
+  }
+  if (label) { const q = rotPt(L.rot, lp[0], lp[1]); const t = el('text', { class:'fu-t', x:cx+q[0], y:cy+q[1]+4 }, g); t.textContent = label; }
+  return g;
+}
+
+function statusOf(id) {
+  const c = catalog.find(c => c.id === id), b = box(id), r = roomOf(b);
+  const ok = r && inside(b, r) && !obstaclesFor(r).some(o => overlap(b, o));
+  if (!ok) return { state:'bad', title:'Hits a wall', msg:`Part of the ${c.name.toLowerCase()} is outside the room. Drag it back inside.` };
+  const bumps = furnitureObstacles(id).filter(o => overlap(b, box(o.id))).map(o => o.name.toLowerCase());
+  if (bumps.length) return { state:'warn', title:'Overlaps furniture', msg:'Sits on top of the ' + bumps.join(' and ') + '.', r };
+  const blocked = doors.filter(d => hitsSwing(b, d)).map(d => d.name);
+  if (blocked.length) return { state:'warn', title:'Blocks a door', msg:'Overlaps the swing of the ' + blocked.join(' and ') + ' door.', r };
+  if (c.kind === 'bed') {
+    const g = gaps(b, r, id), L = layout[id];
+    const side = (L.rot === 'W' || L.rot === 'E') ? [g.n[1], g.s[1]] : [g.w[1], g.e[1]];
+    const foot = { W:g.e[1], E:g.w[1], N:g.s[1], S:g.n[1] }[L.rot];
+    if (Math.max(...side) < 50 || foot < 50) return { state:'warn', title:'Fits in ' + r.name, msg:'Fits, but access is tight: under 50 cm to walk past.', r };
+  }
+  return { state:'good', title:'Fits in ' + r.name, msg:'Clear of walls, door swings and other furniture.', r };
+}
+
+function renderFurniture() {
+  gFurn.replaceChildren(); gCl.replaceChildren();
+  // selected piece drawn last so it sits on top
+  for (const c of catalog) if (c.id !== selected) drawPiece(c);
+  const selG = drawPiece(catalog.find(c => c.id === selected));
+  const c = catalog.find(c => c.id === selected), b = box(selected), st = statusOf(selected);
+  selG.classList.toggle('bad', st.state === 'bad');
+  $('sel-name').textContent = c.name + ' · ' + fmt(c.w) + ' × ' + fmt(c.d);
+  $('st-dot').style.background = `var(--${st.state})`;
+  $('st-title').textContent = st.title; $('st-msg').textContent = st.msg;
+  const g = st.state !== 'bad' ? gaps(b, st.r, selected) : null;
+  for (const k of ['n','e','s','w']) $('c-' + k).textContent = g ? fmt(Math.max(0, g[k][1])) : '–';
+  if (g) {
+    const cx = b.x + b.w/2, cy = b.y + b.h/2;
+    const line = (x1, y1, x2, y2, v) => {
+      if (v < 6) return;
+      el('line', { class:'cl', x1, y1, x2, y2 }, gCl);
+      const t = el('text', { class:'cl-t', x:(x1+x2)/2, y:(y1+y2)/2 + 4 }, gCl); t.textContent = fmt(v);
+    };
+    line(cx, g.n[0], cx, b.y, g.n[1]); line(cx, b.y + b.h, cx, g.s[0], g.s[1]);
+    line(g.w[0], cy, b.x, cy, g.w[1]); line(b.x + b.w, cy, g.e[0], cy, g.e[1]);
+  }
+  for (const btn of document.querySelectorAll('#pick button')) btn.setAttribute('aria-pressed', btn.dataset.id === selected);
+  try { localStorage.setItem(KEY, JSON.stringify(layout)); } catch (e) {}
+}
+
+// pick list
+for (const c of catalog) {
+  const b = document.createElement('button'); b.className = 'chip'; b.dataset.id = c.id; b.textContent = c.name;
+  b.onclick = () => { selected = c.id; renderFurniture(); }; $('pick').appendChild(b);
+}
+
+// drag / keyboard
+let drag = null;
+const svg = $('plan');
+const toSvg = ev => { const p = svg.createSVGPoint(); p.x = ev.clientX; p.y = ev.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); };
+gFurn.addEventListener('pointerdown', ev => {
+  const g = ev.target.closest('.furn'); if (!g) return;
+  selected = g.dataset.id; const p = toSvg(ev), L = layout[selected];
+  drag = { dx:p.x - L.x, dy:p.y - L.y }; gFurn.setPointerCapture(ev.pointerId); gFurn.classList.add('drag');
+  renderFurniture(); ev.preventDefault();
+});
+gFurn.addEventListener('pointermove', ev => {
+  if (!drag) return; const p = toSvg(ev), b = box(selected);
+  const s = snap({ x:Math.round(p.x - drag.dx), y:Math.round(p.y - drag.dy), w:b.w, h:b.h });
+  layout[selected].x = s.x; layout[selected].y = s.y; renderFurniture();
+});
+const end = () => { if (!drag) return; drag = null; gFurn.classList.remove('drag'); const g = gFurn.querySelector('.sel'); if (g) g.focus({ preventScroll:true }); };
+gFurn.addEventListener('pointerup', end); gFurn.addEventListener('pointercancel', end);
+
+function rotate() {
+  const b = box(selected), cx = b.x + b.w/2, cy = b.y + b.h/2, L = layout[selected];
+  L.rot = { W:'N', N:'E', E:'S', S:'W' }[L.rot];
+  const b2 = box(selected), s = snap({ x:Math.round(cx - b2.w/2), y:Math.round(cy - b2.h/2), w:b2.w, h:b2.h });
+  L.x = s.x; L.y = s.y; renderFurniture();
+}
+gFurn.addEventListener('keydown', ev => {
+  const g = ev.target.closest('.furn'); if (!g) return; selected = g.dataset.id;
+  const st = ev.shiftKey ? 1 : 5, m = { ArrowLeft:[-st,0], ArrowRight:[st,0], ArrowUp:[0,-st], ArrowDown:[0,st] }[ev.key];
+  if (m) { const L = layout[selected]; L.x = r1(L.x + m[0]); L.y = r1(L.y + m[1]); }
+  else if (ev.key === 'r' || ev.key === 'R') rotate();
+  else return;
+  ev.preventDefault(); renderFurniture(); const f = gFurn.querySelector('.sel'); if (f) f.focus({ preventScroll:true });
+});
+$('b-rot').onclick = rotate;
+$('b-reset').onclick = () => { layout = JSON.parse(JSON.stringify(layoutDefault)); renderFurniture(); };
+
+function setUnit(u) {
+  unit = u; try { localStorage.setItem('flat-unit', u); } catch (e) {}
+  $('u-cm').setAttribute('aria-pressed', u === 'cm'); $('u-ft').setAttribute('aria-pressed', u === 'ft');
+  drawAnnotations(); renderFurniture();
+}
+$('u-cm').onclick = () => setUnit('cm'); $('u-ft').onclick = () => setUnit('ft');
+setUnit(unit === 'ft' ? 'ft' : 'cm');
+})();
+</script>
+</body>
+</html>
