@@ -23,6 +23,10 @@ html,body{height:100%;margin:0}
 body{background:var(--paper);color:var(--ink);font:14px/1.45 var(--display);overflow:hidden}
 #stage{position:fixed;inset:0}
 #stage canvas{display:block;touch-action:none}
+.daynight{position:fixed;top:max(16px,env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));z-index:2;
+  font:600 13px var(--display);padding:8px 14px;border-radius:999px;border:1px solid var(--rule);background:var(--sheet);color:var(--ink);
+  box-shadow:0 6px 24px rgba(0,0,0,.12);cursor:pointer}
+.daynight span{font-size:15px;margin-right:4px}
 .card{position:fixed;top:max(16px,env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));
   width:min(300px,calc(100vw - 32px));background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:14px 16px;
   display:flex;flex-direction:column;gap:10px;box-shadow:0 6px 24px rgba(0,0,0,.08)}
@@ -59,6 +63,7 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--muted)}
 <body>
 <div id="stage"></div>
 
+<button id="daynight" class="daynight" aria-pressed="false" title="Switch between day and night"><span aria-hidden="true">&#9790;</span> Night</button>
 <div class="card" id="card">
   <div class="head">
     <div>
@@ -84,9 +89,17 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--muted)}
       <button data-h="110" aria-pressed="true">Cut away</button>
     </div>
   </div>
+  <div>
+    <div class="lbl">Lighting</div>
+    <div class="row" id="lightmode">
+      <button data-k="all">All rooms on</button>
+      <button data-k="none">All rooms off</button>
+    </div>
+    <div class="row" id="roomlights" style="margin-top:6px" aria-label="Room light switches"></div>
+  </div>
   <div class="sel" id="sel">Click a piece of furniture to select it</div>
   <div class="row"><button id="rot">Rotate selected</button><button id="reset">Reset layout</button></div>
-  <p class="hint long">Drag to orbit, scroll or pinch to zoom, right-drag to pan. Drag furniture to move it; R rotates. Layout is shared with the <a href="../">2D plan</a> in this browser.</p>
+  <p class="hint long">Drag to orbit, scroll or pinch to zoom, right-drag to pan. Click a piece to select it, then drag it to move; R rotates. Click empty space to deselect. Layout is shared with the <a href="../">2D plan</a> in this browser.</p>
   </div>
 </div>
 
@@ -107,6 +120,7 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--muted)}
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 // ---------- plan data (cm), copied from the 2D plan: x = east, y = south ----------
 const T = 12.5, E = 25, P = 7.5;
@@ -132,6 +146,30 @@ const doors = [
 ];
 const windows = [ [50,61,120,12.5], [505,-25,100,25], [800,-25,90,25] ];
 const kitchenOpening = [486.2,264.6,81.9,12.5];
+// kitchen counter (top 70 cm, measured) under the window and along Bedroom 2's wall,
+// concrete shelf over the side run 126 cm above the counter (196 from the floor); 55 cm depth assumed
+const counter = { d:55, h:70, loft:196, t:7 };
+const sink = { x:575.2, y:205, w:40, h:50 };  // bottom end of the side run, on the right as you walk in (size assumed)
+// ---------- lighting plan: wall fittings only (LED bulbs, 4 ft T8 tubes) plus desk lamps ----------
+// n = direction the fitting faces (into the room). Heights in cm from the floor.
+const LIGHTS = [
+  { t:'tube', x:332.6, y:213,   h:215, n:'W', sh:1, room:'Bedroom 1', why:'above the study table: lights its user from the front' },
+  { t:'bulb', x:210,   y:73.5,  h:215, n:'S', sh:1, room:'Bedroom 1', why:'between window and balcony door, in front of the 3′ desk user' },
+  { t:'bulb', x:207,   y:371.1, h:205, n:'N', sh:1, room:'Bedroom 1', why:'above the standing mirror: lights your face, doubles as bedside light' },
+  { t:'tube', x:635.2, y:300,   h:215, n:'E', sh:1, room:'Bedroom 2', why:'general, facing the bed' },
+  { t:'bulb', x:815,   y:482.6, h:205, n:'N', sh:1, room:'Bedroom 2', why:'beside the cupboard mirror, lights your face' },
+  { t:'bulb', x:776.3, y:100,   h:215, n:'E', sh:1, room:'Bedroom 2', why:'window corner beside Bath 2' },
+  { t:'tube', x:345.1, y:435,   h:215, n:'E', sh:1, room:'Living',    why:'upper half of the living room' },
+  { t:'tube', x:683.7, y:640,   h:215, n:'W', sh:1, room:'Living',    why:'dining half, above the fridge side' },
+  { t:'bulb', x:622.7, y:302,   h:195, n:'W',       room:'Living',    why:'above the wash basin' },
+  { t:'tube', x:486.2, y:150,   h:215, n:'E', sh:1, room:'Kitchen',   why:'general, facing the counter so you do not shade your work' },
+  { t:'tube', x:622.7, y:132,   h:185, n:'W',       room:'Kitchen',   why:'under the shelf, over the counter and sink' },
+  { t:'bulb', x:345.1, y:132,   h:210, n:'E',       room:'Bath 1',    why:'' },
+  { t:'bulb', x:635.2, y:100,   h:210, n:'E',       room:'Bath 2',    why:'' },
+  { t:'bulb', x:210,   y:61,    h:210, n:'N',       room:'Balcony',   why:'' },
+];
+const NRM = { N:[0,-1], S:[0,1], E:[1,0], W:[-1,0] };
+const TUBE = 120;   // 4 ft T8
 const railing = [0,-10,332.6,10];
 
 const FT = 30.48;
@@ -141,6 +179,11 @@ const catalog = [
   { id:'exec',  kind:'exec',  name:'Executive chair', w:66,   d:66 },
   { id:'desk4', kind:'shelfdesk', name:'4′ × 2′ study table', w:4*FT, d:2*FT },
   { id:'chair', kind:'chair', name:'Chair',           w:46,   d:50 },
+  { id:'mirror', kind:'mirror', name:'Standing mirror', w:55, d:40 },
+  { id:'lamp',  kind:'lamp',  name:'Floor lamp',      w:50,   d:50 },
+  { id:'fridge', kind:'fridge', name:'Fridge',         w:60,   d:65 },
+  { id:'bed2',   kind:'bed',   name:'Bed (4′ × 6.5′)', w:4*FT, d:6.5*FT },
+  { id:'cupboard', kind:'cupboard', name:'Cupboard', w:45, d:50 },
 ];
 const layoutDefault = {
   // everything in Bedroom 1, arranged by the user: bed headboard on the bottom wall,
@@ -150,10 +193,22 @@ const layoutDefault = {
   exec:  { x:181.6, y:138,   rot:'S' },
   desk4: { x:271.6, y:152.6, rot:'E' },
   chair: { x:214,   y:216,   rot:'W' },
+  // arched floor mirror on the bottom wall, between the bed and the door swing
+  mirror:{ x:180,   y:331.1, rot:'S' },
+  // tripod floor lamp in Bedroom 1's top-left corner (balcony wall / outer wall)
+  lamp:  { x:0,     y:73.5,  rot:'N' },
+  // fridge in the living room's corner below Bedroom 2's jut, back to the right wall, facing left (west)
+  fridge:{ x:618.7, y:495.1, rot:'E' },
+  // Bedroom 2: bed headboard on the right (outer) wall, single-door cupboard in the bottom-right corner
+  bed2:  { x:717.6, y:240,   rot:'E' },
+  cupboard:{ x:870.8, y:432.6, rot:'S' },
 };
 const KEY = 'flat-furn-v2';
 let layout = JSON.parse(JSON.stringify(layoutDefault));
-try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) for (const k in layout) if (s[k] && typeof s[k].x === 'number' && 'NESW'.includes(s[k].rot)) layout[k] = s[k]; } catch (e) {}
+try { const s = JSON.parse(localStorage.getItem(KEY));
+  // drop a saved fridge still at its old default (facing down) so the new left-facing default applies
+  if (s && s.fridge && s.fridge.rot === 'N' && s.fridge.x === 623.2 && s.fridge.y === 495.1) delete s.fridge;
+  if (s) for (const k in layout) if (s[k] && typeof s[k].x === 'number' && 'NESW'.includes(s[k].rot)) layout[k] = s[k]; } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(layout)); } catch (e) {} };
 
 // ---------- scene ----------
@@ -162,6 +217,8 @@ const dark = matchMedia('(prefers-color-scheme: dark)').matches;
 const renderer = new THREE.WebGLRenderer({ antialias:true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+// shadows only re-render when something moves (many room lights cast them)
+renderer.shadowMap.autoUpdate = false; const dirty = () => { renderer.shadowMap.needsUpdate = true; };
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
 stage.appendChild(renderer.domElement);
@@ -169,13 +226,28 @@ const labelR = new CSS2DRenderer(); labelR.domElement.style.cssText = 'position:
 stage.appendChild(labelR.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(dark ? 0x0f1412 : 0xe9edeb);
+// sky: gradient dome (unlit) plus stars at night; grass ground fades into the horizon with fog
+const SKY = { day:{ top:0x4f95dd, hor:0xd3e8f4, fog:0xd3e8f4 }, night:{ top:0x060b1c, hor:0x1c2a4a, fog:0x1c2a4a } };
+const skyU = { top:{ value:new THREE.Color() }, hor:{ value:new THREE.Color() } };
+const sky = new THREE.Mesh(new THREE.SphereGeometry(12000, 32, 16), new THREE.ShaderMaterial({ uniforms:skyU, side:THREE.BackSide, depthWrite:false,
+  vertexShader:'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader:'uniform vec3 top; uniform vec3 hor; varying vec3 vP; void main(){ float h = clamp(vP.y, 0.0, 1.0); gl_FragColor = vec4(mix(hor, top, pow(h, 0.55)), 1.0); }' }));
+sky.position.set(470, 0, 380); sky.renderOrder = -1; scene.add(sky);
+const stars = (() => { const n = 900, pos = new Float32Array(n*3); let seed = 3; const r = () => (seed = seed * 16807 % 2147483647) / 2147483647;
+  for (let i = 0; i < n; i++) { const a = r()*Math.PI*2, e = .08 + r()*1.4, R = 11500; pos.set([470 + R*Math.cos(a)*Math.cos(e), R*Math.sin(e), 380 + R*Math.sin(a)*Math.cos(e)], i*3); }
+  const gm = new THREE.BufferGeometry(); gm.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  return new THREE.Points(gm, new THREE.PointsMaterial({ color:0xffffff, size:2, sizeAttenuation:false, fog:false })); })();
+scene.add(stars);
+scene.fog = new THREE.Fog(SKY.day.fog, 5000, 11000);
 const CX = 470, CZ = 380; // model centre
 const camera = new THREE.PerspectiveCamera(40, 1, 5, 20000);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.495;
+controls.zoomToCursor = true; // scroll / pinch zooms toward the point under the cursor
 
-scene.add(new THREE.HemisphereLight(0xffffff, dark ? 0x30343a : 0xb8b2a6, dark ? 1.1 : 1.35));
+const HEMI_GROUND = dark ? 0x30343a : 0xb8b2a6;
+const hemi = new THREE.HemisphereLight(0xffffff, HEMI_GROUND, dark ? 1.1 : 1.35); scene.add(hemi);
+const HEMI_DAY = hemi.intensity, SUN_DAY = dark ? 1.4 : 1.9;
 const sun = new THREE.DirectionalLight(0xfff4e6, dark ? 1.4 : 1.9);
 sun.position.set(CX - 650, 1300, CZ + 450); sun.target.position.set(CX, 0, CZ);
 sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
@@ -184,7 +256,14 @@ sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.5;
 scene.add(sun, sun.target);
 
 // ground
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), new THREE.MeshStandardMaterial({ color: dark ? 0x161c19 : 0xdfe4e1, roughness:1 }));
+// grass: a mottled green canvas texture tiled across the ground
+const grassTex = (() => { const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d');
+  x.fillStyle = '#6f9a45'; x.fillRect(0, 0, 256, 256); let seed = 11; const r = () => (seed = seed * 16807 % 2147483647) / 2147483647;
+  for (let i = 0; i < 2600; i++) { x.fillStyle = ['#5f8a3a', '#7faa50', '#86b158', '#56803a'][i % 4]; x.fillRect(r()*256, r()*256, 1 + r()*2, 2 + r()*4); }
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(160, 160); return t; })();
+// day: lit grass; night: unlit dark grass (room lights never reach outside the flat)
+const groundLit = new THREE.MeshStandardMaterial({ map:grassTex, roughness:1 }), groundDark = new THREE.MeshBasicMaterial({ map:grassTex, color:0x2a3a32 });
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(40000, 40000), groundLit);
 ground.rotation.x = -Math.PI/2; ground.position.y = -1; ground.receiveShadow = true; scene.add(ground);
 
 const mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness:.85, ...o });
@@ -192,8 +271,100 @@ const M = {
   wall: mat(0xf3f0ea), cap: mat(0x9aa39f),
   dry: mat(0xd8d2c6, { roughness:.6 }), wet: mat(0xbfd0d4, { roughness:.4 }), kit: mat(0xd5d1bd, { roughness:.6 }), out: mat(0xb9b3a5),
   door: mat(0x9c7653, { roughness:.6 }), glass: new THREE.MeshStandardMaterial({ color:0xa9d3ea, roughness:.05, metalness:.1, transparent:true, opacity:.35 }),
+  steel: mat(0xb9bec3, { roughness:.25, metalness:.8 }), bowl: mat(0x6f757b, { roughness:.3, metalness:.7 }),
+  fitting: mat(0xf4f4f2, { roughness:.5 }),
+  lamp: new THREE.MeshStandardMaterial({ color:0xffffff, emissive:0xfff1dc, emissiveIntensity:1.6 }),
+  porcelainIn: new THREE.MeshStandardMaterial({ color:0xf4f4f2, roughness:.2, side:THREE.DoubleSide }),
+  mirror: new THREE.MeshStandardMaterial({ color:0xc9d6dc, roughness:.08, metalness:.35 }),
+  shelfGlass: new THREE.MeshStandardMaterial({ color:0xd8ecef, roughness:.05, transparent:true, opacity:.5 }),
+  soap: mat(0x7fb8a4, { roughness:.3 }), brushA: mat(0x3d8be0, { roughness:.5 }), brushB: mat(0xe05a7a, { roughness:.5 }),
+  bucket: new THREE.MeshStandardMaterial({ color:0x2f6fd0, roughness:.5, side:THREE.DoubleSide }), water: mat(0x9fc6d8, { roughness:.05 }),
+  mugRed: new THREE.MeshStandardMaterial({ color:0xd23a3a, roughness:.5, side:THREE.DoubleSide }),
+  cookGlass: mat(0x15171a, { roughness:.1, metalness:.3 }), cookBody: mat(0x2a2c30, { roughness:.6 }),
+  hob: mat(0x9aa3ad, { roughness:.4 }), hobPanel: new THREE.MeshStandardMaterial({ color:0x111111, emissive:0xff5a2a, emissiveIntensity:.12 }),
+  counter: mat(0xe8e4dc, { roughness:.35 }), counterEdge: mat(0xdcd7cd, { roughness:.4 }),
   frame: mat(0x55606a, { roughness:.5, metalness:.3 }), porcelain: mat(0xfbfbfa, { roughness:.25 }),
 };
+// ---------- room masking: a room's lights only reach surfaces inside that room ----------
+// Each room is one or more floor rectangles (x0, z0, x1, z1). In the shader, a point or spot light is assigned
+// to the room containing it, and any fragment outside that room's rectangles (plus 1.5 cm, so the room's own
+// wall faces are lit) gets none of its light. Walls of any height, cut away or not, cannot leak light.
+const ROOM_RECTS = [
+  [0, 73.5, 332.6, 371.1, 0],                                  // Bedroom 1
+  [0, -12, 332.6, 61, 1],                                      // Balcony (to the railing)
+  [345.1, 0, 478.7, 264.6, 2],                                 // Bath 1
+  [486.2, 0, 622.7, 264.6, 3],                                 // Kitchen
+  [345.1, 277.1, 622.7, 496.1, 4], [345.1, 495.1, 683.7, 759.7, 4],                 // Living, both halves
+  [776.3, 0, 915.8, 207.5, 5], [635.2, 207.5, 915.8, 482.6, 5],                     // Bedroom 2, around Bath 2
+  [635.2, 0, 768.8, 200, 6],                                   // Bath 2
+];
+const RM = {
+  roomRects: { value: ROOM_RECTS.map(r => new THREE.Vector4(r[0], r[1], r[2], r[3])) },
+  roomIds:   { value: ROOM_RECTS.map(r => r[4]) },
+};
+const RM_GLSL = `
+#define RM_N ${ROOM_RECTS.length}
+uniform vec4 roomRects[RM_N];
+uniform float roomIds[RM_N];
+bool rmSameRoom(vec2 lp, vec2 fp) {
+  float lid = -1.0;
+  for (int i = 0; i < RM_N; i++) { vec4 r = roomRects[i];
+    if (lp.x >= r.x && lp.x <= r.z && lp.y >= r.y && lp.y <= r.w) { lid = roomIds[i]; break; } }
+  if (lid < 0.0) return true;                       // light outside every room: leave it alone
+  for (int i = 0; i < RM_N; i++) { if (roomIds[i] != lid) continue; vec4 r = roomRects[i];
+    if (fp.x >= r.x - 1.5 && fp.x <= r.z + 1.5 && fp.y >= r.y - 1.5 && fp.y <= r.w + 1.5) return true; }
+  return false;
+}`;
+const RM_LIGHTS = THREE.ShaderChunk.lights_fragment_begin
+  .replace('vec3 geometryPosition = - vViewPosition;', 'vec3 geometryPosition = - vViewPosition;\nmat4 rmInv = inverse( viewMatrix ); vec2 rmFrag = ( rmInv * vec4( geometryPosition, 1.0 ) ).xz;')
+  .replace('getPointLightInfo( pointLight, geometryPosition, directLight );',
+           'getPointLightInfo( pointLight, geometryPosition, directLight );\n\t\tif ( ! rmSameRoom( ( rmInv * vec4( pointLight.position, 1.0 ) ).xz, rmFrag ) ) directLight.color = vec3( 0.0 );')
+  .replace('getSpotLightInfo( spotLight, geometryPosition, directLight );',
+           'getSpotLightInfo( spotLight, geometryPosition, directLight );\n\t\tif ( ! rmSameRoom( ( rmInv * vec4( spotLight.position, 1.0 ) ).xz, rmFrag ) ) directLight.color = vec3( 0.0 );');
+function roomMask(m) {
+  if (!m || !m.isMeshStandardMaterial || m.userData.rm) return;
+  m.userData.rm = true;
+  m.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, RM);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + RM_GLSL)
+                                         .replace('#include <lights_fragment_begin>', RM_LIGHTS);
+  };
+  m.customProgramCacheKey = () => 'roommask';
+}
+const roomMaskAll = () => scene.traverse(o => { if (o.isMesh) roomMask(o.material); });
+
+// flat shapes in plan coordinates (x, z), extruded upward from y0 to y1
+const shapeXZ = pts => new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
+function rrectXZ(x0, z0, x1, z1, r) {
+  const s = new THREE.Shape(); s.moveTo(x0 + r, -z0); s.lineTo(x1 - r, -z0); s.absarc(x1 - r, -(z0 + r), r, Math.PI/2, 0, true);
+  s.lineTo(x1, -(z1 - r)); s.absarc(x1 - r, -(z1 - r), r, 0, -Math.PI/2, true); s.lineTo(x0 + r, -z1);
+  s.absarc(x0 + r, -(z1 - r), r, -Math.PI/2, -Math.PI, true); s.lineTo(x0, -(z0 + r)); s.absarc(x0 + r, -(z0 + r), r, Math.PI, Math.PI/2, true); return s;
+}
+const ellipseXZ = (cx, cz, rx, rz, path = new THREE.Path()) => { path.absellipse(cx, -cz, rx, rz, 0, Math.PI*2, false, 0); return path; };
+function extrudeXZ(shape, y0, y1, m, parent, bevel = 0) {
+  const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: y1 - y0 - 2*bevel, bevelEnabled: bevel > 0, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 2, curveSegments: 24 }), m);
+  mesh.rotation.x = -Math.PI/2; mesh.position.y = y0 + bevel; mesh.castShadow = mesh.receiveShadow = true; parent.add(mesh); return mesh;
+}
+function chromeRod(a, b, r, parent) {
+  const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), c = new THREE.Mesh(new THREE.CylinderGeometry(r, r, A.distanceTo(B), 12), M.steel);
+  c.position.copy(A).add(B).multiplyScalar(.5); c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize()); parent.add(c); return c;
+}
+// shower on a wall: arm out from the wall at 205 cm, round head tilted down, mixer plate at 110, tap spout at 70,
+// and a bucket with a mug under the tap. (wx, wz) is the wall point, (nx, nz) points into the room.
+function showerSet(wx, wz, nx, nz, parent) {
+  const at = (d, y, s = 0) => [wx + nx*d - nz*s, y, wz + nz*d + nx*s];
+  chromeRod(at(0, 205), at(22, 205), .9, parent);
+  const head = new THREE.Mesh(new THREE.CylinderGeometry(8, 6, 2.5, 24), M.steel); head.position.set(...at(24, 202));
+  head.rotation.set(nz * -.35, 0, nx * .35); parent.add(head);
+  const plate = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, 1, 24), M.steel); plate.position.set(...at(.5, 110)); plate.rotation.set(nz ? Math.PI/2 : 0, 0, nx ? Math.PI/2 : 0); parent.add(plate);
+  chromeRod(at(1, 110), at(6, 110), 1.2, parent); chromeRod(at(6, 110), at(6, 110, 7), .7, parent);          // mixer lever
+  chromeRod(at(0, 110), at(0, 205), .8, parent);                                                               // riser
+  chromeRod(at(0, 70), at(12, 70), 1.1, parent); chromeRod(at(12, 70), at(12, 64), 1.1, parent);              // tap spout
+  const bucket = new THREE.Mesh(new THREE.CylinderGeometry(15, 12, 32, 24, 1, true), M.bucket); bucket.position.set(...at(20, 16)); bucket.castShadow = true; parent.add(bucket);
+  const bb = new THREE.Mesh(new THREE.CircleGeometry(12, 24), M.bucket); bb.rotation.x = -Math.PI/2; bb.position.set(...at(20, .8)); parent.add(bb);
+  const water = new THREE.Mesh(new THREE.CircleGeometry(14, 24), M.water); water.rotation.x = -Math.PI/2; water.position.set(...at(20, 26)); parent.add(water);
+  const mug = new THREE.Mesh(new THREE.CylinderGeometry(5, 4.5, 11, 18, 1, true), M.mugRed); mug.position.set(...at(38, 6, 14)); parent.add(mug);
+}
 function box(x, z, w, d, y0, y1, material, parent, shadow = true) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, y1 - y0, d), material);
   m.position.set(x + w/2, (y0 + y1)/2, z + d/2);
@@ -231,8 +402,10 @@ const wallRects = [];
   } }
 
 const archG = new THREE.Group(); scene.add(archG);
+const lampMat = {};   // one glowing material per room, so each room's fittings dim with its switch
+const lampFor = room => lampMat[room] || (lampMat[room] = M.lamp.clone());
 function buildArch(H) {
-  archG.clear();
+  archG.clear(); dirty();
   for (const [x, y, w, d] of wallRects) box(x, y, w, d, 0, H, M.wall, archG);
   const lintel = (r, from) => { if (H > from) box(r[0], r[1], r[2], r[3], from, H, M.wall, archG); };
   for (const d of doors) {
@@ -256,11 +429,133 @@ function buildArch(H) {
   box(railing[0], railing[1], railing[2], railing[3], 0, 15, M.wall, archG);
   for (let x = 6; x < railing[2]; x += 12) box(x, -6, 1.6, 1.6, 15, 100, M.frame, archG);
   box(railing[0], -8, railing[2], 6, 100, 105, M.frame, archG);
-  // wash basin on Bedroom 2's wall
-  box(basin.x, basin.y + 2, basin.w, basin.h - 4, 72, 85, M.porcelain, archG);
-  box(basin.x + 25, basin.y + 18, 8, 14, 0, 72, M.porcelain, archG);
+  // kitchen counter: thin slab with a front lip, open underneath
+  const cd = counter.d, cx = 622.7 - cd;
+  for (const [x, y, w, d] of [[486.2, 0, 136.5 - cd, cd], [cx, 0, cd, 264.6]]) {
+    box(x, y, w, d, counter.h - 3, counter.h, M.counter, archG);
+    box(x, y, w, d, counter.h - counter.t, counter.h - 3, M.counterEdge, archG);
+  }
+  // stainless sink set into the side run near the kitchen entrance, tap on the wall side
+  box(sink.x, sink.y, sink.w, sink.h, counter.h, counter.h + .4, M.steel, archG, false);
+  box(sink.x + 3, sink.y + 3, sink.w - 10, sink.h - 6, counter.h + .4, counter.h + .5, M.bowl, archG, false);
+  box(sink.x + sink.w - 5, sink.y + sink.h/2 - 1.5, 3, 3, counter.h, counter.h + 28, M.steel, archG);
+  box(sink.x + sink.w - 20, sink.y + sink.h/2 - 1.2, 17, 2.4, counter.h + 26, counter.h + 28.5, M.steel, archG);
+  if (H >= counter.loft) box(cx, 0, cd, 264.6, counter.loft, counter.loft + 8, M.wall, archG);
+  // wall light fittings (drawn when the wall is tall enough to hold them)
+  for (const L of LIGHTS) {
+    if (H < L.h + 5) continue;
+    const [nx, nz] = NRM[L.n], along = nz !== 0, len = L.t === 'tube' ? TUBE : 0;
+    if (L.t === 'tube') {
+      const w = along ? len + 4 : 3, d = along ? 3 : len + 4;
+      box(L.x - w/2 + nx*1.5, L.y - d/2 + nz*1.5, w, d, L.h - 2, L.h + 2, M.fitting, archG, false);
+      const tube = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, len, 12), lampFor(L.room));
+      tube.rotation.set(along ? 0 : Math.PI/2, 0, along ? Math.PI/2 : 0);
+      tube.position.set(L.x + nx*4.5, L.h, L.y + nz*4.5); archG.add(tube);
+    } else {
+      box(L.x - 3.5 + nx*1.5, L.y - 3.5 + nz*1.5, 7, 7, L.h - 3.5, L.h + 3.5, M.fitting, archG, false);   // holder
+      const bulb = new THREE.Mesh(new THREE.SphereGeometry(3.6, 16, 12), lampFor(L.room));
+      bulb.position.set(L.x + nx*7, L.h, L.y + nz*7); archG.add(bulb);
+    }
+  }
+  // induction cooktop on the window run of the counter, under the window: black glass, two zones, touch strip
+  { const cx = 530, cz = 27, y = counter.h;
+    const top = new THREE.Mesh(new THREE.BoxGeometry(60, 1, 37), M.cookGlass); top.position.set(cx, y + 5.5, cz); top.castShadow = true; archG.add(top);
+    box(cx - 29, cz - 17.5, 58, 35, y, y + 5, M.cookBody, archG);
+    for (const [dx, r] of [[-14, 9], [14, 7.5]]) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(r, .35, 6, 40), M.hob); ring.rotation.x = Math.PI/2; ring.position.set(cx + dx, y + 6.05, cz - 3); archG.add(ring);
+      const ring2 = new THREE.Mesh(new THREE.TorusGeometry(r * .55, .25, 6, 32), M.hob); ring2.rotation.x = Math.PI/2; ring2.position.set(cx + dx, y + 6.05, cz - 3); archG.add(ring2);
+    }
+    box(cx - 15, cz + 12.5, 30, 2, y + 6, y + 6.1, M.hobPanel, archG, false);
+  }
+  // Bath 1: squat pan at the far (north) end, cistern above it on the back wall; shower, mixer, tap and bucket
+  // on the left (west) wall as you walk in from the door at the bottom
+  { const cx = 412, cz = 46;
+    const deck = rrectXZ(cx - 23, cz - 32, cx + 23, cz + 32, 9); deck.holes.push(ellipseXZ(cx, cz + 4, 12.5, 21));
+    extrudeXZ(deck, 0, 4, M.porcelain, archG, .6);
+    const pan = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 10, 0, Math.PI*2, Math.PI/2, Math.PI/2), M.porcelainIn);
+    pan.scale.set(12.5, 9, 21); pan.position.set(cx, 4, cz + 4); archG.add(pan);
+    const hood = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 10, 0, Math.PI*2, 0, Math.PI/2), M.porcelain);
+    hood.scale.set(11, 5, 8); hood.position.set(cx, 4, cz - 17); hood.castShadow = true; archG.add(hood);
+    for (const sd of [-1, 1]) { box(cx + sd*16.5 - 5, cz + 4, 10, 24, 4, 5, M.porcelain, archG);                 // footrests, ribbed
+      for (let k = 0; k < 5; k++) box(cx + sd*16.5 - 4.5, cz + 6 + k*4.5, 9, 1.2, 5, 5.6, M.porcelainIn, archG, false); }
+    box(cx - 18, 0, 36, 16, 168, 196, M.porcelain, archG); box(cx - 3, 4, 6, 12.5, 196, 197.5, M.steel, archG, false);   // cistern + push button
+    chromeRod([cx, 168, 7], [cx, 8, 7], 1.6, archG).material = M.porcelain;                                     // flush pipe down to the hood
+    chromeRod([cx + 25, 45, 0], [cx + 25, 45, 6], .8, archG); chromeRod([cx + 25, 45, 6], [cx + 25, 38, 6], .8, archG);   // small tap beside the pan
+    showerSet(345.1, 175, 1, 0, archG);
+  }
+  // Bath 2: Western (high) commode at the top end against the north wall, i.e. on your right as you come in
+  // through the door from Bedroom 2; shower, mixer, tap and bucket in the middle of the front (west) wall
+  { const cx = 715;
+    box(cx - 19, 0, 38, 17, 38, 78, M.porcelain, archG); box(cx - 19.5, -.5, 39, 18, 78, 80, M.porcelain, archG);  // cistern and lid
+    const btn = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, .6, 16), M.steel); btn.position.set(cx, 80.3, 8.5); archG.add(btn);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(17, 11, 39, 28), M.porcelain); body.scale.z = 1.35;
+    body.position.set(cx, 19.5, 40); body.castShadow = true; archG.add(body);
+    box(cx - 12, 12, 24, 10, 0, 38, M.porcelain, archG);                                                           // trap joining the cistern
+    const seat = new THREE.Shape(); seat.absellipse(cx, -41, 18, 24, 0, Math.PI*2, false, 0);
+    extrudeXZ(seat, 39, 41.5, M.porcelain, archG, .5);                                                             // seat
+    extrudeXZ((() => { const l = new THREE.Shape(); l.absellipse(cx, -41.5, 17.2, 23, 0, Math.PI*2, false, 0); return l; })(), 41.5, 44, M.porcelain, archG, .6);   // closed lid
+    chromeRod([cx + 32, 48, 0], [cx + 32, 48, 5], .9, archG);                                                       // hand spray holder on the north wall
+    const spray = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.3, 9, 12), M.steel); spray.position.set(cx + 32, 52, 6); archG.add(spray);
+    showerSet(635.2, 100, 1, 0, archG);
+  }
+  // wash basin on Bedroom 2's wall, facing west: rounded porcelain top with an oval bowl, pedestal,
+  // chrome pillar tap, wall mirror with a small glass shelf, soap pump and toothbrush cup
+  { const wx = basin.x + basin.w, cz = basin.y + basin.h/2, fx = basin.x + 2, top = 85, mid = basin.x + 17;
+    const rr = 8, sh = new THREE.Shape();
+    const P = (x, z) => new THREE.Vector2(x, -z);
+    sh.moveTo(wx, -(basin.y + 1)); sh.lineTo(fx + rr, -(basin.y + 1));
+    sh.absarc(fx + rr, -(basin.y + 1 + rr), rr, Math.PI/2, Math.PI, false);
+    sh.lineTo(fx, -(basin.y + basin.h - 1 - rr)); sh.absarc(fx + rr, -(basin.y + basin.h - 1 - rr), rr, Math.PI, Math.PI*1.5, false);
+    sh.lineTo(wx, -(basin.y + basin.h - 1)); sh.lineTo(wx, -(basin.y + 1));
+    const hole = new THREE.Path(); hole.absellipse(mid, -cz, 12, 16, 0, Math.PI*2, false, 0); sh.holes.push(hole);
+    const rim = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth:5, bevelEnabled:true, bevelThickness:.6, bevelSize:.6, bevelSegments:2, curveSegments:24 }), M.porcelain);
+    rim.rotation.x = -Math.PI/2; rim.position.y = top - 5; rim.castShadow = rim.receiveShadow = true; archG.add(rim);
+    const bowl = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 12, 0, Math.PI*2, Math.PI/2, Math.PI/2), M.porcelainIn);
+    bowl.scale.set(12, 12, 16); bowl.position.set(mid, top - .5, cz); bowl.castShadow = true; archG.add(bowl);
+    const drain = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, .3, 16), M.steel); drain.position.set(mid, top - 12.3, cz); archG.add(drain);
+    const ped = new THREE.Mesh(new THREE.CylinderGeometry(7, 10, top - 10, 28, 1, false, Math.PI, Math.PI), M.porcelain);
+    ped.position.set(wx, (top - 10)/2, cz); ped.castShadow = true; archG.add(ped);                   // half-round pedestal against the wall
+    // pillar tap behind the bowl, lever on top, spout reaching over the bowl
+    const pil = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.9, 13, 16), M.steel); pil.position.set(wx - 7, top + 6.5, cz); archG.add(pil);
+    box(wx - 7 - 1, cz - .9, 2, 1.8, top + 13, top + 14, M.steel, archG); box(wx - 7 - .6, cz - 4.5, 1.2, 4.5, top + 13.4, top + 14.2, M.steel, archG);
+    const sp = new THREE.Mesh(new THREE.CylinderGeometry(.8, .8, 8, 12), M.steel); sp.rotation.z = Math.PI/2; sp.position.set(wx - 11, top + 10.5, cz); archG.add(sp);
+    // mirror with a thin frame, glass shelf below it, soap pump and toothbrush cup on the shelf
+    box(wx - 1.6, cz - 21, 1.6, 42, 112, 170, M.frame, archG, false);
+    box(wx - 2, cz - 20, .5, 40, 113, 169, M.mirror, archG, false);
+    box(wx - 11, cz - 18, 11, 36, 105, 106, M.shelfGlass, archG, false);
+    const pump = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, 11, 16), M.soap); pump.position.set(wx - 6, 111.5, cz - 11); archG.add(pump);
+    box(wx - 6.4, cz - 11.4, .8, .8, 117, 120, M.steel, archG, false); box(wx - 9, cz - 11.4, 3, .8, 119.2, 120, M.steel, archG, false);
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(3, 2.6, 9, 16, 1, true), M.shelfGlass); cup.position.set(wx - 6, 110.5, cz + 11); archG.add(cup);
+    for (const [dx, c] of [[-1, M.brushA], [1, M.brushB]]) box(wx - 6 + dx, cz + 10.6 + dx*.6, .8, .8, 108, 124, c, archG, false);
+  }
+  roomMaskAll();
 }
 buildArch(110);
+
+// Room lights. Full-height "ghost" walls (shadow-only layer 1, never drawn) block their light even in the
+// cut-away view, so each room is lit only by its own fittings (light still spills through doorways).
+const ghost = new THREE.Group(); scene.add(ghost);
+{ const gm = new THREE.MeshBasicMaterial({ colorWrite:false, depthWrite:false });
+  const gbox = (x, z, w, d, y0, y1) => { const m = box(x, z, w, d, y0, y1, gm, ghost); m.receiveShadow = false; m.layers.set(1); };
+  for (const [x, y, w, d] of wallRects) gbox(x, y, w, d, 0, 300);
+  for (const d of doors) gbox(...d.o, 210, 300);
+  gbox(...kitchenOpening, 210, 300);
+  for (const w of windows) { gbox(...w, 0, 90); gbox(...w, 210, 300); }
+  gbox(622.7 - counter.d, 0, counter.d, 264.6, counter.loft, counter.loft + 8);
+}
+const roomLights = [];
+for (const L of LIGHTS) {
+  const [nx, nz] = NRM[L.n], tube = L.t === 'tube';
+  // room masking (below) keeps every fitting's light inside its room, so all get full reach
+  const pl = new THREE.PointLight(tube ? 0xf4f6ff : 0xffe7c8, 0, tube ? 650 : 480, 1);
+  pl.position.set(L.x + nx*10, L.h, L.y + nz*10);
+  pl.userData.on = tube ? 420 : 260;
+  if (L.sh) {
+    pl.castShadow = true; pl.shadow.mapSize.set(512, 512); pl.shadow.bias = -0.004; pl.shadow.radius = 3;
+    pl.shadow.camera.near = 4; pl.shadow.camera.far = 700; pl.shadow.camera.layers.enable(1);
+  }
+  scene.add(pl); roomLights.push(pl);
+}
 
 // room tags (hidden at eye level, where they would show through walls)
 const tags = [];
@@ -270,56 +565,307 @@ for (const [name, x, z, sub] of [['Bedroom 1',166,222,'332.6 × 297.6'],['Bedroo
   const o = new CSS2DObject(d); o.position.set(x, 5, z); scene.add(o); tags.push(o);
 }
 
+
+// ---------- wall collision ----------
+// Free floor = the rooms plus door openings, minus the basin and the kitchen counter. Blocked cells (1 cm)
+// go into a summed-area table, so "does this footprint touch a wall?" is a constant-time lookup.
+const fits = (() => {
+  const X0 = -40, Y0 = -40, NX = 1000, NY = 860, g = new Uint8Array(NX * NY).fill(1);
+  const cells = (x, y, w, h) => [Math.max(0, Math.floor(x - X0 + .3)), Math.min(NX, Math.ceil(x + w - X0 - .3)),
+                                 Math.max(0, Math.floor(y - Y0 + .3)), Math.min(NY, Math.ceil(y + h - Y0 - .3))];
+  const fill = (r, v) => { const [i0, i1, j0, j1] = cells(...r); for (let j = j0; j < j1; j++) g.fill(v, j*NX + i0, j*NX + i1); };
+  for (const r of rooms) fill([r.x, r.y, r.w, r.h], 0);
+  fill([bath2Block.x, bath2Block.y, bath2Block.w, bath2Block.h], 1); fill([bath2.x, bath2.y, bath2.w, bath2.h], 0);
+  for (const d of doors) fill(d.o, 0);
+  fill([486.2, 264.6, 81.9, 12.5], 0);                                             // kitchen opening
+  fill([basin.x, basin.y, basin.w, basin.h], 1);
+  fill([486.2, 0, 136.5, counter.d], 1); fill([622.7 - counter.d, 0, counter.d, 264.6], 1);   // kitchen counter
+  const W1 = NX + 1, S = new Int32Array(W1 * (NY + 1));
+  for (let j = 0; j < NY; j++) { let row = 0; for (let i = 0; i < NX; i++) { row += g[j*NX + i]; S[(j+1)*W1 + i+1] = S[j*W1 + i+1] + row; } }
+  return b => {
+    if (b.x < X0 || b.y < Y0 || b.x + b.w > X0 + NX || b.y + b.h > Y0 + NY) return false;
+    const [i0, i1, j0, j1] = cells(b.x, b.y, b.w, b.h);
+    return S[j1*W1 + i1] - S[j0*W1 + i1] - S[j1*W1 + i0] + S[j0*W1 + i0] === 0;
+  };
+})();
+// closest wall-free spot for footprint b within `reach` cm (square rings outward), or null
+function nearestFit(b, reach = 80) {
+  if (fits(b)) return b;
+  const at = (dx, dy) => { const c = { ...b, x: b.x + dx, y: b.y + dy }; return fits(c) ? c : null; };
+  for (let r = 1; r <= reach; r++) {                       // walk only the ring's perimeter
+    for (let d = -r; d <= r; d++) { const c = at(d, -r) || at(d, r); if (c) return c; }
+    for (let d = 1 - r; d < r; d++) { const c = at(-r, d) || at(r, d); if (c) return c; }
+  }
+  return null;
+}
+// apply a dragged position without entering walls: the piece goes to the free spot nearest the cursor,
+// so it hugs walls inside a room and hops into the next room once the cursor is over there
+function moveTo(L, c) {
+  const n = nearestFit(c, 120);
+  if (n) { L.x = n.x; L.y = n.y; }
+}
+
 // ---------- furniture ----------
 const FM = {
   wood: mat(0x8a6646, { roughness:.55 }), oak: mat(0xb48a5e, { roughness:.5 }), linen: mat(0xf1efe9),
   duvet: mat(0x4560c8, { roughness:.9 }), pillow: mat(0xffffff), black: mat(0x24272d, { roughness:.6 }),
   metal: mat(0x8d949c, { roughness:.35, metalness:.6 }), fabric: mat(0x50607a, { roughness:.95 }),
   char: mat(0x2b2c2f, { roughness:.6 }), ash: mat(0xcfc6b6, { roughness:.55 }), steel: mat(0x1f2023, { roughness:.4, metalness:.5 }),
+  walnut: mat(0x5e3128, { roughness:.5 }), white: mat(0xf2f0eb, { roughness:.45 }),
+  mahogany: mat(0x7d3527, { roughness:.45 }),
+  teak: mat(0x6e3526, { roughness:.4 }),
+  honey: mat(0xc07a2e, { roughness:.45 }), leaf: mat(0x3f8a3a, { roughness:.8 }),
+  shade: new THREE.MeshStandardMaterial({ roughness:.9, side: THREE.DoubleSide, emissive:0xffc98a, emissiveIntensity:.35 }),
+  gloss: mat(0x1a1c20, { roughness:.12, metalness:.4 }), chrome: mat(0xc4c8cc, { roughness:.2, metalness:.9 }),
+  display: new THREE.MeshStandardMaterial({ color:0x0a1a3a, emissive:0x3a7bff, emissiveIntensity:.8 }),
+  lampGlow: new THREE.MeshStandardMaterial({ color:0xffffff, emissive:0xfff0d8, emissiveIntensity:1.5, side:THREE.DoubleSide }),
+  deskTop: mat(0xd3a96c, { roughness:.45 }), deskEdge: mat(0x9a7046, { roughness:.5 }),
+  screen: new THREE.MeshStandardMaterial({ color:0x0c1016, emissive:0x2a3c55, emissiveIntensity:.55, roughness:.2 }),
+  cream: mat(0xe9e1cc, { roughness:.6 }), keycap: mat(0xf1eadb, { roughness:.7 }), maroon: mat(0x7a1f2b, { roughness:.6 }),
+  plastic: mat(0xf2f2ef, { roughness:.5 }), mug: mat(0x8cc63f, { roughness:.35 }), comb: mat(0xe0a020, { roughness:.4 }),
+  jar: mat(0x2f8fd8, { roughness:.4 }),
+  acrylic: new THREE.MeshStandardMaterial({ color:0xdde8ee, roughness:.05, transparent:true, opacity:.45 }),
+  cherry: mat(0x93432a, { roughness:.42 }), cherryDark: mat(0x5a2618, { roughness:.5 }), groove: mat(0x24100a, { roughness:.8 }),
+  paper: mat(0xf6f3ea, { roughness:.9 }), card: mat(0xfff2a8, { roughness:.9 }), bone: mat(0xeee4cc, { roughness:.7 }),
+  medRed: mat(0xa3262a, { roughness:.6 }), medTeal: mat(0x1f7f86, { roughness:.6 }), medNavy: mat(0x1e2f5e, { roughness:.6 }),
+  mHigh: [0xf5e72a, 0xf06aa8, 0x6fd96a].map(c => mat(c, { roughness:.5 })),
+  gold: mat(0xd6b25a, { roughness:.32, metalness:.55 }),
+  glass: new THREE.MeshStandardMaterial({ color:0xc9d6dc, roughness:.12, metalness:.35 }),
   book: [0xe9e6df, 0x9ac94f, 0x3a3d44, 0xb5532f, 0xf2f2ee, 0x6f8fb8].map(c => mat(c, { roughness:.8 })),
 };
+// reflections only for the mirror glass and its gold frame
+{ const env = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), .04).texture;
+  FM.gold.envMap = env; FM.glass.envMap = env; FM.gloss.envMap = env; FM.chrome.envMap = env; M.steel.envMap = env; M.bowl.envMap = env; M.mirror.envMap = env; FM.gold.envMapIntensity = .9; }
+// arch-topped outline: straight sides, semicircle top, inset by i
+function archShape(w, h, i) {
+  const s = new THREE.Shape(), r = w/2 - i;
+  s.moveTo(-r, i); s.lineTo(r, i); s.lineTo(r, h - w/2); s.absarc(0, h - w/2, r, 0, Math.PI, false); s.lineTo(-r, i);
+  return s;
+}
+function rod(a, b, r, m, parent, rTop = r) {
+  const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), len = A.distanceTo(B);
+  const c = new THREE.Mesh(new THREE.CylinderGeometry(rTop, r, len, 12), m);
+  c.position.copy(A).add(B).multiplyScalar(.5);
+  c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize());
+  c.castShadow = true; parent.add(c);
+}
+// floral print for the lamp shade: scattered blooms and leaves on cream
+const shadeTex = (() => {
+  const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 256; const x = cv.getContext('2d');
+  x.fillStyle = '#f6efe4'; x.fillRect(0, 0, 1024, 256);
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 70; i++) {
+    const cx = rnd() * 1024, cy = rnd() * 256;
+    x.strokeStyle = '#9a7a4a'; x.lineWidth = 2; x.beginPath(); x.moveTo(cx, cy); x.quadraticCurveTo(cx + 30, cy - 20, cx + 60 * rnd() - 30, cy + 40 * rnd()); x.stroke();
+    x.fillStyle = ['#7fb069', '#3f8f8a', '#a7c27a'][i % 3];
+    x.beginPath(); x.ellipse(cx + 18, cy + 10, 10, 4, rnd() * 3, 0, 7); x.fill();
+  }
+  for (let i = 0; i < 55; i++) {
+    const cx = rnd() * 1024, cy = rnd() * 256, r = 6 + rnd() * 12, col = ['#c8323a', '#e8742c', '#d94f6a', '#f2a33a'][i % 4];
+    x.fillStyle = col; for (let k = 0; k < 5; k++) { const a = k * 1.2566; x.beginPath(); x.arc(cx + Math.cos(a) * r * .6, cy + Math.sin(a) * r * .6, r * .5, 0, 7); x.fill(); }
+    x.fillStyle = '#7a1f24'; x.beginPath(); x.arc(cx, cy, r * .3, 0, 7); x.fill();
+  }
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; return t;
+})();
+FM.shade.map = FM.shade.emissiveMap = shadeTex;
+// desk lamp: round base, angled arm, shade aimed at the work surface; the spot is registered as a room light
+const deskLights = [];
+function deskLamp(g, x, z, top, aimX, aimZ) {
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(7, 8, 2, 24), FM.black); base.position.set(x, top + 1, z); base.castShadow = true; g.add(base);
+  const elbow = [x + (aimX - x) * .15, top + 40, z + (aimZ - z) * .15], head = [x + (aimX - x) * .45, top + 38, z + (aimZ - z) * .45];
+  rod([x, top + 2, z], elbow, .8, FM.black, g); rod(elbow, head, .8, FM.black, g);
+  const shade = new THREE.Mesh(new THREE.ConeGeometry(7, 11, 24, 1, true), FM.black);
+  shade.position.set(...head); shade.position.y -= 3; shade.castShadow = true; g.add(shade);
+  const glow = new THREE.Mesh(new THREE.CircleGeometry(6.2, 24), FM.lampGlow); glow.rotation.x = Math.PI/2; glow.position.set(head[0], head[1] - 8.4, head[2]); g.add(glow);
+  const sp = new THREE.SpotLight(0xfff0d8, 0, 140, .75, .6, 1); sp.position.set(head[0], head[1] - 8, head[2]);
+  sp.target.position.set(aimX, top, aimZ); g.add(sp, sp.target); sp.userData.on = 140; deskLights.push(sp);
+  glow.userData.glow = 0xfff0d8; sp.userData.glowMesh = glow; sp.userData.glowOn = 1.5;
+}
 function piece(c) {
   // built facing "N": back edge toward -z, centred on the origin
   const g = new THREE.Group(), W = c.w, D = c.d, X = -W/2, Z = -D/2;
   const add = (x, z, w, d, y0, y1, m) => box(x, z, w, d, y0, y1, m, g);
   if (c.kind === 'bed') {
-    add(X, Z, W, D, 8, 30, FM.wood);
-    add(X, Z, W, 7, 0, 105, FM.wood);
-    add(X+3, Z+8, W-6, D-11, 30, 54, FM.linen);
-    add(X+1, Z+D*0.36, W-2, D*0.64-1, 50, 57, FM.duvet);
-    for (const px of [X+14, X+W/2+7]) add(px, Z+14, W/2-21, 44, 54, 66, FM.pillow);
-    for (const [lx, lz] of [[X+4, Z+D-10], [X+W-10, Z+D-10]]) add(lx, lz, 6, 6, 0, 8, FM.wood);
+    // platform bed (Regal "Legacy"): dark recessed plinth, overhanging cherry rim, low panel headboard with
+    // rounded side posts, three vertical slots and a horizontal groove; plain white mattress and two flat pillows
+    const ch = FM.cherry, gv = FM.groove;
+    add(X + 14, Z + 10, W - 28, D - 26, 0, 16, FM.cherryDark);                      // recessed plinth
+    add(X, Z + 4, W, D - 4, 16, 28, ch);                                             // platform rim
+    add(X + 4, Z + 7, W - 8, D - 12, 24, 49, FM.linen);                              // mattress
+    add(X + 5, Z, W - 10, 3.5, 16, 98, ch);                                          // headboard panel
+    for (const px of [X, X + W - 5]) {                                               // side posts, rounded tops
+      add(px, Z - .5, 5, 5, 16, 100, ch);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 5, 16), ch);
+      cap.rotation.x = Math.PI/2; cap.position.set(px + 2.5, 100, Z + 2); cap.castShadow = true; g.add(cap);
+    }
+    add(X + 5, Z + 3.5, W - 10, .4, 74, 75, gv);                                    // horizontal groove
+    for (let k = 1; k <= 3; k++) add(X + W*k/4 - .6, Z + 3.5, 1.2, .4, 77, 94, gv);  // vertical slots
+    const n = W < 150 ? 1 : 2, pw = n === 1 ? 66 : W/2 - 16;
+    for (let i = 0; i < n; i++) add(n === 1 ? X + W/2 - pw/2 : X + 10 + i*(pw + 12), Z + 9, pw, 38, 49, 58, FM.pillow);
   } else if (c.kind === 'shelfdesk') {
-    // study table with a shelf tower on the user's left, inside the same 4 ft width
-    // (built facing N: user sits at +z looking toward -z, so their left is -x)
-    const S = 45, TD = 40, TH = 150, t = 1.8, xs = X + S;
-    // tower carcass
-    add(X, Z, t, TD, 0, TH, FM.char); add(xs - t, Z, t, TD, 0, TH, FM.char);
-    add(X, Z, S, TD, TH - t, TH, FM.char); add(X, Z, S, 1, 0, TH, FM.ash);
-    add(X, Z + 2, S, TD - 4, 0, 6, FM.char);                                    // plinth
-    add(X + t, Z + 1, S - 2*t, TD - 1, 6, 50, FM.ash);                          // drawer cabinet
-    add(X + t + .5, Z + TD - .5, S - 2*t - 1, 1.5, 7, 27, FM.ash);              // lower drawer front
-    add(X + t + .5, Z + TD - .5, S - 2*t - 1, 1.5, 29, 49, FM.ash);             // upper drawer front
-    add(X + t, Z + TD - .4, S - 2*t, 1.2, 27, 29, FM.char);                     // reveal between drawers
-    add(X + t, Z, S - 2*t, TD, 50, 50 + t, FM.char);                            // shelf over cabinet
-    add(X + t, Z, S - 2*t, TD, 110, 110 + t, FM.char);                          // upper shelf
-    add(X + S/2 - t/2, Z, t, TD, 50, TH, FM.char);                              // middle divider
-    add(X + t, Z, S/2 - t, TD, 75, 75 + t, FM.char);                            // outer cubby shelf at desk height
-    // books in the outer cubbies
-    for (const [y0, n] of [[110 + t, 6], [75 + t, 5]]) for (let i = 0; i < n; i++)
-      add(X + t + 1 + i*3.4, Z + 6, 3, 22, y0, y0 + 26 + (i % 3) * 3, FM.book[(i + y0) % FM.book.length]);
-    // desktop: runs into the tower's open inner bay
-    add(X + S/2 + t/2, Z, W - S/2 - t/2, D - 1.2, 72, 75, FM.ash);
-    add(X + S/2 + t/2, Z + D - 1.2, W - S/2 - t/2, 1.2, 72, 75, FM.char);       // dark front edge
-    // sled leg on the user's right, modesty panel at the back
-    const lx = X + W - 5;
-    add(lx, Z + 3, 4, 4, 0, 72, FM.steel); add(lx, Z + D - 7, 4, 4, 0, 72, FM.steel);
-    add(lx, Z + 3, 4, D - 6, 0, 4, FM.steel); add(lx, Z + 3, 4, D - 6, 68, 72, FM.steel);
-    add(xs, Z + 2, lx - xs, 2, 34, 72, FM.char);
+    // walnut study table with white accents, shelf tower on the user's left (mirror image of the reference photo)
+    // built facing N: user sits at +z looking toward -z, so their left is -x. The tower is 1 ft deep; its
+    // table-side front corners are rounded, and the desktop's left front corner sweeps from the tower's
+    // front (at the tower's middle divider) out to the full desk depth in a quarter circle.
+    const S = 50, TD = 30.5, TH = 160, t = 1.8, mid = X + S/2, wal = FM.walnut, wh = FM.white, RS = 8, RD = D - TD;
+    // horizontal plate from an outline given in (x, z), extruded from y0 to y1
+    const plate = (pts, y0, y1, m) => {
+      const sh = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
+      const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: y1 - y0, bevelEnabled: false }), m);
+      mesh.rotation.x = -Math.PI/2; mesh.position.y = y0; mesh.castShadow = mesh.receiveShadow = true; g.add(mesh);
+    };
+    const arc = (cx, cz, r, a0, a1, n = 12) => Array.from({ length: n + 1 }, (_, i) => { const a = a0 + (a1 - a0) * i / n; return [cx + r*Math.cos(a), cz + r*Math.sin(a)]; });
+    // rectangle x0..x1, z0..z1 with its front-right (table-side) corner rounded
+    const roundFR = (x0, z0, x1, z1, r) => [[x0, z0], [x1, z0], ...arc(x1 - r, z1 - r, r, 0, Math.PI/2), [x0, z1]];
+    // drawer pedestal across the full tower width, white plinth
+    add(X + 1, Z + 2, S - 2, TD - 4, 0, 7, wh);
+    add(X, Z, S, TD - 1.2, 7, 50, wal);
+    for (const [y0, y1] of [[8, 28], [29.5, 49]]) {
+      add(X + .5, Z + TD - 1.2, S - 1, 1.2, y0, y1, wal);
+      add(X + S/2 - 6, Z + TD, 12, 1.6, y1 - 6, y1 - 4.5, FM.metal);   // silver bar handle
+    }
+    // tower: outer side full height, walnut top; no board on the desk side, so the inner shelves open onto the table
+    add(X, Z, t, TD, 50, TH, wal);
+    plate(roundFR(X, Z, X + S, Z + TD, RS), TH - t, TH, wal);
+    // back panels: walnut behind the outer column, white behind the inner one
+    add(X + t, Z, S/2 - t, 1, 50, TH - t, wal);
+    add(mid, Z, S/2, 1, 75, TH - t, wh);
+    // white middle divider and shelves; the inner column's shelf is open and rounded at its table-side corner
+    add(mid - t/2, Z, t, TD, 50, TH - t, wh);
+    for (const y of [78, 118]) add(X + t, Z, S/2 - 1.5*t, TD, y, y + t, wh);
+    plate(roundFR(mid + t/2, Z, X + S, Z + TD, RS), 118, 118 + t, wh);
+    // books in the outer column, a box under the desktop in the inner one
+    for (const [y0, n] of [[50, 5], [118 + t, 4]]) for (let i = 0; i < n; i++)
+      add(X + t + 1 + i*3.6, Z + 6, 3.2, 21, y0, y0 + 24 + (i % 3) * 3, FM.book[(i + Math.round(y0)) % FM.book.length]);
+    add(mid + 4, Z + 8, 16, 14, 50, 58, FM.black);
+    // desktop: its left front corner curves from the shelf front at the middle of the tower out to the full depth
+    plate([[mid + t/2, Z], [X + W, Z], [X + W, Z + D], ...arc(mid + t/2 + RD, Z + TD, RD, Math.PI/2, Math.PI, 16)], 72, 75, wal);
+    add(X + W - 2.5, Z, 2.5, D, 0, 72, wal);
+    add(X + S, Z + 1, W - S - 2.5, 1.8, 52, 72, wal);                       // modesty panel
+    deskLamp(g, X + S + 10, Z + 11, 75, X + S + 35, Z + D*.6);              // left, next to the tower
+    // medical study material scattered on the desktop (top surface at 75)
+    const rb = (cx, cz, w, d, y0, h, ry, m) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+      o.position.set(cx, 75 + y0 + h/2, cz); o.rotation.y = ry; o.castShadow = o.receiveShadow = true; g.add(o); return o; };
+    // open textbook: hard cover, two page blocks sloping up to the spine
+    const bx = X + 84, bz = Z + 41, br = -.12;
+    rb(bx, bz, 42, 29, 0, .5, br, FM.medRed);
+    for (const sd of [-1, 1]) { const pg = rb(bx + sd*10.2*Math.cos(br), bz - sd*10.2*Math.sin(br), 20, 27.5, .5, 2.2, br, FM.paper); pg.rotation.z = -sd*.05; }
+    rb(bx + 10.2*Math.cos(br) + 2, bz - 10.2*Math.sin(br) - 1, 1.5, 1, 2.8, .25, br + .5, FM.mHigh[0]);   // highlighter mark on the page
+    // textbook stack at the back right: anatomy (red), physiology (teal), pathology (navy), pharmacology (white)
+    [[22, 28, 5.5, FM.medRed, .05], [21, 27.5, 4.5, FM.medTeal, -.08], [20.5, 26, 6, FM.medNavy, .12], [19, 24, 3, FM.paper, -.02]]
+      .reduce((y, [w, d, h, m, r]) => { rb(X + 106, Z + 15, w, d, y, h, r, m); rb(X + 106 + w/2 - .4, Z + 15, .9, d - 1, y + .6, h - 1.2, r, FM.paper); return y + h; }, 0);
+    // loose lecture notes and flashcards
+    rb(X + 95, Z + 17, 21, 29.7, 0, .15, .35, FM.paper); rb(X + 72, Z + 15, 21, 29.7, 0, .1, -.2, FM.paper);
+    [[X + 66, Z + 32, .3], [X + 69, Z + 35, -.15], [X + 63, Z + 37, .6]].forEach(([cx, cz, r], i) => rb(cx, cz, 12.5, 7.6, .2 + i*.12, .1, r, FM.card));
+    // highlighters and a pen
+    [[X + 64, Z + 50, 1.2], [X + 66, Z + 53, 1.35], [X + 62, Z + 54, .9]].forEach(([cx, cz, r], i) => {
+      const hl = new THREE.Mesh(new THREE.CylinderGeometry(.8, .8, 12, 10), FM.mHigh[i]); hl.rotation.set(Math.PI/2, 0, r); hl.position.set(cx, 75.8, cz); hl.castShadow = true; g.add(hl); });
+    const pen = new THREE.Mesh(new THREE.CylinderGeometry(.45, .45, 14, 8), FM.medNavy); pen.rotation.set(Math.PI/2, 0, -.4); pen.position.set(X + 98, 78.2, Z + 43); g.add(pen);
+    // stethoscope: coiled tubing, chest piece, ear tubes
+    const tube = new THREE.Mesh(new THREE.TorusGeometry(7, .55, 8, 40, Math.PI * 1.7), FM.black); tube.rotation.x = Math.PI/2; tube.position.set(X + 111, 75.6, Z + 46); tube.castShadow = true; g.add(tube);
+    const chest = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.3, 1.2, 20), FM.chrome); chest.position.set(X + 118, 75.6, Z + 50); g.add(chest);
+    for (const sd of [-1, 1]) rod([X + 111 + sd*2, 76, Z + 39], [X + 111 + sd*5, 76, Z + 33], .35, FM.chrome, g);
+    // anatomy skull model
+    const skull = new THREE.Mesh(new THREE.SphereGeometry(6, 20, 16), FM.bone); skull.scale.set(.85, .85, 1.1); skull.position.set(X + 80, 75 + 8.5, Z + 12); skull.castShadow = true; g.add(skull);
+    rb(X + 80, Z + 17.5, 7.5, 5, 0, 5, 0, FM.bone);                                                 // face and jaw
+    for (const sd of [-1, 1]) rb(X + 80 + sd*1.9, Z + 20.05, 2.2, .3, 5.3, 2, 0, FM.black);        // eye sockets
+  } else if (c.kind === 'cupboard') {
+    // single-door mahogany cupboard, mirror on the upper door, handle on the left, recessed plinth
+    const H = 183, F = Z + D - 2, mah = FM.mahogany;
+    add(X, Z, W, D - 2, 6, H, mah);
+    add(X + 1.5, Z, W - 3, D - 4, 0, 6, FM.char);
+    add(X + .3, F, W - .6, 2, 6.5, H - 1.5, mah);
+    add(X + W*.26, F + 2, W*.64, .3, 98, 172, FM.glass);
+    add(X + 3, F + 2, 1.2, 2.2, 92, 106, FM.chrome); add(X + 2.8, F + 2, 1.6, 1.8, 109, 111, FM.chrome);
+  } else if (c.kind === 'fridge') {
+    // two-door fridge, glossy black glass doors, freezer on top, chrome band with a display, chrome plinth
+    const H = 180, F = Z + D - 3;
+    add(X, Z, W, D - 3, 8, H, FM.gloss);
+    add(X + .5, Z, W - 1, D - 1, 0, 8, FM.chrome);
+    add(X + .3, F, W - .6, 3, 8.5, 111, FM.gloss);                     // fridge door
+    add(X, F - .2, W, 3.4, 111, 121, FM.chrome);                         // middle band
+    add(X + W - 24, F + 3.2, 16, .3, 114.5, 117.5, FM.display);          // control display
+    add(X + .3, F, W - .6, 3, 121, H - .5, FM.gloss);                    // freezer door
+    for (const [y0, y1] of [[20, 104], [126, 172]]) add(X + W - 1.6, F - .2, 1.6, 3.4, y0, y1, FM.chrome);   // edge handles
+  } else if (c.kind === 'lamp') {
+    // tripod floor lamp: three tapered honey-wood legs, two round shelves, floral drum shade lit from inside
+    const LH = 122, R0 = W/2 - 2, R1 = 6, rAt = h => R0 + (R1 - R0) * h / LH;
+    for (let i = 0; i < 3; i++) { const a = i * 2 * Math.PI / 3 + Math.PI / 2;
+      rod([Math.cos(a) * R0, 0, Math.sin(a) * R0], [Math.cos(a) * R1, LH, Math.sin(a) * R1], 2.1, FM.honey, g, 1.5); }
+    for (const [y, k] of [[20, 1], [64, 1]]) {
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(rAt(y) * k, rAt(y) * k, 2, 32), FM.honey);
+      disc.position.y = y; disc.castShadow = disc.receiveShadow = true; g.add(disc);
+    }
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(9, 9, 3, 32), FM.honey); cap.position.y = LH + 1.5; cap.castShadow = true; g.add(cap);
+    rod([0, LH + 3, 0], [0, LH + 9, 0], .6, FM.metal, g);
+    const shade = new THREE.Mesh(new THREE.CylinderGeometry(24, 24, 26, 48, 1, true), FM.shade);
+    shade.position.y = LH + 8 + 13; shade.castShadow = true; shade.userData.glow = 0xffc98a; g.add(shade);
+    const bulb = new THREE.PointLight(0xffc98a, 0, 260, 0); bulb.position.y = LH + 14; bulb.userData.on = .9; g.add(bulb); deskLights.push(bulb);
+    bulb.userData.glowMesh = shade; bulb.userData.glowOn = .35;
+    // a pot plant and a couple of books on the shelves
+    const pot = new THREE.Mesh(new THREE.CylinderGeometry(5, 4, 8, 20), FM.white); pot.position.y = 69; g.add(pot);
+    const leaves = new THREE.Mesh(new THREE.SphereGeometry(9, 16, 12), FM.leaf); leaves.position.y = 80; leaves.scale.y = .8; leaves.castShadow = true; g.add(leaves);
+    add(-8, -6, 16, 11, 21, 27, FM.book[3]); add(-7, -5, 14, 10, 27, 29, FM.book[5]);
+  } else if (c.kind === 'mirror') {
+    // arched floor mirror, thin gold frame, leaning back ~10 degrees on a black easel stand
+    const H = 165, F = 2.4, T = 2.2, base = Z + D - 3, lean = Math.asin(26 / H);
+    const m = new THREE.Group(); m.position.set(0, 0, base); m.rotation.x = -lean; g.add(m);
+    const frame = archShape(W, H, 0); frame.holes.push(archShape(W, H, F));
+    const fm = new THREE.Mesh(new THREE.ExtrudeGeometry(frame, { depth:T, bevelEnabled:false, curveSegments:32 }), FM.gold);
+    fm.position.z = -T; fm.castShadow = true; m.add(fm);
+    const gl = new THREE.Mesh(new THREE.ExtrudeGeometry(archShape(W, H, F - .2), { depth:.5, bevelEnabled:false, curveSegments:32 }), FM.glass);
+    gl.position.z = -T*.6; m.add(gl);
+    const back = new THREE.Mesh(new THREE.ExtrudeGeometry(archShape(W, H, F - .2), { depth:.6, bevelEnabled:false, curveSegments:32 }), FM.black);
+    back.position.z = -T; back.castShadow = true; m.add(back);
+    // stand: hinged on the back at ~2/3 height, foot on the floor, tie bar back to the mirror base
+    const hy = 110, hinge = [0, hy*Math.cos(lean), base - T - hy*Math.sin(lean)], foot = [0, 1, Z + 1];
+    rod(hinge, foot, .8, FM.black, g); rod(foot, [0, 1, base - T], .6, FM.black, g);
+    rod([-8, 1, Z + 1], [8, 1, Z + 1], .6, FM.black, g);
   } else if (c.kind === 'desk') {
-    add(X, Z, W, D, 72, 75, FM.oak);
+    // the user's 3' x 2' desk as it is today (from their photo). Built facing N: wall at -z, user at +z, desktop at 75.
+    const T = 75, L = (x, z, w, d, y0, h, m) => add(x - w/2, z - d/2, w, d, T + y0, T + y0 + h, m);
+    add(X, Z, W, D - 1.5, 72, 75, FM.deskTop); add(X, Z + D - 1.5, W, 1.5, 72, 75, FM.deskEdge);
     for (const [lx, lz] of [[X+3, Z+3], [X+W-7, Z+3], [X+3, Z+D-7], [X+W-7, Z+D-7]]) add(lx, lz, 4, 4, 0, 72, FM.black);
     add(X+3, Z+3, W-6, 2, 40, 70, FM.black);
+    // monitor on a gas-spring arm clamped at the back-left
+    L(-30, -26, 6, 6, 0, 2, FM.black); L(-30, -26, 3, 3, 2, 14, FM.black);
+    rod([-30, T + 16, -26], [-14, T + 25, -22], 1.4, FM.black, g); rod([-14, T + 25, -22], [0, T + 42, -21], 1.2, FM.black, g);
+    L(0, -20, 54, 2, 28, 32, FM.black);                                              // 24" panel, bezel
+    const scr = new THREE.Mesh(new THREE.PlaneGeometry(52, 29), FM.screen); scr.position.set(0, T + 44, -18.9); g.add(scr);
+    // ASUS laptop open on a low stand behind the keyboard
+    L(0, -9, 30, 21, 0, 2.5, FM.metal); L(0, -9, 31, 22, 2.5, 1.6, FM.black);
+    const lid = new THREE.Group(); lid.position.set(0, T + 4.1, -20); lid.rotation.x = -0.18; g.add(lid);
+    const lidM = new THREE.Mesh(new THREE.BoxGeometry(31, 21, .8), FM.black); lidM.position.y = 10.5; lidM.castShadow = true; lid.add(lidM);
+    // tablet in a black case, propped up on the left
+    const tab = new THREE.Mesh(new THREE.BoxGeometry(27, 19, 1.4), FM.black); tab.position.set(-31, T + 8.5, 12); tab.rotation.set(-.45, .35, 0); tab.castShadow = true; g.add(tab);
+    L(-31, 7, 26, 3, 0, 1, FM.black);
+    // 75% keyboard: cream case and keys, maroon modifiers
+    L(0, 13, 36, 13, 0, 2.2, FM.cream); L(0, 13, 34, 11, 2.2, 1.1, FM.keycap);
+    L(-2, 17.2, 11, 1.8, 3.3, .5, FM.maroon); L(-16.2, 8, 1.8, 1.6, 3.3, .5, FM.maroon); L(12.5, 12, 3.6, 1.6, 3.3, .5, FM.maroon);
+    for (const [kx, kz] of [[15.2, 15.5], [13.4, 17.3], [15.2, 17.3], [17, 17.3]]) L(kx, kz, 1.6, 1.6, 3.3, .5, FM.maroon);
+    // mouse pad, vertical mouse, green mug
+    L(29, 13, 30, 26, 0, .3, FM.black);
+    const mouse = new THREE.Mesh(new THREE.SphereGeometry(4, 20, 14), FM.plastic); mouse.scale.set(.9, 1.1, 1.6); mouse.position.set(27, T + 3.5, 15); mouse.castShadow = true; g.add(mouse);
+    const mug = new THREE.Mesh(new THREE.CylinderGeometry(4.3, 4, 10, 24), FM.mug); mug.position.set(37, T + 5.3, 0); mug.castShadow = true; g.add(mug);
+    const handle = new THREE.Mesh(new THREE.TorusGeometry(2.6, .7, 8, 16), FM.mug); handle.position.set(37, T + 5.5, 4.8); handle.rotation.y = Math.PI/2; g.add(handle);
+    // remotes and comb in front of the laptop
+    L(-10, 3, 16, 4, 0, 1.6, FM.plastic); L(16, 2, 9, 3.5, 0, 1.4, FM.plastic); L(0, 5.6, 18, 2, 0, .5, FM.comb);
+    // back row: mesh router (left), pen cup and acrylic trophy (right), small jars
+    L(-21, -25, 9, 9, 0, 10, FM.plastic);
+    L(28, -24, 7, 7, 0, 10, FM.oak); for (let i = 0; i < 4; i++) L(26.5 + i, -24 + (i % 2), .8, .8, 10, 4 + i, FM.book[i]);
+    L(39, -25, 11, 5, 0, 1.6, FM.black); L(39, -25, 10, .8, 1.6, 17, FM.acrylic);
+    const jar = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.4, 4.5, 20), FM.jar); jar.position.set(21, T + 2.25, -4); g.add(jar);
+    const bottle = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 11, 16), FM.black); bottle.position.set(33, T + 5.5, -10); bottle.castShadow = true; g.add(bottle);
+  } else if (c.kind === 'chair') {
+    // solid wood dining chair: square legs, flat seat with a front lip, back legs rise into a wide panel back
+    const wd = FM.teak, L = 3.6, sy = 44, st = 2.4, sw = W - 2, sd = D - 6, sz = Z + 4;
+    add(-sw/2, sz, sw, sd, sy, sy + st, wd);                                          // seat
+    add(-sw/2 + 2, sz + 2, sw - 4, sd - 4, sy - 5, sy, wd);                            // apron rails (seen as a box under the seat)
+    for (const lx of [-sw/2 + 2, sw/2 - 2 - L]) {
+      add(lx, sz + sd - 2 - L, L, L, 0, sy - 5, wd);                                   // front legs
+      add(lx, sz + 1, L, L, 0, 76, wd);                                                // back legs rise to the backrest
+    }
+    add(-sw/2 - .5, sz - .5, sw + 1, 2.4, 60, 82, wd);                                  // backrest panel
   } else {
     const exec = c.kind === 'exec', seatY = 46, backTop = exec ? 120 : 88;
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, seatY - 8, 12), FM.metal); pole.position.y = (seatY - 8)/2 + 6; pole.castShadow = true; g.add(pole);
@@ -340,47 +886,104 @@ const objs = {};
 for (const c of catalog) { const g = piece(c); g.userData.id = c.id; objs[c.id] = g; furnG.add(g); }
 function place(id) {
   const L = layout[id], f = footprint(id), g = objs[id];
-  g.position.set(L.x + f.w/2, 0, L.y + f.h/2); g.rotation.y = -ANG[L.rot] * Math.PI / 180;
+  g.position.set(L.x + f.w/2, 0, L.y + f.h/2); g.rotation.y = -ANG[L.rot] * Math.PI / 180; dirty();
+  if (lightsReady) { g.updateMatrixWorld(true); applyLights(); }
 }
+let lightsReady = false;
 catalog.forEach(c => place(c.id));
 
 let selected = null;
 const selEl = document.getElementById('sel');
 function select(id) {
   selected = id;
-  for (const c of catalog) objs[c.id].traverse(o => { if (o.isMesh) o.material.emissive.setHex(c.id === id ? 0x1d3bb0 : 0x000000); o.isMesh && (o.material.emissiveIntensity = .35); });
-  selEl.textContent = id ? 'Selected: ' + catalog.find(c => c.id === id).name : 'Click a piece of furniture to select it';
+  for (const c of catalog) objs[c.id].traverse(o => { if (o.isMesh) o.material.emissive.setHex(c.id === id ? 0x1d3bb0 : (o.userData.glow ?? 0)); o.isMesh && (o.material.emissiveIntensity = .35); });
+  if (lightsReady) applyLights();
+  selEl.textContent = id ? 'Selected: ' + catalog.find(c => c.id === id).name + '. Drag it to move.' : 'Click a piece of furniture to select it';
 }
 function rotateSel() {
   if (!selected) return; const L = layout[selected], f = footprint(selected), cx = L.x + f.w/2, cy = L.y + f.h/2;
   L.rot = { W:'N', N:'E', E:'S', S:'W' }[L.rot];
-  const f2 = footprint(selected); L.x = Math.round(cx - f2.w/2); L.y = Math.round(cy - f2.h/2); place(selected); save();
+  const f2 = footprint(selected), c = nearestFit({ x:Math.round(cx - f2.w/2), y:Math.round(cy - f2.h/2), w:f2.w, h:f2.h });
+  if (c) { L.x = c.x; L.y = c.y; } else L.rot = { N:'W', E:'N', S:'E', W:'S' }[L.rot];   // no room to turn here: undo
+  place(selected); save();
 }
 
 // drag on the floor plane
 const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(), floorPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0), hit = new THREE.Vector3();
 let drag = null;
 function setPtr(ev) { const r = renderer.domElement.getBoundingClientRect(); ptr.set((ev.clientX - r.left)/r.width*2 - 1, -(ev.clientY - r.top)/r.height*2 + 1); ray.setFromCamera(ptr, camera); }
+// A piece only moves once it is selected: click it first (a click, not a drag), then drag it.
+// Pressing on an unselected piece orbits/pans as usual, so camera moves never shove furniture around.
+const pickAt = ev => { setPtr(ev); const h = ray.intersectObjects(furnG.children, true)[0]; if (!h) return null;
+  let o = h.object; while (!o.userData.id) o = o.parent; return o.userData.id; };
+let press = null;
 renderer.domElement.addEventListener('pointerdown', ev => {
-  if (ev.button !== 0) return; setPtr(ev);
-  const h = ray.intersectObjects(furnG.children, true)[0];
-  if (!h) return;
-  let o = h.object; while (!o.userData.id) o = o.parent;
-  select(o.userData.id);
-  ray.ray.intersectPlane(floorPlane, hit);
-  const L = layout[selected]; drag = { dx: hit.x - L.x, dz: hit.z - L.y, moved:false };
-  controls.enabled = false; renderer.domElement.setPointerCapture(ev.pointerId);
+  if (ev.button !== 0) return;
+  const id = pickAt(ev);
+  if (id && id === selected) {
+    ray.ray.intersectPlane(floorPlane, hit);
+    const L = layout[selected]; drag = { dx: hit.x - L.x, dz: hit.z - L.y };
+    controls.enabled = false; renderer.domElement.setPointerCapture(ev.pointerId);
+    renderer.domElement.style.cursor = 'grabbing';
+  } else press = { id, x: ev.clientX, y: ev.clientY };
 });
 renderer.domElement.addEventListener('pointermove', ev => {
-  if (!drag) return; setPtr(ev); if (!ray.ray.intersectPlane(floorPlane, hit)) return;
-  const L = layout[selected]; L.x = Math.round(hit.x - drag.dx); L.y = Math.round(hit.z - drag.dz); place(selected); drag.moved = true;
+  if (press && Math.hypot(ev.clientX - press.x, ev.clientY - press.y) > 5) press = null;   // it became an orbit/pan
+  if (!drag) { if (!ev.buttons) renderer.domElement.style.cursor = selected && pickAt(ev) === selected ? 'grab' : ''; return; }
+  setPtr(ev); if (!ray.ray.intersectPlane(floorPlane, hit)) return;
+  const L = layout[selected], f = footprint(selected);
+  moveTo(L, { x:Math.round(hit.x - drag.dx), y:Math.round(hit.z - drag.dz), w:f.w, h:f.h }); place(selected);
 });
-const endDrag = () => { if (!drag) return; drag = null; controls.enabled = true; save(); };
-renderer.domElement.addEventListener('pointerup', endDrag); renderer.domElement.addEventListener('pointercancel', endDrag);
+const endDrag = () => {
+  if (press) { select(press.id); press = null; }        // a plain click selects (or, on empty space, deselects)
+  if (!drag) return; drag = null; controls.enabled = true; renderer.domElement.style.cursor = 'grab'; save();
+};
+renderer.domElement.addEventListener('pointerup', endDrag); renderer.domElement.addEventListener('pointercancel', () => { press = null; endDrag(); });
 addEventListener('keydown', ev => { if ((ev.key === 'r' || ev.key === 'R') && !ev.metaKey && !ev.ctrlKey) rotateSel(); });
 document.getElementById('rot').onclick = rotateSel;
 document.getElementById('reset').onclick = () => { layout = JSON.parse(JSON.stringify(layoutDefault)); catalog.forEach(c => place(c.id)); save(); };
 addEventListener('storage', e => { if (e.key !== KEY) return; try { const s = JSON.parse(e.newValue); for (const k in layout) if (s[k]) layout[k] = s[k]; catalog.forEach(c => place(c.id)); } catch (er) {} });
+
+// ---------- light switches: one per room (fittings plus any desk / floor lamp standing in it) and global light (sun + sky) ----------
+const ROOMS = [...new Set(LIGHTS.map(L => L.room))];
+const lightState = { global:false, rooms:Object.fromEntries(ROOMS.map(r => [r, true])) };
+try { const v = JSON.parse(localStorage.getItem('flat3d-lights')); if (v) { lightState.global = !!v.global; Object.assign(lightState.rooms, v.rooms || {}); } } catch (e) {}
+// which room a point (cm) is in, using the same names as LIGHTS
+function roomAt(x, z) {
+  if (x >= bath2.x && x <= bath2.x + bath2.w && z >= bath2.y && z <= bath2.y + bath2.h) return 'Bath 2';
+  const r = rooms.find(r => x >= r.x && x <= r.x + r.w && z >= r.y && z <= r.y + r.h);
+  return !r ? null : r.name.startsWith('Living') ? 'Living' : r.name;
+}
+const roomBtns = {};
+for (const r of ROOMS) {
+  const b = document.createElement('button'); b.textContent = r; b.title = 'Switch ' + r + ' lights';
+  b.onclick = () => { lightState.rooms[r] = !lightState.rooms[r]; applyLights(); };
+  document.getElementById('roomlights').appendChild(b); roomBtns[r] = b;
+}
+const v3 = new THREE.Vector3(), dn = document.getElementById('daynight');   // day = sun + sky light on
+function applyLights() {
+  const { global, rooms: on } = lightState;
+  // night keeps a faint cool moonlight so the outside of the flat doesn't vanish into the dark grass
+  hemi.intensity = global ? HEMI_DAY : .22; sun.intensity = global ? SUN_DAY : 0;
+  hemi.color.setHex(global ? 0xffffff : 0x8ea6dc); hemi.groundColor.setHex(global ? HEMI_GROUND : 0x141a26);
+  const sk = global ? SKY.day : SKY.night;
+  ground.material = global ? groundLit : groundDark; skyU.top.value.setHex(sk.top); skyU.hor.value.setHex(sk.hor); scene.fog.color.setHex(sk.fog); stars.visible = !global;
+  dn.innerHTML = global ? '<span aria-hidden="true">&#9728;</span> Day' : '<span aria-hidden="true">&#9790;</span> Night'; dn.setAttribute('aria-pressed', !global);
+  roomLights.forEach((l, i) => { l.intensity = on[LIGHTS[i].room] ? l.userData.on : 0; });
+  for (const r in lampMat) lampMat[r].emissiveIntensity = on[r] ? 1.6 : .12;
+  for (const l of deskLights) {
+    l.getWorldPosition(v3); const lit = !!on[roomAt(v3.x, v3.z)];
+    l.intensity = lit ? l.userData.on : 0;
+    if (l.userData.glowMesh) l.userData.glowMesh.material.emissiveIntensity = lit ? l.userData.glowOn : .05;
+  }
+  for (const r of ROOMS) roomBtns[r].setAttribute('aria-pressed', !!on[r]);
+  try { localStorage.setItem('flat3d-lights', JSON.stringify(lightState)); } catch (e) {}
+  dirty();
+}
+dn.onclick = () => { lightState.global = !lightState.global; applyLights(); };
+document.querySelector('#lightmode [data-k=all]').onclick = () => { for (const r of ROOMS) lightState.rooms[r] = true; applyLights(); };
+document.querySelector('#lightmode [data-k=none]').onclick = () => { for (const r of ROOMS) lightState.rooms[r] = false; applyLights(); };
+lightsReady = true; furnG.updateMatrixWorld(true); applyLights();
 
 // ---------- views ----------
 const views = {
@@ -412,6 +1015,7 @@ goView(startView, true);
 
 function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h); labelR.setSize(w, h); camera.aspect = w/h; camera.updateProjectionMatrix(); }
 addEventListener('resize', resize); resize();
+roomMaskAll();
 renderer.setAnimationLoop(now => {
   if (anim) {
     const k = Math.min(1, (now - anim.t0) / 700), e = k < .5 ? 2*k*k : 1 - Math.pow(-2*k + 2, 2)/2;

@@ -89,6 +89,9 @@ ol.q b{font:500 12px var(--mono);color:var(--assumed);padding-top:1px}
 .win-ln{stroke:var(--ink);stroke-width:1}
 .rail{fill:var(--sheet);stroke:var(--ink);stroke-width:1.2}
 .fx{fill:var(--sheet);stroke:var(--ink);stroke-width:1.2}
+.lt{stroke:#d08a0c;stroke-width:4;stroke-linecap:round;fill:none}
+.lt-b{fill:#f4c04a;stroke:#d08a0c;stroke-width:1.4}
+.lt-g{fill:rgba(244,192,74,.16);stroke:none}
 .lintel{stroke:var(--muted);stroke-width:1.2;stroke-dasharray:6 4}
 .dim{stroke:var(--ink);stroke-width:1;fill:none}
 .dim.a{stroke:var(--assumed)}
@@ -160,6 +163,7 @@ ol.q b{font:500 12px var(--mono);color:var(--assumed);padding-top:1px}
         <span class="key"><span class="sw" style="background:var(--wall)"></span>Walls (thickness assumed)</span>
         <span class="key"><span class="sw" style="background:var(--ink);height:2px"></span>Measured dimension</span>
         <span class="key"><span class="sw" style="background:var(--assumed);height:2px"></span>&asymp; Assumed, please confirm</span>
+        <span class="key"><span class="sw" style="background:#f4c04a;border:1.5px solid #d08a0c;border-radius:50%"></span>Wall light (bar = 4 ft tube)</span>
         <span class="key"><span class="sw" style="background:var(--bedfill);border:1.5px solid var(--accent)"></span>Your furniture (drag to move)</span>
       </div>
     </section>
@@ -261,10 +265,37 @@ for (const [x, y, w, h] of windows) {
   el('rect', { class:'win', x, y, width:w, height:h }, gO);
   el('line', { class:'win-ln', x1:x, y1:y+h/2, x2:x+w, y2:y+h/2 }, gO);
 }
+// kitchen counter: L-shaped slab under the window and along Bedroom 2's wall, top at 70 cm (measured);
+// a concrete shelf runs above the side run, 126 cm over the counter (196 cm from the floor). Depth 55 assumed.
+const counter = { d:55, h:70, loft:196 };
+el('path', { class:'fx', d:`M486.2 0 H622.7 V264.6 H${622.7-counter.d} V${counter.d} H486.2 Z` }, gO);
+// sink set into the side run at its bottom end (on the right as you walk in); bowl ~40 x 50 assumed
+const sink = { x:575.2, y:205, w:40, h:50 };
+el('rect', { class:'fx', x:sink.x, y:sink.y, width:sink.w, height:sink.h, rx:6 }, gO);
+el('rect', { class:'fx', x:sink.x+4, y:sink.y+4, width:sink.w-12, height:sink.h-8, rx:5 }, gO);
+el('circle', { class:'fx', cx:sink.x+sink.w-4, cy:sink.y+sink.h/2, r:2.5 }, gO);
+el('line', { class:'lintel', x1:622.7-counter.d+4, y1:4, x2:622.7-counter.d+4, y2:260.6 }, gO);
+{ const t = el('text', { class:'dim-t', x:0, y:0, transform:`translate(${622.7-counter.d+15} 120) rotate(-90)`, style:'font-size:8px' }, gO);
+  t.textContent = 'counter 70 · shelf 196'; }
 // kitchen opening
 el('rect', { class:'opening', x:486.2, y:264.6, width:81.9, height:12.5 }, gO);
 el('line', { class:'lintel', x1:486.2, y1:264.6, x2:568.1, y2:264.6 }, gO);
 el('line', { class:'lintel', x1:486.2, y1:277.1, x2:568.1, y2:277.1 }, gO);
+// induction cooktop on the window run of the kitchen counter
+el('rect', { class:'fx', x:500, y:8.5, width:60, height:37, rx:2 }, gO);
+for (const [dx, r] of [[-14, 9], [14, 7.5]]) el('circle', { class:'fx', cx:530 + dx, cy:24, r }, gO);
+// bathroom fixtures. Bath 1: squat pan at the far end, shower on the left wall. Bath 2: commode at the
+// top end against the north wall, shower in the middle of the front (west) wall.
+el('rect', { class:'fx', x:389, y:14, width:46, height:64, rx:9 }, gO);
+el('ellipse', { class:'fx', cx:412, cy:50, rx:12.5, ry:21 }, gO);
+el('rect', { class:'fx', x:394, y:0, width:36, height:12 }, gO);
+el('rect', { class:'fx', x:696, y:0, width:38, height:17 }, gO);
+el('ellipse', { class:'fx', cx:715, cy:41, rx:17, ry:24 }, gO);
+for (const [x, y] of [[345.1, 175], [635.2, 100]]) {
+  el('circle', { class:'fx', cx:x + 14, cy:y, r:7 }, gO);
+  el('line', { class:'fx', x1:x, y1:y, x2:x + 7, y2:y }, gO);
+  el('circle', { class:'fx', cx:x + 20, cy:y + 1, r:12, style:'stroke-dasharray:3 3' }, gO);   // bucket
+}
 // wash basin in the living room's top-right corner (size assumed ~50 wide x 40 deep)
 // mounted on Bedroom 2's wall, facing left into the living room
 el('path', { class:'fx', d:`M${basin.x+basin.w} ${basin.y} H${basin.x+10} Q${basin.x} ${basin.y} ${basin.x} ${basin.y+10} V${basin.y+basin.h-10} Q${basin.x} ${basin.y+basin.h} ${basin.x+10} ${basin.y+basin.h} H${basin.x+basin.w} Z` }, gO);
@@ -368,6 +399,79 @@ function renderSchedule() {
   tb.appendChild(tr);
 }
 
+// ---------- lighting plan: wall fittings only (LED bulbs, 4 ft T8 tubes) plus desk lamps ----------
+// n = direction the fitting faces (into the room). Heights in cm from the floor.
+const LIGHTS = [
+  { t:'tube', x:332.6, y:213,   h:215, n:'W', sh:1, room:'Bedroom 1', why:'above the study table: lights its user from the front' },
+  { t:'bulb', x:210,   y:73.5,  h:215, n:'S', sh:1, room:'Bedroom 1', why:'between window and balcony door, in front of the 3′ desk user' },
+  { t:'bulb', x:207,   y:371.1, h:205, n:'N', sh:1, room:'Bedroom 1', why:'above the standing mirror: lights your face, doubles as bedside light' },
+  { t:'tube', x:635.2, y:300,   h:215, n:'E', sh:1, room:'Bedroom 2', why:'general, facing the bed' },
+  { t:'bulb', x:815,   y:482.6, h:205, n:'N', sh:1, room:'Bedroom 2', why:'beside the cupboard mirror, lights your face' },
+  { t:'bulb', x:776.3, y:100,   h:215, n:'E', sh:1, room:'Bedroom 2', why:'window corner beside Bath 2' },
+  { t:'tube', x:345.1, y:435,   h:215, n:'E', sh:1, room:'Living',    why:'upper half of the living room' },
+  { t:'tube', x:683.7, y:640,   h:215, n:'W', sh:1, room:'Living',    why:'dining half, above the fridge side' },
+  { t:'bulb', x:622.7, y:302,   h:195, n:'W',       room:'Living',    why:'above the wash basin' },
+  { t:'tube', x:486.2, y:150,   h:215, n:'E', sh:1, room:'Kitchen',   why:'general, facing the counter so you do not shade your work' },
+  { t:'tube', x:622.7, y:132,   h:185, n:'W',       room:'Kitchen',   why:'under the shelf, over the counter and sink' },
+  { t:'bulb', x:345.1, y:132,   h:210, n:'E',       room:'Bath 1',    why:'' },
+  { t:'bulb', x:635.2, y:100,   h:210, n:'E',       room:'Bath 2',    why:'' },
+  { t:'bulb', x:210,   y:61,    h:210, n:'N',       room:'Balcony',   why:'' },
+];
+const NRM = { N:[0,-1], S:[0,1], E:[1,0], W:[-1,0] };
+const TUBE = 120;   // 4 ft T8
+
+
+// wall lights: a glow wedge into the room, then a bar (tube) or a dot (bulb) on the wall face
+{ const gLt = el('g', { 'pointer-events':'none', opacity:.9 }); $('g-furn').after(gLt);   // above furniture so fittings behind desks stay visible
+  for (const L of LIGHTS) {
+    const [nx, ny] = NRM[L.n], ax = ny !== 0, half = L.t === 'tube' ? TUBE/2 : 4, reach = L.t === 'tube' ? 60 : 45;
+    const a = ax ? [L.x - half, L.y] : [L.x, L.y - half], b = ax ? [L.x + half, L.y] : [L.x, L.y + half];
+    const fan = (ax ? [[L.x - half - 25, L.y + ny*reach], [L.x + half + 25, L.y + ny*reach]] : [[L.x + nx*reach, L.y - half - 25], [L.x + nx*reach, L.y + half + 25]]);
+    el('path', { class:'lt-g', d:`M${a[0]} ${a[1]} L${fan[0][0]} ${fan[0][1]} L${fan[1][0]} ${fan[1][1]} L${b[0]} ${b[1]} Z` }, gLt);
+    if (L.t === 'tube') el('line', { class:'lt', x1:a[0] + nx*3, y1:a[1] + ny*3, x2:b[0] + nx*3, y2:b[1] + ny*3 }, gLt);
+    else el('circle', { class:'lt-b', cx:L.x + nx*5, cy:L.y + ny*5, r:5 }, gLt);
+  }
+}
+
+// ---------- wall collision ----------
+// Free floor = the rooms plus door openings, minus the basin and the kitchen counter. Blocked cells (1 cm)
+// go into a summed-area table, so "does this footprint touch a wall?" is a constant-time lookup.
+const fits = (() => {
+  const X0 = -40, Y0 = -40, NX = 1000, NY = 860, g = new Uint8Array(NX * NY).fill(1);
+  const cells = (x, y, w, h) => [Math.max(0, Math.floor(x - X0 + .3)), Math.min(NX, Math.ceil(x + w - X0 - .3)),
+                                 Math.max(0, Math.floor(y - Y0 + .3)), Math.min(NY, Math.ceil(y + h - Y0 - .3))];
+  const fill = (r, v) => { const [i0, i1, j0, j1] = cells(...r); for (let j = j0; j < j1; j++) g.fill(v, j*NX + i0, j*NX + i1); };
+  for (const r of rooms) fill([r.x, r.y, r.w, r.h], 0);
+  fill([bath2Block.x, bath2Block.y, bath2Block.w, bath2Block.h], 1); fill([bath2.x, bath2.y, bath2.w, bath2.h], 0);
+  for (const d of doors) fill(d.o, 0);
+  fill([486.2, 264.6, 81.9, 12.5], 0);                                             // kitchen opening
+  fill([basin.x, basin.y, basin.w, basin.h], 1);
+  fill([486.2, 0, 136.5, counter.d], 1); fill([622.7 - counter.d, 0, counter.d, 264.6], 1);   // kitchen counter
+  const W1 = NX + 1, S = new Int32Array(W1 * (NY + 1));
+  for (let j = 0; j < NY; j++) { let row = 0; for (let i = 0; i < NX; i++) { row += g[j*NX + i]; S[(j+1)*W1 + i+1] = S[j*W1 + i+1] + row; } }
+  return b => {
+    if (b.x < X0 || b.y < Y0 || b.x + b.w > X0 + NX || b.y + b.h > Y0 + NY) return false;
+    const [i0, i1, j0, j1] = cells(b.x, b.y, b.w, b.h);
+    return S[j1*W1 + i1] - S[j0*W1 + i1] - S[j1*W1 + i0] + S[j0*W1 + i0] === 0;
+  };
+})();
+// closest wall-free spot for footprint b within `reach` cm (square rings outward), or null
+function nearestFit(b, reach = 80) {
+  if (fits(b)) return b;
+  const at = (dx, dy) => { const c = { ...b, x: b.x + dx, y: b.y + dy }; return fits(c) ? c : null; };
+  for (let r = 1; r <= reach; r++) {                       // walk only the ring's perimeter
+    for (let d = -r; d <= r; d++) { const c = at(d, -r) || at(d, r); if (c) return c; }
+    for (let d = 1 - r; d < r; d++) { const c = at(-r, d) || at(r, d); if (c) return c; }
+  }
+  return null;
+}
+// apply a dragged position without entering walls: the piece goes to the free spot nearest the cursor,
+// so it hugs walls inside a room and hops into the next room once the cursor is over there
+function moveTo(L, c) {
+  const n = nearestFit(c, 120);
+  if (n) { L.x = n.x; L.y = n.y; }
+}
+
 // ---------- furniture ----------
 // Each piece is drawn facing "N" (its back to the top) at width w x depth d, then rotated.
 // rot = which side its back faces: bed headboard, desk back edge, chair backrest.
@@ -378,6 +482,11 @@ const catalog = [
   { id:'exec',   kind:'exec',  name:'Executive chair', w:66,     d:66 },
   { id:'desk4',  kind:'desk',  name:'4′ × 2′ desk', w:4*FT, d:2*FT },
   { id:'chair',  kind:'chair', name:'Chair',           w:46,     d:50 },
+  { id:'mirror', kind:'mirror', name:'Standing mirror', w:55,     d:40 },
+  { id:'lamp',   kind:'lamp',  name:'Floor lamp',      w:50,     d:50 },
+  { id:'fridge', kind:'fridge', name:'Fridge',         w:60,     d:65 },
+  { id:'bed2',   kind:'bed',   name:'Bed (4′ × 6.5′)', w:4*FT, d:6.5*FT },
+  { id:'cupboard', kind:'cupboard', name:'Cupboard', w:45, d:50 },
 ];
 const layoutDefault = {
   // everything in Bedroom 1, arranged by the user: bed headboard on the bottom wall,
@@ -387,13 +496,25 @@ const layoutDefault = {
   exec:  { x:181.6, y:138,   rot:'S' },
   desk4: { x:271.6, y:152.6, rot:'E' },
   chair: { x:214,   y:216,   rot:'W' },
+  // arched floor mirror on the bottom wall, between the bed and the door swing
+  mirror:{ x:180,   y:331.1, rot:'S' },
+  // tripod floor lamp in Bedroom 1's top-left corner (balcony wall / outer wall)
+  lamp:  { x:0,     y:73.5,  rot:'N' },
+  // fridge in the living room's corner below Bedroom 2's jut, back to the right wall, facing left (west)
+  fridge:{ x:618.7, y:495.1, rot:'E' },
+  // Bedroom 2: bed headboard on the right (outer) wall, single-door cupboard in the bottom-right corner
+  bed2:  { x:717.6, y:240,   rot:'E' },
+  cupboard:{ x:870.8, y:432.6, rot:'S' },
 };
 const KEY = 'flat-furn-v2';
 let layout = JSON.parse(JSON.stringify(layoutDefault));
-try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) for (const k in layout) if (s[k] && typeof s[k].x === 'number' && 'NESW'.includes(s[k].rot)) layout[k] = s[k]; } catch (e) {}
+try { const s = JSON.parse(localStorage.getItem(KEY));
+  // drop a saved fridge still at its old default (facing down) so the new left-facing default applies
+  if (s && s.fridge && s.fridge.rot === 'N' && s.fridge.x === 623.2 && s.fridge.y === 495.1) delete s.fridge;
+  if (s) for (const k in layout) if (s[k] && typeof s[k].x === 'number' && 'NESW'.includes(s[k].rot)) layout[k] = s[k]; } catch (e) {}
 let selected = 'bed';
 
-const floorRooms = [rooms[1], rooms[5], rooms[4], rooms[6], rooms[3], rooms[0]];
+const floorRooms = [rooms[1], bath2, rooms[5], rooms[4], rooms[6], rooms[3], rooms[0], rooms[2]];
 const gFurn = $('g-furn'), gCl = $('g-cl');
 const ANG = { N:0, E:90, S:180, W:270 };
 const rotPt = (rot, x, y) => ({ N:[x, y], E:[-y, x], S:[-x, -y], W:[y, -x] }[rot]);
@@ -450,9 +571,9 @@ function drawPiece(c) {
   let label = null, lp = [0, 0];
   if (c.kind === 'bed') {
     el('rect', { class:'fu-body', x:X, y:Y, width:W, height:D, rx:5 }, p);
-    const H = 7, pw = 70, pd = 42, gap = (W - 2*pw) / 3;
+    const n = W < 150 ? 1 : 2, H = 7, pw = n === 1 ? 80 : 70, pd = 42, gap = (W - n*pw) / (n + 1);
     el('rect', { class:'fu-solid', x:X, y:Y, width:W, height:H, rx:2 }, p);
-    for (let i = 0; i < 2; i++) el('rect', { class:'fu-pillow', x:X + gap + i*(pw+gap), y:Y+H+6, width:pw, height:pd, rx:8 }, p);
+    for (let i = 0; i < n; i++) el('rect', { class:'fu-pillow', x:X + gap + i*(pw+gap), y:Y+H+6, width:pw, height:pd, rx:8 }, p);
     const f = H + pd + 26;
     el('line', { class:'fu-fold', x1:X, y1:Y+f, x2:X+W, y2:Y+f }, p);
     label = fmt(c.w) + ' × ' + fmt(c.d); lp = [0, f/2];
@@ -460,6 +581,25 @@ function drawPiece(c) {
     el('rect', { class:'fu-body', x:X, y:Y, width:W, height:D, rx:2 }, p);
     el('line', { class:'fu-fold', x1:X+4, y1:Y+6, x2:X+W-4, y2:Y+6 }, p);
     label = fmt(c.w) + ' × ' + fmt(c.d);
+  } else if (c.kind === 'cupboard') {
+    el('rect', { class:'fu-body', x:X, y:Y, width:W, height:D, rx:2 }, p);
+    el('rect', { class:'fu-solid', x:X, y:Y+D-3, width:W, height:3, rx:1 }, p);
+  } else if (c.kind === 'fridge') {
+    el('rect', { class:'fu-body', x:X, y:Y, width:W, height:D, rx:2 }, p);
+    el('rect', { class:'fu-solid', x:X, y:Y+D-4, width:W, height:4, rx:1 }, p);
+    label = 'Fridge';
+  } else if (c.kind === 'lamp') {
+    // seen from above: round shade, three tripod feet
+    el('circle', { class:'fu-body', cx:0, cy:0, r:W/2 - 3 }, p);
+    el('circle', { class:'fu-fold', cx:0, cy:0, r:W/2 - 10 }, p);
+    el('circle', { class:'fu-solid', cx:0, cy:0, r:3 }, p);
+    for (let i = 0; i < 3; i++) { const a = i * 2 * Math.PI / 3 - Math.PI / 2;
+      el('circle', { class:'fu-solid', cx:Math.cos(a) * (W/2 - 2), cy:Math.sin(a) * (W/2 - 2), r:2.5 }, p); }
+  } else if (c.kind === 'mirror') {
+    // seen from above: easel stand behind, mirror plate leaning back from its base at the front
+    el('rect', { class:'fu-body', x:X+W/2-10, y:Y, width:20, height:D-10, rx:2 }, p);
+    el('path', { class:'fu-body', d:`M${X} ${Y+D-4} L${X+3} ${Y+12} H${X+W-3} L${X+W} ${Y+D-4} Z` }, p);
+    el('rect', { class:'fu-solid', x:X, y:Y+D-5, width:W, height:5, rx:2 }, p);
   } else {
     const exec = c.kind === 'exec', back = exec ? 14 : 9, arm = exec ? 7 : 0;
     el('rect', { class:'fu-body', x:X+arm+2, y:Y+back-2, width:W-2*arm-4, height:D-back-2, rx:8 }, p);
@@ -473,7 +613,7 @@ function drawPiece(c) {
 
 function statusOf(id) {
   const c = catalog.find(c => c.id === id), b = box(id), r = roomOf(b);
-  const ok = r && inside(b, r) && !obstaclesFor(r).some(o => overlap(b, o));
+  const ok = r && fits(b);   // same wall test the dragging uses (rooms, doorways, minus basin and counter)
   if (!ok) return { state:'bad', title:'Hits a wall', msg:`Part of the ${c.name.toLowerCase()} is outside the room. Drag it back inside.` };
   const bumps = furnitureObstacles(id).filter(o => overlap(b, box(o.id))).map(o => o.name.toLowerCase());
   if (bumps.length) return { state:'warn', title:'Overlaps furniture', msg:'Sits on top of the ' + bumps.join(' and ') + '.', r };
@@ -533,7 +673,7 @@ gFurn.addEventListener('pointerdown', ev => {
 gFurn.addEventListener('pointermove', ev => {
   if (!drag) return; const p = toSvg(ev), b = box(selected);
   const s = snap({ x:Math.round(p.x - drag.dx), y:Math.round(p.y - drag.dy), w:b.w, h:b.h });
-  layout[selected].x = s.x; layout[selected].y = s.y; renderFurniture();
+  moveTo(layout[selected], s); renderFurniture();
 });
 const end = () => { if (!drag) return; drag = null; gFurn.classList.remove('drag'); const g = gFurn.querySelector('.sel'); if (g) g.focus({ preventScroll:true }); };
 gFurn.addEventListener('pointerup', end); gFurn.addEventListener('pointercancel', end);
@@ -541,13 +681,14 @@ gFurn.addEventListener('pointerup', end); gFurn.addEventListener('pointercancel'
 function rotate() {
   const b = box(selected), cx = b.x + b.w/2, cy = b.y + b.h/2, L = layout[selected];
   L.rot = { W:'N', N:'E', E:'S', S:'W' }[L.rot];
-  const b2 = box(selected), s = snap({ x:Math.round(cx - b2.w/2), y:Math.round(cy - b2.h/2), w:b2.w, h:b2.h });
-  L.x = s.x; L.y = s.y; renderFurniture();
+  const b2 = box(selected), s = nearestFit(snap({ x:Math.round(cx - b2.w/2), y:Math.round(cy - b2.h/2), w:b2.w, h:b2.h }));
+  if (s) { L.x = s.x; L.y = s.y; } else L.rot = { N:'W', E:'N', S:'E', W:'S' }[L.rot];   // no room to turn here: undo
+  renderFurniture();
 }
 gFurn.addEventListener('keydown', ev => {
   const g = ev.target.closest('.furn'); if (!g) return; selected = g.dataset.id;
   const st = ev.shiftKey ? 1 : 5, m = { ArrowLeft:[-st,0], ArrowRight:[st,0], ArrowUp:[0,-st], ArrowDown:[0,st] }[ev.key];
-  if (m) { const L = layout[selected]; L.x = r1(L.x + m[0]); L.y = r1(L.y + m[1]); }
+  if (m) { const L = layout[selected], b = box(selected), c = { ...b, x:r1(L.x + m[0]), y:r1(L.y + m[1]) }; if (fits(c)) { L.x = c.x; L.y = c.y; } }
   else if (ev.key === 'r' || ev.key === 'R') rotate();
   else return;
   ev.preventDefault(); renderFurniture(); const f = gFurn.querySelector('.sel'); if (f) f.focus({ preventScroll:true });
