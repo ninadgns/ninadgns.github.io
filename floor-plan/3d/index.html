@@ -18,6 +18,7 @@
 @media (prefers-color-scheme: dark){:root{
   --paper:#0f1412; --sheet:#151b18; --ink:#e3e9e5; --muted:#93a19a; --rule:#2a332f; --accent:#8ea4ff; color-scheme:dark}}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{height:100%;margin:0}
 body{background:var(--paper);color:var(--ink);font:14px/1.45 var(--display);overflow:hidden}
 #stage{position:fixed;inset:0}
@@ -33,13 +34,20 @@ button{font:500 12.5px var(--display);border:1px solid var(--rule);background:va
 button:hover{border-color:var(--accent);color:var(--accent)}
 button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--sheet)}
 button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.head button{flex:none}
+.body{display:flex;flex-direction:column;gap:10px}
+.card.min{width:auto;padding:8px 8px 8px 12px}
+.card.min .head{align-items:center}
+.card.min .eyebrow{display:none}
+.card.min h1{font-size:15px;margin:0}
 .sel{font:500 12px var(--mono);color:var(--accent);min-height:1.4em}
 .hint{font-size:12px;color:var(--muted);margin:0}
 a{color:var(--accent)}
 details summary{cursor:pointer;font-size:12.5px;color:var(--muted)}
 .tag{font:600 12px var(--display);color:#1c2420;background:rgba(255,255,255,.86);border-radius:4px;padding:2px 6px;white-space:nowrap;pointer-events:none}
 .tag small{display:block;font:500 10px var(--mono);color:#5d6a64;text-align:center}
-@media (max-width:520px){.card{padding:12px}.hint.long{display:none}}
+@media (max-width:520px){.card{padding:12px}}
 </style>
 <script type="importmap">
 { "imports": {
@@ -51,11 +59,15 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--muted)}
 <body>
 <div id="stage"></div>
 
-<div class="card">
-  <div>
-    <div class="eyebrow">New flat &middot; 3D model</div>
-    <h1>New Flat 3D</h1>
+<div class="card" id="card">
+  <div class="head">
+    <div>
+      <div class="eyebrow">New flat &middot; 3D model</div>
+      <h1>New Flat 3D</h1>
+    </div>
+    <button id="toggle" aria-expanded="true" aria-controls="card-body">Hide</button>
   </div>
+  <div class="body" id="card-body">
   <div>
     <div class="lbl">View</div>
     <div class="row" id="views">
@@ -75,8 +87,22 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--muted)}
   <div class="sel" id="sel">Click a piece of furniture to select it</div>
   <div class="row"><button id="rot">Rotate selected</button><button id="reset">Reset layout</button></div>
   <p class="hint long">Drag to orbit, scroll or pinch to zoom, right-drag to pan. Drag furniture to move it; R rotates. Layout is shared with the <a href="../">2D plan</a> in this browser.</p>
+  </div>
 </div>
 
+<script>
+// collapsible control card: starts collapsed on phones, remembers the choice
+(() => {
+  const card = document.getElementById('card'), body = document.getElementById('card-body'), btn = document.getElementById('toggle');
+  let pref = null; try { pref = localStorage.getItem('flat3d-card'); } catch (e) {}
+  const set = open => {
+    body.hidden = !open; card.classList.toggle('min', !open);
+    btn.textContent = open ? 'Hide' : 'Show controls'; btn.setAttribute('aria-expanded', open);
+  };
+  set(pref ? pref === 'open' : innerWidth > 520);
+  btn.onclick = () => { const open = body.hidden; set(open); try { localStorage.setItem('flat3d-card', open ? 'open' : 'closed'); } catch (e) {} };
+})();
+</script>
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -339,6 +365,8 @@ function goView(name, instant) {
   const v = views[name];
   for (const b of document.querySelectorAll('#views button')) b.setAttribute('aria-pressed', b.dataset.v === name);
   const from = { p:camera.position.clone(), t:controls.target.clone() }, to = { p:new THREE.Vector3(...v.pos), t:new THREE.Vector3(...v.target) };
+  // portrait screens: back the camera off so the whole flat fits across the narrow width
+  if (name === 'overview' || name === 'top') { const k = Math.min(2.6, Math.max(1, 1.25 / (innerWidth / innerHeight))); to.p.sub(to.t).multiplyScalar(k).add(to.t); }
   if (instant || matchMedia('(prefers-reduced-motion: reduce)').matches) { camera.position.copy(to.p); controls.target.copy(to.t); return; }
   anim = { from, to, t0:performance.now() };
 }
