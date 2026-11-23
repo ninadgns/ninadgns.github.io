@@ -28,7 +28,20 @@ body{background:var(--paper);color:var(--ink);font:14px/1.45 var(--display);over
   box-shadow:0 6px 24px rgba(0,0,0,.12);cursor:pointer}
 .daynight span{font-size:15px;margin-right:4px}
 /* floating rotate button: shown under Day/Night only while a piece is selected, so phones don't need the control card */
-.daynight.rot{top:calc(max(16px,env(safe-area-inset-top,0px)) + 50px);background:var(--accent);border-color:var(--accent);color:#fff}
+.daynight.rot{top:calc(max(16px,env(safe-area-inset-top,0px)) + 100px);background:var(--accent);border-color:var(--accent);color:#fff}
+.daynight.walkbtn{top:calc(max(16px,env(safe-area-inset-top,0px)) + 50px)}
+/* walk-through mode: bottom bar with the room you're in, centre dot, touch joystick */
+.walkbar{position:fixed;left:50%;transform:translateX(-50%);bottom:max(16px,env(safe-area-inset-bottom,0px));z-index:2;
+  width:min(620px,calc(100vw - 32px));background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:10px 12px;
+  display:flex;align-items:center;gap:10px;box-shadow:0 6px 24px rgba(0,0,0,.14)}
+.walkbar .grow{flex:1;min-width:0}
+.walkbar .where{font:700 16px/1.2 var(--display)}
+.walkbar .hint{font-size:11.5px;line-height:1.35}
+.walkbar button{flex:none}
+.cross{position:fixed;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:rgba(255,255,255,.85);
+  box-shadow:0 0 0 1px rgba(0,0,0,.35);pointer-events:none;z-index:1}
+.joy{position:fixed;width:110px;height:110px;margin:-55px;border-radius:50%;border:2px solid rgba(255,255,255,.7);background:rgba(0,0,0,.15);pointer-events:none;z-index:1}
+.joy i{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px;border-radius:50%;background:rgba(255,255,255,.85)}
 .card{position:fixed;top:max(16px,env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));
   width:min(300px,calc(100vw - 32px));background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:14px 16px;
   display:flex;flex-direction:column;gap:10px;box-shadow:0 6px 24px rgba(0,0,0,.08)}
@@ -67,6 +80,17 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--muted)}
 
 <button id="rotfloat" class="daynight rot" hidden title="Rotate the selected piece 90 degrees"><span aria-hidden="true">&#8635;</span> Rotate</button>
 <button id="daynight" class="daynight" aria-pressed="false" title="Switch between day and night"><span aria-hidden="true">&#9790;</span> Night</button>
+<button id="walkfloat" class="daynight walkbtn" title="Walk through the flat in first person"><span aria-hidden="true">&#128694;</span> Walk in</button>
+<div class="walkbar" id="walkbar" hidden>
+  <div class="grow">
+    <div class="where" id="where">Outside</div>
+    <p class="hint" id="walkhint"></p>
+  </div>
+  <button id="walklight" title="Switch this room's lights (L)">Light</button>
+  <button id="walkexit" title="Leave walk mode (Esc)">Exit</button>
+</div>
+<div class="cross" id="cross" hidden></div>
+<div class="joy" id="joy" hidden><i></i></div>
 <div class="card" id="card">
   <div class="head">
     <div>
@@ -83,6 +107,7 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--muted)}
       <button data-v="top">Top</button>
       <button data-v="bed1">Bedroom 1</button>
       <button data-v="living">Living room</button>
+      <button id="walkcard">Walk in</button>
     </div>
   </div>
   <div>
@@ -147,7 +172,10 @@ const doors = [
   { o:[768.8,115,7.5,65],    h:[768.8,180],   p:[703.8,180] },
   { o:[352,759.7,94,25],     h:[352,759.7],   p:[352,665.7] },
 ];
-const windows = [ [50,61,120,12.5], [505,-25,100,25], [800,-25,90,25] ];
+const windows = [ [50,61,120,12.5], [505,-25,100,25], [776.3,-25,80,25] ];   // Bedroom 2's window starts flush with Bath 2's wall
+// structural column in Bedroom 2's top-right corner: on the top (outer) wall, set off the right wall.
+// 1 ft wide (user's estimate); depth and gap to the right wall are assumed.
+const column = { x:915.8 - 20 - 30.5, y:0, w:30.5, h:25 };
 const kitchenOpening = [486.2,264.6,81.9,12.5];
 // kitchen counter (top 70 cm, measured) under the window and along Bedroom 2's wall,
 // concrete shelf over the side run 126 cm above the counter (196 from the floor); 55 cm depth assumed
@@ -202,15 +230,18 @@ const layoutDefault = {
   lamp:  { x:0,     y:73.5,  rot:'N' },
   // fridge in the living room's corner below Bedroom 2's jut, back to the right wall, facing left (west)
   fridge:{ x:618.7, y:495.1, rot:'E' },
-  // Bedroom 2: bed headboard on the right (outer) wall, single-door cupboard in the bottom-right corner
+  // Bedroom 2: bed headboard on the right (outer) wall, single-door cupboard in the bottom-right corner,
+  // back to the right wall so its mirror faces west, toward the door
   bed2:  { x:717.6, y:240,   rot:'E' },
-  cupboard:{ x:870.8, y:432.6, rot:'S' },
+  cupboard:{ x:865.8, y:437.6, rot:'E' },
 };
 const KEY = 'flat-furn-v2';
 let layout = JSON.parse(JSON.stringify(layoutDefault));
 try { const s = JSON.parse(localStorage.getItem(KEY));
   // drop a saved fridge still at its old default (facing down) so the new left-facing default applies
   if (s && s.fridge && s.fridge.rot === 'N' && s.fridge.x === 623.2 && s.fridge.y === 495.1) delete s.fridge;
+  // same for the cupboard at its old default (mirror facing up, away from the door)
+  if (s && s.cupboard && s.cupboard.rot === 'S' && s.cupboard.x === 870.8 && s.cupboard.y === 432.6) delete s.cupboard;
   if (s) for (const k in layout) if (s[k] && typeof s[k].x === 'number' && 'NESW'.includes(s[k].rot)) layout[k] = s[k]; } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(layout)); } catch (e) {} };
 
@@ -393,6 +424,7 @@ fill([bath2.x, bath2.y, bath2.w, bath2.h], 0);
 for (const d of doors) fill(d.o, 0);
 for (const w of windows) fill(w, 0);
 fill(kitchenOpening, 0); fill(railing, 0);
+fill([column.x, column.y, column.w, column.h], 1);
 const wallRects = [];
 { let open = new Map();
   for (let j = 0; j <= NY; j++) {
@@ -582,6 +614,7 @@ const fits = (() => {
   for (const d of doors) fill(d.o, 0);
   fill([486.2, 264.6, 81.9, 12.5], 0);                                             // kitchen opening
   fill([basin.x, basin.y, basin.w, basin.h], 1);
+  fill([column.x, column.y, column.w, column.h], 1);                               // Bedroom 2 column
   fill([486.2, 0, 136.5, counter.d], 1); fill([622.7 - counter.d, 0, counter.d, 264.6], 1);   // kitchen counter
   const W1 = NX + 1, S = new Int32Array(W1 * (NY + 1));
   for (let j = 0; j < NY; j++) { let row = 0; for (let i = 0; i < NX; i++) { row += g[j*NX + i]; S[(j+1)*W1 + i+1] = S[j*W1 + i+1] + row; } }
@@ -706,11 +739,11 @@ function piece(c) {
     const n = W < 150 ? 1 : 2, pw = n === 1 ? 66 : W/2 - 16;
     for (let i = 0; i < n; i++) add(n === 1 ? X + W/2 - pw/2 : X + 10 + i*(pw + 12), Z + 9, pw, 38, 49, 58, FM.pillow);
   } else if (c.kind === 'shelfdesk') {
-    // walnut study table with white accents, shelf tower on the user's left (mirror image of the reference photo)
+    // study table in the same light wood as the 3' desk, white accents and darker drawer fronts, shelf tower on the user's left (mirror image of the reference photo)
     // built facing N: user sits at +z looking toward -z, so their left is -x. The tower is 1 ft deep; its
     // table-side front corners are rounded, and the desktop's left front corner sweeps from the tower's
     // front (at the tower's middle divider) out to the full desk depth in a quarter circle.
-    const S = 50, TD = 30.5, TH = 160, t = 1.8, mid = X + S/2, wal = FM.walnut, wh = FM.white, RS = 8, RD = D - TD;
+    const S = 50, TD = 30.5, TH = 160, t = 1.8, mid = X + S/2, wal = FM.deskTop, wh = FM.white, RS = 8, RD = D - TD;
     // horizontal plate from an outline given in (x, z), extruded from y0 to y1
     const plate = (pts, y0, y1, m) => {
       const sh = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
@@ -724,7 +757,7 @@ function piece(c) {
     add(X + 1, Z + 2, S - 2, TD - 4, 0, 7, wh);
     add(X, Z, S, TD - 1.2, 7, 50, wal);
     for (const [y0, y1] of [[8, 28], [29.5, 49]]) {
-      add(X + .5, Z + TD - 1.2, S - 1, 1.2, y0, y1, wal);
+      add(X + .5, Z + TD - 1.2, S - 1, 1.2, y0, y1, FM.deskEdge);   // drawer fronts: darker accent
       add(X + S/2 - 6, Z + TD, 12, 1.6, y1 - 6, y1 - 4.5, FM.metal);   // silver bar handle
     }
     // tower: outer side full height, walnut top; no board on the desk side, so the inner shelves open onto the table
@@ -922,7 +955,7 @@ const pickAt = ev => { setPtr(ev); const h = ray.intersectObjects(furnG.children
   let o = h.object; while (!o.userData.id) o = o.parent; return o.userData.id; };
 let press = null;
 renderer.domElement.addEventListener('pointerdown', ev => {
-  if (ev.button !== 0) return;
+  if (ev.button !== 0 || walk.on) return;
   const id = pickAt(ev);
   if (id && id === selected) {
     ray.ray.intersectPlane(floorPlane, hit);
@@ -932,6 +965,7 @@ renderer.domElement.addEventListener('pointerdown', ev => {
   } else press = { id, x: ev.clientX, y: ev.clientY };
 });
 renderer.domElement.addEventListener('pointermove', ev => {
+  if (walk.on) return;
   if (press && Math.hypot(ev.clientX - press.x, ev.clientY - press.y) > 5) press = null;   // it became an orbit/pan
   if (!drag) { if (!ev.buttons) renderer.domElement.style.cursor = selected && pickAt(ev) === selected ? 'grab' : ''; return; }
   setPtr(ev); if (!ray.ray.intersectPlane(floorPlane, hit)) return;
@@ -943,7 +977,7 @@ const endDrag = () => {
   if (!drag) return; drag = null; controls.enabled = true; renderer.domElement.style.cursor = 'grab'; save();
 };
 renderer.domElement.addEventListener('pointerup', endDrag); renderer.domElement.addEventListener('pointercancel', () => { press = null; endDrag(); });
-addEventListener('keydown', ev => { if ((ev.key === 'r' || ev.key === 'R') && !ev.metaKey && !ev.ctrlKey) rotateSel(); });
+addEventListener('keydown', ev => { if (walk.on) return; if ((ev.key === 'r' || ev.key === 'R') && !ev.metaKey && !ev.ctrlKey) rotateSel(); });
 document.getElementById('rot').onclick = rotateSel;
 document.getElementById('rotfloat').onclick = rotateSel;
 document.getElementById('reset').onclick = () => { layout = JSON.parse(JSON.stringify(layoutDefault)); catalog.forEach(c => place(c.id)); save(); };
@@ -1018,16 +1052,152 @@ const startView = opts.find(o => views[o]) || 'overview';
 if (opts.includes('full')) document.querySelector('#walls button[data-h="300"]').click();
 goView(startView, true);
 
+// ---------- walk-through: first person at eye height, starting outside the front door ----------
+const EYE = 158, PR = 14, FURN_INSET = 4;   // eye height, half body width, furniture footprints shrunk a little (cm)
+const START = { x:399, z:920, yaw:0, pitch:-.04 };   // on the path outside the entry, facing the door (north)
+const walk = { on:false, x:0, z:0, yaw:0, pitch:0, keys:new Set(), joy:null, look:null, prevWall:null, prevFov:40, bob:0, room:'' };
+const coarse = matchMedia('(pointer: coarse)').matches;
+const cvs = renderer.domElement;
+const $ = id => document.getElementById(id);
+// ceiling: one slab over each room and its walls, only while walking (it also keeps the sun off the floors indoors)
+const ceilG = new THREE.Group(); ceilG.visible = false; scene.add(ceilG);
+{ const cm = mat(0xf7f5f0); roomMask(cm);
+  for (const r of rooms) { const [t, rr, b, l] = r.walls; box(r.x - l, r.y - t, r.w + l + rr, r.h + t + b, 300, 308, cm, ceilG); } }
+// outer bounding box of the flat: outside it everything is open ground; inside it the furniture-collision grid decides
+const FLAT = { x0:-25, z0:-25, x1:940.8, z1:784.7 };
+function walkable(x, z) {
+  if (Math.hypot(x - CX, z - CZ) > 1500) return false;                     // don't wander off into the fields
+  const bx0 = x - PR, bz0 = z - PR, bx1 = x + PR, bz1 = z + PR;
+  const ix0 = Math.max(bx0, FLAT.x0), iz0 = Math.max(bz0, FLAT.z0), ix1 = Math.min(bx1, FLAT.x1), iz1 = Math.min(bz1, FLAT.z1);
+  if (ix1 > ix0 && iz1 > iz0 && !fits({ x:ix0, y:iz0, w:ix1 - ix0, h:iz1 - iz0 })) return false;   // walls, counter, basin, column
+  for (const c of catalog) {
+    const L = layout[c.id], f = footprint(c.id), i = FURN_INSET;
+    if (bx0 < L.x + f.w - i && bx1 > L.x + i && bz0 < L.y + f.h - i && bz1 > L.y + i) return false;
+  }
+  return true;
+}
+const ROOM_LABEL = { Living:'Living / Dining' };
+function updateWhere() {
+  const r = roomAt(walk.x, walk.z), inside = walk.x > FLAT.x0 && walk.x < FLAT.x1 && walk.z > FLAT.z0 && walk.z < FLAT.z1;
+  const name = r || (inside ? walk.room : '') || 'Outside';
+  if (name === walk.room) return; walk.room = name;
+  $('where').textContent = ROOM_LABEL[name] || name;
+  $('walklight').disabled = !ROOMS.includes(name);
+}
+function toggleHereLight() { if (!ROOMS.includes(walk.room)) return; lightState.rooms[walk.room] = !lightState.rooms[walk.room]; applyLights(); }
+$('walkhint').textContent = coarse
+  ? 'Drag on the left half to walk, on the right half to look around.'
+  : 'Click to look with the mouse. WASD or arrows to walk, Shift to run, L for lights, Esc to exit.';
+
+function enterWalk() {
+  if (walk.on) return;
+  walk.on = true; anim = null; select(null);
+  walk.prevWall = document.querySelector('#walls button[aria-pressed="true"]');
+  document.querySelector('#walls button[data-h="300"]').click();
+  ceilG.visible = true; dirty();
+  controls.enabled = false;
+  walk.prevFov = camera.fov; camera.fov = 68; camera.updateProjectionMatrix();
+  Object.assign(walk, START); walk.room = ''; updateWhere();
+  $('card').hidden = true; $('walkfloat').hidden = true; $('walkbar').hidden = false; $('cross').hidden = coarse;
+}
+function exitWalk() {
+  if (!walk.on) return;
+  walk.on = false; walk.keys.clear(); walk.joy = walk.look = null; $('joy').hidden = true;
+  if (document.pointerLockElement) document.exitPointerLock();
+  ceilG.visible = false; dirty();
+  if (walk.prevWall) walk.prevWall.click();
+  camera.fov = walk.prevFov; camera.updateProjectionMatrix(); controls.enabled = true;
+  $('card').hidden = false; $('walkfloat').hidden = false; $('walkbar').hidden = true; $('cross').hidden = true;
+  goView('overview');
+}
+$('walkfloat').onclick = enterWalk; $('walkcard').onclick = enterWalk;
+$('walkexit').onclick = exitWalk; $('walklight').onclick = toggleHereLight;
+
+function turn(dx, dy, k) {
+  walk.yaw -= dx * k; walk.pitch = Math.max(-1.35, Math.min(1.35, walk.pitch - dy * k));
+}
+// mouse: click to lock the pointer (drag-to-look still works if the browser refuses the lock).
+// touch: left part of the screen is a floating joystick, the rest drags the view.
+cvs.addEventListener('pointerdown', ev => {
+  if (!walk.on) return;
+  if (ev.pointerType === 'mouse') {
+    if (!document.pointerLockElement && cvs.requestPointerLock) { try { const p = cvs.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
+    walk.look = { id:ev.pointerId, x:ev.clientX, y:ev.clientY }; return;
+  }
+  cvs.setPointerCapture(ev.pointerId);
+  if (ev.clientX < innerWidth * .45 && !walk.joy) {
+    walk.joy = { id:ev.pointerId, ox:ev.clientX, oy:ev.clientY, dx:0, dy:0 };
+    const j = $('joy'); j.style.left = ev.clientX + 'px'; j.style.top = ev.clientY + 'px'; j.firstChild.style.transform = ''; j.hidden = false;
+  } else if (!walk.look) walk.look = { id:ev.pointerId, x:ev.clientX, y:ev.clientY };
+});
+cvs.addEventListener('pointermove', ev => {
+  if (!walk.on) return;
+  if (document.pointerLockElement === cvs) { turn(ev.movementX, ev.movementY, .0024); return; }
+  const j = walk.joy;
+  if (j && ev.pointerId === j.id) {
+    let dx = ev.clientX - j.ox, dy = ev.clientY - j.oy; const d = Math.hypot(dx, dy), R = 50;
+    if (d > R) { dx *= R/d; dy *= R/d; }
+    j.dx = dx / R; j.dy = dy / R; $('joy').firstChild.style.transform = `translate(${dx}px,${dy}px)`;
+  } else if (walk.look && ev.pointerId === walk.look.id && (ev.pointerType !== 'mouse' || ev.buttons)) {
+    turn(ev.clientX - walk.look.x, ev.clientY - walk.look.y, ev.pointerType === 'mouse' ? .004 : .006);
+    walk.look.x = ev.clientX; walk.look.y = ev.clientY;
+  }
+});
+const walkUp = ev => {
+  if (walk.joy && ev.pointerId === walk.joy.id) { walk.joy = null; $('joy').hidden = true; }
+  if (walk.look && ev.pointerId === walk.look.id) walk.look = null;
+};
+cvs.addEventListener('pointerup', walkUp); cvs.addEventListener('pointercancel', walkUp);
+const MOVE_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight'];
+addEventListener('keydown', ev => {
+  if (!walk.on || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+  if (MOVE_KEYS.includes(ev.code)) { walk.keys.add(ev.code); ev.preventDefault(); }
+  else if (ev.code === 'KeyL' && !ev.repeat) toggleHereLight();
+  else if (ev.code === 'Escape' && !document.pointerLockElement) exitWalk();
+});
+addEventListener('keyup', ev => walk.keys.delete(ev.code));
+addEventListener('blur', () => walk.keys.clear());
+
+function walkStep(dt) {
+  const k = walk.keys; let f = 0, s = 0;
+  if (k.has('KeyW') || k.has('ArrowUp')) f++;
+  if (k.has('KeyS') || k.has('ArrowDown')) f--;
+  if (k.has('KeyD')) s++;
+  if (k.has('KeyA')) s--;
+  if (k.has('ArrowLeft')) walk.yaw += 1.9 * dt;
+  if (k.has('ArrowRight')) walk.yaw -= 1.9 * dt;
+  if (walk.joy) { f -= walk.joy.dy; s += walk.joy.dx; }
+  const n = Math.hypot(f, s); if (n > 1) { f /= n; s /= n; }
+  const sp = (k.has('ShiftLeft') || k.has('ShiftRight') ? 290 : 140) * dt;
+  // yaw 0 looks toward -z (north); forward = (-sin, -cos), right = (cos, -sin)
+  const sn = Math.sin(walk.yaw), cs = Math.cos(walk.yaw);
+  const dx = (-sn * f + cs * s) * sp, dz = (-cs * f - sn * s) * sp;
+  const x0 = walk.x, z0 = walk.z;
+  if (dx && walkable(walk.x + dx, walk.z)) walk.x += dx;      // per-axis, so you slide along walls
+  if (dz && walkable(walk.x, walk.z + dz)) walk.z += dz;
+  const moved = Math.hypot(walk.x - x0, walk.z - z0);
+  walk.bob = moved > 0 ? walk.bob + moved * .075 : walk.bob * .85;
+  camera.position.set(walk.x, EYE + Math.sin(walk.bob) * 1.4, walk.z);
+  camera.rotation.set(walk.pitch, walk.yaw, 0, 'YXZ');
+  updateWhere();
+}
+
 function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h); labelR.setSize(w, h); camera.aspect = w/h; camera.updateProjectionMatrix(); }
 addEventListener('resize', resize); resize();
 roomMaskAll();
+if (opts.includes('walk')) enterWalk();   // e.g. #walk opens straight into the walk-through
+let lastT = performance.now();
 renderer.setAnimationLoop(now => {
-  if (anim) {
-    const k = Math.min(1, (now - anim.t0) / 700), e = k < .5 ? 2*k*k : 1 - Math.pow(-2*k + 2, 2)/2;
-    camera.position.lerpVectors(anim.from.p, anim.to.p, e); controls.target.lerpVectors(anim.from.t, anim.to.t, e);
-    if (k === 1) anim = null;
+  const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
+  if (walk.on) walkStep(dt);
+  else {
+    if (anim) {
+      const k = Math.min(1, (now - anim.t0) / 700), e = k < .5 ? 2*k*k : 1 - Math.pow(-2*k + 2, 2)/2;
+      camera.position.lerpVectors(anim.from.p, anim.to.p, e); controls.target.lerpVectors(anim.from.t, anim.to.t, e);
+      if (k === 1) anim = null;
+    }
+    controls.update();
   }
-  controls.update();
   const showTags = camera.position.y > 450; for (const t of tags) t.visible = showTags;
   renderer.render(scene, camera); labelR.render(scene, camera);
 });

@@ -246,7 +246,9 @@ const doors = [
   { name:'Bath 2',    o:[768.8,115,7.5,65],    h:[768.8,180],   c:[768.8,115],   p:[703.8,180] },
   { name:'main',      o:[352,759.7,94,25],     h:[352,759.7],   c:[446,759.7],   p:[352,665.7], w:'94' },
 ];
-const windows = [ [50,61,120,12.5,'h'], [505,-25,100,25,'h'], [800,-25,90,25,'h'] ];
+const windows = [ [50,61,120,12.5,'h'], [505,-25,100,25,'h'], [776.3,-25,80,25,'h'] ];
+// structural column in Bedroom 2's top-right corner (1 ft wide; depth and gap to the right wall assumed)
+const column = { x:915.8 - 20 - 30.5, y:0, w:30.5, h:25 };
 
 // ---------- static drawing ----------
 const gW = $('g-walls'), gF = $('g-floors'), gI = $('g-inner'), gO = $('g-open'), gD = $('g-dims'), gL = $('g-labels');
@@ -254,6 +256,7 @@ for (const r of rooms) { const [t, rr, b, l] = r.walls; el('rect', { class:'wall
 for (const r of rooms) el('rect', { class:'f-'+r.kind, x:r.x, y:r.y, width:r.w, height:r.h }, gF);
 el('rect', { class:'wall', ...xywh(bath2Block) }, gI);
 el('rect', { class:'f-wet', ...xywh(bath2) }, gI);
+el('rect', { class:'wall', ...xywh(column) }, gI);
 function xywh(r){ return { x:r.x, y:r.y, width:r.w, height:r.h }; }
 
 // balcony railing (open front)
@@ -446,6 +449,7 @@ const fits = (() => {
   for (const d of doors) fill(d.o, 0);
   fill([486.2, 264.6, 81.9, 12.5], 0);                                             // kitchen opening
   fill([basin.x, basin.y, basin.w, basin.h], 1);
+  fill([column.x, column.y, column.w, column.h], 1);                               // Bedroom 2 column
   fill([486.2, 0, 136.5, counter.d], 1); fill([622.7 - counter.d, 0, counter.d, 264.6], 1);   // kitchen counter
   const W1 = NX + 1, S = new Int32Array(W1 * (NY + 1));
   for (let j = 0; j < NY; j++) { let row = 0; for (let i = 0; i < NX; i++) { row += g[j*NX + i]; S[(j+1)*W1 + i+1] = S[j*W1 + i+1] + row; } }
@@ -502,15 +506,18 @@ const layoutDefault = {
   lamp:  { x:0,     y:73.5,  rot:'N' },
   // fridge in the living room's corner below Bedroom 2's jut, back to the right wall, facing left (west)
   fridge:{ x:618.7, y:495.1, rot:'E' },
-  // Bedroom 2: bed headboard on the right (outer) wall, single-door cupboard in the bottom-right corner
+  // Bedroom 2: bed headboard on the right (outer) wall, single-door cupboard in the bottom-right corner,
+  // back to the right wall so its mirror faces west, toward the door
   bed2:  { x:717.6, y:240,   rot:'E' },
-  cupboard:{ x:870.8, y:432.6, rot:'S' },
+  cupboard:{ x:865.8, y:437.6, rot:'E' },
 };
 const KEY = 'flat-furn-v2';
 let layout = JSON.parse(JSON.stringify(layoutDefault));
 try { const s = JSON.parse(localStorage.getItem(KEY));
   // drop a saved fridge still at its old default (facing down) so the new left-facing default applies
   if (s && s.fridge && s.fridge.rot === 'N' && s.fridge.x === 623.2 && s.fridge.y === 495.1) delete s.fridge;
+  // same for the cupboard at its old default (mirror facing up, away from the door)
+  if (s && s.cupboard && s.cupboard.rot === 'S' && s.cupboard.x === 870.8 && s.cupboard.y === 432.6) delete s.cupboard;
   if (s) for (const k in layout) if (s[k] && typeof s[k].x === 'number' && 'NESW'.includes(s[k].rot)) layout[k] = s[k]; } catch (e) {}
 let selected = 'bed';
 
