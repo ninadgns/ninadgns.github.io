@@ -27,6 +27,8 @@ body{background:var(--paper);color:var(--ink);font:14px/1.45 var(--display);over
   font:600 13px var(--display);padding:8px 14px;border-radius:999px;border:1px solid var(--rule);background:var(--sheet);color:var(--ink);
   box-shadow:0 6px 24px rgba(0,0,0,.12);cursor:pointer}
 .daynight span{font-size:15px;margin-right:4px}
+/* floating rotate button: shown under Day/Night only while a piece is selected, so phones don't need the control card */
+.daynight.rot{top:calc(max(16px,env(safe-area-inset-top,0px)) + 50px);background:var(--accent);border-color:var(--accent);color:#fff}
 .card{position:fixed;top:max(16px,env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));
   width:min(300px,calc(100vw - 32px));background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:14px 16px;
   display:flex;flex-direction:column;gap:10px;box-shadow:0 6px 24px rgba(0,0,0,.08)}
@@ -63,6 +65,7 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--muted)}
 <body>
 <div id="stage"></div>
 
+<button id="rotfloat" class="daynight rot" hidden title="Rotate the selected piece 90 degrees"><span aria-hidden="true">&#8635;</span> Rotate</button>
 <button id="daynight" class="daynight" aria-pressed="false" title="Switch between day and night"><span aria-hidden="true">&#9790;</span> Night</button>
 <div class="card" id="card">
   <div class="head">
@@ -898,6 +901,7 @@ function select(id) {
   selected = id;
   for (const c of catalog) objs[c.id].traverse(o => { if (o.isMesh) o.material.emissive.setHex(c.id === id ? 0x1d3bb0 : (o.userData.glow ?? 0)); o.isMesh && (o.material.emissiveIntensity = .35); });
   if (lightsReady) applyLights();
+  document.getElementById('rotfloat').hidden = !id;
   selEl.textContent = id ? 'Selected: ' + catalog.find(c => c.id === id).name + '. Drag it to move.' : 'Click a piece of furniture to select it';
 }
 function rotateSel() {
@@ -941,6 +945,7 @@ const endDrag = () => {
 renderer.domElement.addEventListener('pointerup', endDrag); renderer.domElement.addEventListener('pointercancel', () => { press = null; endDrag(); });
 addEventListener('keydown', ev => { if ((ev.key === 'r' || ev.key === 'R') && !ev.metaKey && !ev.ctrlKey) rotateSel(); });
 document.getElementById('rot').onclick = rotateSel;
+document.getElementById('rotfloat').onclick = rotateSel;
 document.getElementById('reset').onclick = () => { layout = JSON.parse(JSON.stringify(layoutDefault)); catalog.forEach(c => place(c.id)); save(); };
 addEventListener('storage', e => { if (e.key !== KEY) return; try { const s = JSON.parse(e.newValue); for (const k in layout) if (s[k]) layout[k] = s[k]; catalog.forEach(c => place(c.id)); } catch (er) {} });
 
