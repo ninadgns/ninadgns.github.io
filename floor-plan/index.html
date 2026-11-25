@@ -37,6 +37,7 @@ header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-be
 .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 h1{font-size:clamp(28px,4vw,40px);line-height:1.05;margin:4px 0 0;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
 .lede{margin:8px 0 0;color:var(--muted);max-width:62ch}
+.btns[hidden]{display:none}
 .seg{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--sheet)}
 .seg button{font:500 13px var(--mono);border:0;background:transparent;color:var(--muted);padding:7px 12px;cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--sheet)}
@@ -182,6 +183,9 @@ ol.q b{font:500 12px var(--mono);color:var(--assumed);padding-top:1px}
         <div class="btns">
           <button class="btn primary" id="b-rot">Rotate</button>
           <button class="btn" id="b-reset">Reset layout</button>
+        </div>
+        <div class="btns" id="bed-size" hidden>
+          <button class="btn" id="b-bedsize"></button>
         </div>
         <p class="hint">Gaps are free floor between the selected piece and the nearest wall or furniture on each side (top of the plan is N). Arrow keys move 5 cm, Shift for 1 cm, R rotates.</p>
       </section>
@@ -492,6 +496,11 @@ const catalog = [
   { id:'bed2',   kind:'bed',   name:'Bed (4′ × 6.5′)', w:4*FT, d:6.5*FT },
   { id:'cupboard', kind:'cupboard', name:'Cupboard', w:45, d:50 },
 ];
+// Bedroom 1 bed: wide (the original) or a strict 5' x 7' plus 2 in of slack on each side
+const BED_SIZES = { wide:{ w:174, d:229, label:'Wide' }, narrow:{ w:5*FT + 5.1, d:7*FT + 5.1, label:"5′ × 7′ + 2″" } };
+let bedSize = 'wide';
+try { if (localStorage.getItem('flat-bed-size') === 'narrow') bedSize = 'narrow'; } catch (e) {}
+Object.assign(catalog.find(c => c.id === 'bed'), BED_SIZES[bedSize]);
 const layoutDefault = {
   // everything in Bedroom 1, arranged by the user: bed headboard on the bottom wall,
   // 3'x2' desk + executive chair on the balcony wall, 4'x2' desk + chair on the door-side wall
@@ -657,6 +666,8 @@ function renderFurniture() {
     line(cx, g.n[0], cx, b.y, g.n[1]); line(cx, b.y + b.h, cx, g.s[0], g.s[1]);
     line(g.w[0], cy, b.x, cy, g.w[1]); line(b.x + b.w, cy, g.e[0], cy, g.e[1]);
   }
+  $('bed-size').hidden = selected !== 'bed';
+  $('b-bedsize').textContent = 'Bed size: ' + BED_SIZES[bedSize].label + ' (switch)';
   for (const btn of document.querySelectorAll('#pick button')) btn.setAttribute('aria-pressed', btn.dataset.id === selected);
   try { localStorage.setItem(KEY, JSON.stringify(layout)); } catch (e) {}
 }
@@ -701,6 +712,17 @@ gFurn.addEventListener('keydown', ev => {
   ev.preventDefault(); renderFurniture(); const f = gFurn.querySelector('.sel'); if (f) f.focus({ preventScroll:true });
 });
 $('b-rot').onclick = rotate;
+function setBedSize(k) {
+  const c = catalog.find(c => c.id === 'bed'), L = layout.bed, old = { w:c.w, d:c.d, size:bedSize };
+  const b = box('bed'), cx = b.x + b.w/2, cy = b.y + b.h/2;
+  bedSize = k; c.w = BED_SIZES[k].w; c.d = BED_SIZES[k].d;
+  const b2 = box('bed'), s = nearestFit({ x:Math.round(cx - b2.w/2), y:Math.round(cy - b2.h/2), w:b2.w, h:b2.h }, 120);
+  if (!s) { bedSize = old.size; c.w = old.w; c.d = old.d; renderFurniture(); return; }   // no room for the bigger bed here
+  L.x = s.x; L.y = s.y;
+  try { localStorage.setItem('flat-bed-size', k); } catch (e) {}
+  renderFurniture();
+}
+$('b-bedsize').onclick = () => setBedSize(bedSize === 'wide' ? 'narrow' : 'wide');
 $('b-reset').onclick = () => { layout = JSON.parse(JSON.stringify(layoutDefault)); renderFurniture(); };
 
 function setUnit(u) {

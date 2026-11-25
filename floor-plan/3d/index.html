@@ -127,6 +127,7 @@ details summary{cursor:pointer;font-size:12.5px;color:var(--muted)}
   </div>
   <div class="sel" id="sel">Click a piece of furniture to select it</div>
   <div class="row"><button id="rot">Rotate selected</button><button id="reset">Reset layout</button></div>
+  <div class="row"><button id="bedsize"></button></div>
   <p class="hint long">Drag to orbit, scroll or pinch to zoom, right-drag to pan. Click a piece to select it, then drag it to move; R rotates. Click empty space to deselect. Layout is shared with the <a href="../">2D plan</a> in this browser.</p>
   </div>
 </div>
@@ -216,6 +217,11 @@ const catalog = [
   { id:'bed2',   kind:'bed',   name:'Bed (4′ × 6.5′)', w:4*FT, d:6.5*FT },
   { id:'cupboard', kind:'cupboard', name:'Cupboard', w:45, d:50 },
 ];
+// Bedroom 1 bed: wide (the original) or a strict 5' x 7' plus 2 in of slack on each side (shared with the 2D plan)
+const BED_SIZES = { wide:{ w:174, d:229, label:'Wide' }, narrow:{ w:5*FT + 5.1, d:7*FT + 5.1, label:"5′ × 7′ + 2″" } };
+let bedSize = 'wide';
+try { if (localStorage.getItem('flat-bed-size') === 'narrow') bedSize = 'narrow'; } catch (e) {}
+Object.assign(catalog.find(c => c.id === 'bed'), BED_SIZES[bedSize]);
 const layoutDefault = {
   // everything in Bedroom 1, arranged by the user: bed headboard on the bottom wall,
   // 3'x2' desk + executive chair on the balcony wall, 4'x2' desk + chair on the door-side wall
@@ -765,7 +771,7 @@ function piece(c) {
     plate(roundFR(X, Z, X + S, Z + TD, RS), TH - t, TH, wal);
     // back panels: walnut behind the outer column, white behind the inner one
     add(X + t, Z, S/2 - t, 1, 50, TH - t, wal);
-    add(mid, Z, S/2, 1, 75, TH - t, wh);
+    add(mid, Z, S/2, 1, 50, TH - t, wh);
     // white middle divider and shelves; the inner column's shelf is open and rounded at its table-side corner
     add(mid - t/2, Z, t, TD, 50, TH - t, wh);
     for (const y of [78, 118]) add(X + t, Z, S/2 - 1.5*t, TD, y, y + t, wh);
@@ -777,7 +783,7 @@ function piece(c) {
     // desktop: its left front corner curves from the shelf front at the middle of the tower out to the full depth
     plate([[mid + t/2, Z], [X + W, Z], [X + W, Z + D], ...arc(mid + t/2 + RD, Z + TD, RD, Math.PI/2, Math.PI, 16)], 72, 75, wal);
     add(X + W - 2.5, Z, 2.5, D, 0, 72, wal);
-    add(X + S, Z + 1, W - S - 2.5, 1.8, 52, 72, wal);                       // modesty panel
+    add(X + S, Z + 1, W - S - 2.5, 1.8, 50, 72, wal);                       // modesty panel
     deskLamp(g, X + S + 10, Z + 11, 75, X + S + 35, Z + D*.6);              // left, next to the tower
     // medical study material scattered on the desktop (top surface at 75)
     const rb = (cx, cz, w, d, y0, h, ry, m) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
@@ -981,6 +987,20 @@ addEventListener('keydown', ev => { if (walk.on) return; if ((ev.key === 'r' || 
 document.getElementById('rot').onclick = rotateSel;
 document.getElementById('rotfloat').onclick = rotateSel;
 document.getElementById('reset').onclick = () => { layout = JSON.parse(JSON.stringify(layoutDefault)); catalog.forEach(c => place(c.id)); save(); };
+function setBedSize(k, fromStorage) {
+  const c = catalog.find(c => c.id === 'bed'), L = layout.bed, old = { w:c.w, d:c.d, k:bedSize };
+  const f = footprint('bed'), cx = L.x + f.w/2, cy = L.y + f.h/2;
+  bedSize = k; c.w = BED_SIZES[k].w; c.d = BED_SIZES[k].d;
+  const f2 = footprint('bed'), n = nearestFit({ x:Math.round(cx - f2.w/2), y:Math.round(cy - f2.h/2), w:f2.w, h:f2.h }, 120);
+  if (!n) { bedSize = old.k; c.w = old.w; c.d = old.d; return; }   // no room for the bigger bed here
+  L.x = n.x; L.y = n.y;
+  furnG.remove(objs.bed); const g = piece(c); g.userData.id = 'bed'; objs.bed = g; furnG.add(g);
+  document.getElementById('bedsize').textContent = 'Bed size: ' + BED_SIZES[k].label + ' (switch)';
+  place('bed'); select(selected); save();
+  if (!fromStorage) try { localStorage.setItem('flat-bed-size', k); } catch (e) {}
+}
+document.getElementById('bedsize').textContent = 'Bed size: ' + BED_SIZES[bedSize].label + ' (switch)';
+document.getElementById('bedsize').onclick = () => setBedSize(bedSize === 'wide' ? 'narrow' : 'wide');
 addEventListener('storage', e => { if (e.key !== KEY) return; try { const s = JSON.parse(e.newValue); for (const k in layout) if (s[k]) layout[k] = s[k]; catalog.forEach(c => place(c.id)); } catch (er) {} });
 
 // ---------- light switches: one per room (fittings plus any desk / floor lamp standing in it) and global light (sun + sky) ----------
